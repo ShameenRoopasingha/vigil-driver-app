@@ -39,3 +39,8 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# editor and test scripts
+.vscode/
+check-*.js
+test-*.js

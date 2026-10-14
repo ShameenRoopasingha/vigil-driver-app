@@ -1,0 +1,363 @@
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput, Linking } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { apiClient } from '../api/client';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../App';
+import { locationService, TrackingStatus } from '../services/locationService';
+
+type ActiveTourRouteProp = RouteProp<RootStackParamList, 'ActiveTour'>;
+type ActiveTourNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ActiveTour'>;
+
+export default function ActiveTourScreen() {
+  const route = useRoute<ActiveTourRouteProp>();
+  const navigation = useNavigation<ActiveTourNavigationProp>();
+  
+  const { bookingId } = route.params;
+
+  const [tour, setTour] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [meterReading, setMeterReading] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>({
+    isTracking: false,
+    isMoving: false,
+    lastPingTime: null,
+    pendingOfflineCount: 0,
+    lastError: null,
+  });
+
+  const fetchTour = async () => {
+    try {
+      const response = await apiClient.get(`/driver/tours/${bookingId}`);
+      if (response.data?.success) {
+        const tourData = response.data.data;
+        setTour(tourData);
+
+        // If tour is ONGOING, ensure live GPS streaming is active
+        if (tourData.status === 'ONGOING') {
+          locationService.startTripTracking(bookingId);
+        }
+      } else {
+        Alert.alert('Error', 'Failed to load tour details.');
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Network error while fetching tour.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTour();
+
+    // Subscribe to live GPS status changes
+    const unsubscribe = locationService.subscribeStatus((status) => {
+      setTrackingStatus(status);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [bookingId]);
+
+  const openNavigation = (type: 'google' | 'waze', destinationTarget?: string) => {
+    const target = destinationTarget || tour?.dropLocation || tour?.destination || tour?.pickupLocation;
+    if (!target) {
+      Alert.alert('No Destination', 'No destination address is set for this tour.');
+      return;
+    }
+
+    const encodedTarget = encodeURIComponent(target);
+    const url = type === 'google'
+      ? `https://www.google.com/maps/dir/?api=1&destination=${encodedTarget}&travelmode=driving`
+      : `https://waze.com/ul?q=${encodedTarget}&navigate=yes`;
+
+    Linking.canOpenURL(url)
+      .then((supported) => {
+        if (supported || type === 'google') {
+          Linking.openURL(url);
+        } else {
+          Alert.alert('App Not Installed', 'Waze app is not installed on this device.');
+        }
+      })
+      .catch((err) => console.error('Error opening map navigation:', err));
+  };
+
+  const handleAction = async (action: 'START_TRIP' | 'END_TRIP') => {
+    if (!meterReading) {
+      Alert.alert('Required', 'Please enter the current meter reading on the dashboard.');
+      return;
+    }
+
+    if (action === 'START_TRIP') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tourDate = new Date(tour.startDate);
+      tourDate.setHours(0, 0, 0, 0);
+      
+      if (today < tourDate) {
+        Alert.alert('Too Early', 'You cannot start this trip before its scheduled date.');
+        return;
+      }
+    }
+
+    const title = action === 'START_TRIP' ? 'Start Trip' : 'End Trip';
+    const message = action === 'START_TRIP' 
+      ? 'Are you sure you want to START this trip now? Real-time GPS location sharing with the office will be activated.' 
+      : 'Are you sure you want to END this trip? Live GPS tracking will be terminated.';
+
+    Alert.alert(
+      title,
+      message,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Confirm', 
+          style: action === 'END_TRIP' ? 'destructive' : 'default',
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              const response = await apiClient.put(`/driver/tours/${bookingId}`, {
+                action,
+                meterReading
+              });
+
+              if (response.data?.success) {
+                if (action === 'START_TRIP') {
+                  await locationService.startTripTracking(bookingId);
+                  Alert.alert('Trip Started', 'GPS Live Tracking is now broadcasting to company dispatch.');
+                } else if (action === 'END_TRIP') {
+                  await locationService.stopTripTracking();
+                  Alert.alert('Trip Ended', 'Live GPS tracking has been stopped.');
+                }
+
+                fetchTour(); // Refresh data
+                setMeterReading(''); // Clear input
+              } else {
+                Alert.alert('Error', response.data?.error || 'Failed to update trip.');
+              }
+            } catch (error) {
+              console.error(error);
+              Alert.alert('Error', 'Network error.');
+            } finally {
+              setActionLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView className="flex-1 bg-gray-50 items-center justify-center">
+        <ActivityIndicator size="large" color="#2563eb" />
+      </SafeAreaView>
+    );
+  }
+
+  if (!tour) {
+    return (
+      <SafeAreaView className="flex-1 bg-gray-50 items-center justify-center">
+        <Text className="text-gray-500">Tour not found.</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} className="mt-4 bg-blue-600 px-6 py-2 rounded-lg">
+          <Text className="text-white font-bold">Go Back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  const isStarted = tour.status === 'ONGOING';
+  const isCompleted = tour.status === 'COMPLETED';
+  const primaryDestination = tour.dropLocation || tour.destination || tour.pickupLocation || '';
+
+  return (
+    <SafeAreaView className="flex-1 bg-gray-50">
+      <View className="px-6 py-4 bg-white border-b border-gray-200 flex-row items-center justify-between">
+        <TouchableOpacity onPress={() => navigation.goBack()} className="mr-4">
+          <Text className="text-blue-600 text-lg font-bold">← Back</Text>
+        </TouchableOpacity>
+        <Text className="text-lg font-bold text-gray-800">Tour: {tour.vehicleNo}</Text>
+      </View>
+
+      <ScrollView className="flex-1 px-4 pt-4">
+        {/* Live GPS Broadcast Status Banner (Active only during ONGOING) */}
+        {isStarted && (
+          <View className="bg-emerald-900 border border-emerald-700 rounded-xl p-4 shadow-sm mb-4">
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center">
+                <View className="w-3 h-3 rounded-full bg-emerald-400 mr-2" />
+                <Text className="text-white font-bold text-sm tracking-wide">LIVE GPS RADAR BROADCASTING</Text>
+              </View>
+              <View className="bg-emerald-800 px-2 py-0.5 rounded-full">
+                <Text className="text-emerald-200 text-xs font-semibold">
+                  {trackingStatus.isMoving ? '20s (Moving)' : '60s (Parked)'}
+                </Text>
+              </View>
+            </View>
+
+            <Text className="text-emerald-200 text-xs mb-2">
+              Office admin is viewing your real-time vehicle location on the live fleet map.
+            </Text>
+
+            <View className="flex-row items-center justify-between pt-2 border-t border-emerald-800 text-xs">
+              <Text className="text-emerald-300 text-xs">
+                {trackingStatus.lastPingTime
+                  ? `Last Ping: ${Math.round((Date.now() - trackingStatus.lastPingTime.getTime()) / 1000)}s ago`
+                  : 'Syncing GPS signal...'}
+              </Text>
+              {trackingStatus.pendingOfflineCount > 0 ? (
+                <View className="bg-amber-500/20 px-2 py-0.5 rounded border border-amber-400">
+                  <Text className="text-amber-300 text-[11px] font-bold">
+                    📦 {trackingStatus.pendingOfflineCount} points cached offline
+                  </Text>
+                </View>
+              ) : (
+                <Text className="text-emerald-400 text-xs">● Online & Synced</Text>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Turn-by-Turn Navigation Quick Action Card */}
+        {primaryDestination ? (
+          <View className="bg-white rounded-xl p-4 shadow-sm border border-blue-100 mb-4">
+            <Text className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Turn-by-Turn Navigation</Text>
+            <View className="flex-row items-center mb-3">
+              <Text className="text-blue-900 font-bold text-base flex-1" numberOfLines={1}>
+                📍 {primaryDestination}
+              </Text>
+            </View>
+            
+            <View className="flex-row gap-2">
+              <TouchableOpacity
+                onPress={() => openNavigation('google')}
+                className="flex-1 bg-blue-600 py-2.5 px-3 rounded-lg flex-row items-center justify-center shadow-sm"
+              >
+                <Text className="text-white font-bold text-sm">🗺️ Google Maps</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => openNavigation('waze')}
+                className="flex-1 bg-cyan-600 py-2.5 px-3 rounded-lg flex-row items-center justify-center shadow-sm"
+              >
+                <Text className="text-white font-bold text-sm">🚗 Waze Navigation</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Customer & Route Details Card */}
+        <View className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-4">
+          <Text className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Customer Details</Text>
+          <Text className="text-xl font-bold text-gray-800 mb-1">{tour.customerName}</Text>
+          {tour.pickupLocation && (
+            <Text className="text-gray-600 text-xs mb-1">
+              <Text className="font-semibold text-gray-700">Pickup:</Text> {tour.pickupLocation}
+            </Text>
+          )}
+          <Text className="text-gray-600 text-xs mb-2">
+            <Text className="font-semibold text-gray-700">Destination:</Text> {tour.destination || 'Not specified'}
+          </Text>
+          
+          <View className="bg-blue-50 p-3 rounded-lg mt-2">
+            <Text className="text-blue-800 text-sm">{tour.notes || 'No special notes.'}</Text>
+          </View>
+        </View>
+
+        {/* Itinerary Day-by-Day Stops (if available from quotation schedule) */}
+        {tour.itineraryDays && tour.itineraryDays.length > 0 && (
+          <View className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-4">
+            <Text className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Tour Itinerary Stops</Text>
+            {tour.itineraryDays.map((item: any, idx: number) => (
+              <View key={idx} className="py-2 border-b border-gray-100 flex-row items-center justify-between">
+                <View className="flex-1 pr-2">
+                  <Text className="text-sm font-bold text-gray-800">Day {item.day}: {item.title}</Text>
+                  {item.description && (
+                    <Text className="text-xs text-gray-500" numberOfLines={1}>{item.description}</Text>
+                  )}
+                </View>
+                <TouchableOpacity
+                  onPress={() => openNavigation('google', item.title)}
+                  className="bg-gray-100 px-2.5 py-1.5 rounded border border-gray-200"
+                >
+                  <Text className="text-xs text-blue-600 font-semibold">Navigate</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Status & Actions Card */}
+        <View className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-4">
+          <Text className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Trip Status</Text>
+          
+          <View className={`px-3 py-1 rounded-full self-start mb-4 ${isCompleted ? 'bg-gray-100' : isStarted ? 'bg-green-100' : 'bg-blue-100'}`}>
+            <Text className={`font-bold ${isCompleted ? 'text-gray-600' : isStarted ? 'text-green-700' : 'text-blue-700'}`}>
+              {tour.status}
+            </Text>
+          </View>
+
+          {!isCompleted && (
+            <View className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
+              <Text className="text-gray-700 mb-2 font-medium">Dashboard Meter Reading:</Text>
+              <TextInput
+                className="bg-white border border-gray-300 rounded-md px-3 py-2 text-gray-800"
+                placeholder="e.g. 45500"
+                keyboardType="numeric"
+                value={meterReading}
+                onChangeText={setMeterReading}
+              />
+            </View>
+          )}
+
+          {isCompleted ? (
+            <View className="p-4 bg-gray-100 rounded-lg items-center">
+              <Text className="text-gray-500 font-bold">This trip is completed.</Text>
+            </View>
+          ) : isStarted ? (
+            <TouchableOpacity 
+              onPress={() => handleAction('END_TRIP')}
+              disabled={actionLoading}
+              className="bg-red-600 py-3 rounded-lg items-center shadow-sm"
+            >
+              {actionLoading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-lg">End Trip & Stop GPS</Text>}
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              onPress={() => handleAction('START_TRIP')}
+              disabled={actionLoading}
+              className="bg-green-600 py-3 rounded-lg items-center shadow-sm"
+            >
+              {actionLoading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-lg">Start Trip & Broadcast GPS</Text>}
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Activity Log */}
+        <View className="mb-6">
+          <Text className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-3 px-2">Activity Log</Text>
+          {tour.tripActivities?.length === 0 ? (
+            <Text className="text-gray-400 italic px-2">No activities logged yet.</Text>
+          ) : (
+            tour.tripActivities?.map((activity: any) => (
+              <View key={activity.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 mb-2 flex-row items-center">
+                <View className="w-2 h-10 bg-blue-400 rounded-full mr-3" />
+                <View>
+                  <Text className="font-bold text-gray-700">{activity.type}</Text>
+                  <Text className="text-sm text-gray-500">{activity.note}</Text>
+                  <Text className="text-xs text-gray-400 mt-1">{new Date(activity.timestamp).toLocaleString()}</Text>
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+
+        <View className="h-10" />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
