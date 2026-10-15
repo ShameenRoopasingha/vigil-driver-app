@@ -47,6 +47,15 @@ export default function DashboardScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
+
+      // Periodically poll every 20 seconds so newly assigned tours sync automatically
+      const pollInterval = setInterval(() => {
+        loadData();
+      }, 20000);
+
+      return () => {
+        clearInterval(pollInterval);
+      };
     }, [])
   );
 

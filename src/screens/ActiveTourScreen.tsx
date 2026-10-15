@@ -262,6 +262,25 @@ export default function ActiveTourScreen() {
           <Text className="text-gray-600 text-xs mb-2">
             <Text className="font-semibold text-gray-700">Destination:</Text> {tour.destination || 'Not specified'}
           </Text>
+
+          {tour.customerPhone && (
+            <TouchableOpacity 
+              onPress={() => Linking.openURL(`tel:${tour.customerPhone}`)}
+              className="flex-row items-center mt-1 py-1"
+            >
+              <Text className="text-blue-600 font-bold text-sm">📞 {tour.customerPhone}</Text>
+              <Text className="text-xs text-gray-400 ml-2">(Tap to call customer)</Text>
+            </TouchableOpacity>
+          )}
+
+          {tour.customerEmail && (
+            <TouchableOpacity 
+              onPress={() => Linking.openURL(`mailto:${tour.customerEmail}`)}
+              className="flex-row items-center mt-0.5 py-0.5"
+            >
+              <Text className="text-blue-600 text-xs">✉️ {tour.customerEmail}</Text>
+            </TouchableOpacity>
+          )}
           
           <View className="bg-blue-50 p-3 rounded-lg mt-2">
             <Text className="text-blue-800 text-sm">{tour.notes || 'No special notes.'}</Text>
