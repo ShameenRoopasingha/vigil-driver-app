@@ -25,6 +25,15 @@ export default function ActiveTourScreen() {
   const [handoverMeter, setHandoverMeter] = useState('');
   const [handoverNote, setHandoverNote] = useState('');
   const [handoverSubmitting, setHandoverSubmitting] = useState(false);
+
+  // Emergency Breakdown State
+  const [showBreakdownModal, setShowBreakdownModal] = useState(false);
+  const [breakdownReason, setBreakdownReason] = useState('Engine Failure / Overheating');
+  const [breakdownMeter, setBreakdownMeter] = useState('');
+  const [breakdownLocation, setBreakdownLocation] = useState('');
+  const [breakdownNote, setBreakdownNote] = useState('');
+  const [breakdownSubmitting, setBreakdownSubmitting] = useState(false);
+
   const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>({
     isTracking: false,
     isMoving: false,
@@ -34,6 +43,44 @@ export default function ActiveTourScreen() {
     pendingOfflineCount: 0,
     lastError: null,
   });
+
+  const submitBreakdownReport = async () => {
+    if (!breakdownMeter.trim()) {
+      Alert.alert('Required', 'Please enter your current dashboard odometer reading. This is required for breakdown verification.');
+      return;
+    }
+
+    setBreakdownSubmitting(true);
+    try {
+      const res = await apiClient.put(`/driver/tours/${bookingId}`, {
+        action: 'REPORT_BREAKDOWN',
+        reason: breakdownReason,
+        meterReading: breakdownMeter.trim(),
+        location: breakdownLocation.trim() || undefined,
+        note: breakdownNote.trim() || undefined,
+      });
+
+      if (res.data?.success) {
+        Alert.alert(
+          'Breakdown Reported',
+          'Company dispatch has been notified with your vehicle defect and location. Please park safely while replacement transport is arranged.'
+        );
+        setShowBreakdownModal(false);
+        setBreakdownMeter('');
+        setBreakdownLocation('');
+        setBreakdownNote('');
+        fetchTour();
+      } else {
+        Alert.alert('Error', res.data?.error || 'Failed to submit breakdown report.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert('Error', err?.response?.data?.error || 'Network error while submitting breakdown report.');
+    } finally {
+      setBreakdownSubmitting(false);
+    }
+  };
+
 
   const submitHandoverRequest = async () => {
     if (!handoverMeter.trim()) {
@@ -243,9 +290,13 @@ export default function ActiveTourScreen() {
   const handoverIdx = activities.findIndex((a: any) => a.type === 'HANDOVER');
   const takeoverIdx = activities.findIndex((a: any) => a.type === 'TAKEOVER');
   const handoverReqIdx = activities.findIndex((a: any) => a.type === 'HANDOVER_REQUESTED');
+  const breakdownReqIdx = activities.findIndex((a: any) => a.type === 'BREAKDOWN_REPORTED');
+  const vehicleSwappedIdx = activities.findIndex((a: any) => a.type === 'VEHICLE_SWAPPED');
 
   const isHandoverRequested = isStarted && handoverReqIdx !== -1 && (handoverIdx === -1 || handoverReqIdx < handoverIdx);
   const needsTakeover = isStarted && handoverIdx !== -1 && (takeoverIdx === -1 || handoverIdx < takeoverIdx);
+  const isBreakdownReported = isStarted && breakdownReqIdx !== -1 && (vehicleSwappedIdx === -1 || breakdownReqIdx < vehicleSwappedIdx);
+  const wasVehicleSwapped = vehicleSwappedIdx !== -1;
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
@@ -257,6 +308,30 @@ export default function ActiveTourScreen() {
       </View>
 
       <ScrollView className="flex-1 px-4 pt-4">
+        {/* Vehicle Breakdown Reported Alert Banner */}
+        {isBreakdownReported && (
+          <View className="bg-red-50 border border-red-400 rounded-xl p-4 shadow-sm mb-4">
+            <View className="flex-row items-center mb-1">
+              <Text className="text-red-900 font-bold text-base">🚨 Vehicle Breakdown Reported</Text>
+            </View>
+            <Text className="text-red-800 text-xs leading-relaxed">
+              Company dispatch has received your vehicle breakdown report and is arranging an emergency replacement vehicle. Keep your phone reachable. Live GPS radar remains active so dispatch can locate you.
+            </Text>
+          </View>
+        )}
+
+        {/* Vehicle Swapped Banner */}
+        {wasVehicleSwapped && (
+          <View className="bg-indigo-50 border border-indigo-400 rounded-xl p-4 shadow-sm mb-4">
+            <View className="flex-row items-center mb-1">
+              <Text className="text-indigo-900 font-bold text-base">🔄 Vehicle Replaced: {tour.vehicleNo}</Text>
+            </View>
+            <Text className="text-indigo-800 text-xs leading-relaxed">
+              Tour vehicle was successfully replaced mid-tour. You are currently operating under replacement vehicle {tour.vehicleNo}.
+            </Text>
+          </View>
+        )}
+
         {/* Mid-Tour Handover Takeover Banner (for replacement driver) */}
         {needsTakeover && (
           <View className="bg-amber-50 border border-amber-300 rounded-xl p-4 shadow-sm mb-4">
@@ -278,6 +353,7 @@ export default function ActiveTourScreen() {
             </Text>
           </View>
         )}
+
 
         {/* Live GPS Broadcast Status Banner (Active only during ONGOING) */}
         {isStarted && !needsTakeover && (
@@ -461,6 +537,16 @@ export default function ActiveTourScreen() {
                   {isHandoverRequested ? '✏️ Update Handover Request' : '⚠️ Request Mid-Tour Driver Handover'}
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setShowBreakdownModal(true)}
+                disabled={actionLoading}
+                className="mt-3 border border-red-500 bg-red-50 py-3 rounded-lg items-center shadow-sm"
+              >
+                <Text className="text-red-800 font-bold text-base">
+                  {isBreakdownReported ? '✏️ Update Breakdown Report' : '🚨 Report Vehicle Breakdown'}
+                </Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <TouchableOpacity 
@@ -486,6 +572,8 @@ export default function ActiveTourScreen() {
                 type === 'TAKEOVER' ? 'bg-purple-500' :
                 type === 'START' ? 'bg-blue-500' :
                 type === 'END' ? 'bg-green-500' :
+                type === 'BREAKDOWN_REPORTED' ? 'bg-red-600' :
+                type === 'VEHICLE_SWAPPED' ? 'bg-indigo-600' :
                 type === 'BREAKDOWN' ? 'bg-red-500' : 'bg-gray-400';
 
               return (
@@ -583,6 +671,102 @@ export default function ActiveTourScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Emergency Vehicle Breakdown Reporting Modal */}
+      <Modal
+        visible={showBreakdownModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowBreakdownModal(false)}
+      >
+        <View className="flex-1 justify-end bg-black/60">
+          <View className="bg-white rounded-t-3xl p-6 shadow-xl max-h-[85%]">
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View className="flex-row justify-between items-center mb-3">
+                <Text className="text-xl font-bold text-red-600">🚨 Report Vehicle Breakdown</Text>
+                <TouchableOpacity onPress={() => setShowBreakdownModal(false)} className="p-1">
+                  <Text className="text-gray-400 font-bold text-lg">✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text className="text-gray-500 text-xs mb-4">
+                If the tour vehicle ({tour.vehicleNo}) suffers a mechanical defect or cannot proceed, alert dispatch immediately with your odometer reading.
+              </Text>
+
+              <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">Defect / Issue Type</Text>
+              <View className="flex-row flex-wrap gap-2 mb-4">
+                {[
+                  'Engine / Overheating',
+                  'Flat Tyre / Puncture',
+                  'Brake Failure',
+                  'Transmission / Clutch',
+                  'Electrical / Battery',
+                  'Accident / Collision',
+                  'Other Mechanical Issue',
+                ].map((r) => (
+                  <TouchableOpacity
+                    key={r}
+                    onPress={() => setBreakdownReason(r)}
+                    className={`px-3 py-1.5 rounded-full border ${breakdownReason === r ? 'bg-red-100 border-red-600' : 'bg-gray-50 border-gray-200'}`}
+                  >
+                    <Text className={`text-xs font-semibold ${breakdownReason === r ? 'text-red-900' : 'text-gray-600'}`}>{r}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">
+                Current Odometer Reading (KM) <Text className="text-red-600 font-bold">* (Required)</Text>
+              </Text>
+              <TextInput
+                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-800 mb-4"
+                placeholder="e.g. 45820"
+                keyboardType="numeric"
+                value={breakdownMeter}
+                onChangeText={setBreakdownMeter}
+              />
+
+              <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">Current Breakdown Location</Text>
+              <TextInput
+                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-800 mb-4"
+                placeholder="e.g. Near Habarana junction, A6 highway"
+                value={breakdownLocation}
+                onChangeText={setBreakdownLocation}
+              />
+
+              <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">Description / Passenger Situation</Text>
+              <TextInput
+                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-800 mb-6"
+                placeholder="e.g. Radiator hose leaked, passengers waiting safely at roadside café"
+                multiline
+                numberOfLines={2}
+                value={breakdownNote}
+                onChangeText={setBreakdownNote}
+              />
+
+              <View className="flex-row gap-3 mb-2">
+                <TouchableOpacity
+                  onPress={() => setShowBreakdownModal(false)}
+                  className="flex-1 bg-gray-100 py-3 rounded-xl items-center"
+                >
+                  <Text className="text-gray-700 font-bold">Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={submitBreakdownReport}
+                  disabled={breakdownSubmitting}
+                  className="flex-1 bg-red-600 py-3 rounded-xl items-center flex-row justify-center"
+                >
+                  {breakdownSubmitting ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text className="text-white font-bold">Report to Dispatch</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
+
