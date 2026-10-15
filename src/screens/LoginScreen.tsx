@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -42,9 +42,17 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50 justify-center px-6">
-      <View className="items-center mb-10">
-        <Text className="text-4xl font-bold text-blue-900 mb-2">VIGIL</Text>
-        <Text className="text-gray-500 uppercase tracking-widest text-xs font-semibold">Driver Portal</Text>
+      <View className="items-center mb-8">
+        <View className="bg-white p-3.5 rounded-2xl shadow-md border border-gray-100 mb-3 items-center justify-center">
+          <Image 
+            source={require('../../assets/logo-icon.png')} 
+            style={{ width: 68, height: 68 }} 
+            resizeMode="contain" 
+          />
+        </View>
+        <Text className="text-3xl font-extrabold text-slate-900 tracking-tight">VIGIL</Text>
+        <Text className="text-blue-600 uppercase tracking-widest text-xs font-bold mt-1">Driver Portal</Text>
+        <Text className="text-gray-400 text-xs mt-1 text-center">Fleet & Travel Management</Text>
       </View>
 
       <View className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">

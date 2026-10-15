@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput, Linking, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput, Linking, Modal, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { apiClient } from '../api/client';
@@ -300,14 +300,62 @@ export default function ActiveTourScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <View className="px-6 py-4 bg-white border-b border-gray-200 flex-row items-center justify-between">
-        <TouchableOpacity onPress={() => navigation.goBack()} className="mr-4">
-          <Text className="text-blue-600 text-lg font-bold">← Back</Text>
+      <View className="px-5 py-3.5 bg-white border-b border-gray-200 flex-row items-center justify-between">
+        <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3 flex-row items-center">
+          <Text className="text-blue-600 text-base font-bold">← Back</Text>
         </TouchableOpacity>
-        <Text className="text-lg font-bold text-gray-800">Tour: {tour.vehicleNo}</Text>
+
+        {/* Center / Right: Tour Company Badge */}
+        <View className="flex-row items-center flex-1 justify-end min-w-0">
+          {tour?.company?.logoUrl ? (
+            <View className="w-8 h-8 bg-white rounded-lg border border-gray-200 p-0.5 mr-2 items-center justify-center shadow-xs">
+              <Image 
+                source={{ uri: tour.company.logoUrl }} 
+                style={{ width: 24, height: 24 }} 
+                resizeMode="contain" 
+              />
+            </View>
+          ) : null}
+          <View className="items-end min-w-0">
+            <Text className="text-xs font-bold text-gray-900 truncate" numberOfLines={1}>
+              {tour?.company?.companyName || 'Tour'}
+            </Text>
+            <Text className="text-[10px] text-gray-500 font-medium">
+              {tour.vehicleNo}
+            </Text>
+          </View>
+        </View>
       </View>
 
       <ScrollView className="flex-1 px-4 pt-4">
+        {/* Operating Company Header Banner */}
+        {tour?.company?.companyName && (
+          <View className="bg-white rounded-xl p-3 shadow-sm border border-gray-200 mb-4 flex-row items-center">
+            {tour.company.logoUrl ? (
+              <View className="w-11 h-11 bg-white rounded-lg border border-gray-200 p-1 items-center justify-center mr-3">
+                <Image 
+                  source={{ uri: tour.company.logoUrl }} 
+                  style={{ width: 36, height: 36 }} 
+                  resizeMode="contain" 
+                />
+              </View>
+            ) : (
+              <View className="w-11 h-11 bg-blue-50 rounded-lg items-center justify-center border border-blue-200 mr-3">
+                <Text className="text-blue-900 font-extrabold text-sm">
+                  {tour.company.companyName.substring(0, 2).toUpperCase()}
+                </Text>
+              </View>
+            )}
+            <View className="flex-1 min-w-0">
+              <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Transport Company</Text>
+              <Text className="text-sm font-bold text-gray-900 truncate">{tour.company.companyName}</Text>
+              {tour.company.phone ? (
+                <Text className="text-xs text-gray-500">Dispatch: {tour.company.phone}</Text>
+              ) : null}
+            </View>
+          </View>
+        )}
+
         {/* Vehicle Breakdown Reported Alert Banner */}
         {isBreakdownReported && (
           <View className="bg-red-50 border border-red-400 rounded-xl p-4 shadow-sm mb-4">
@@ -360,8 +408,12 @@ export default function ActiveTourScreen() {
           <View className="bg-emerald-900 border border-emerald-700 rounded-xl p-4 shadow-sm mb-4">
             <View className="flex-row items-center justify-between mb-2">
               <View className="flex-row items-center">
-                <View className="w-3 h-3 rounded-full bg-emerald-400 mr-2" />
-                <Text className="text-white font-bold text-sm tracking-wide">LIVE GPS RADAR BROADCASTING</Text>
+                <Image 
+                  source={require('../../assets/logo-icon.png')} 
+                  style={{ width: 20, height: 20, marginRight: 8 }} 
+                  resizeMode="contain" 
+                />
+                <Text className="text-white font-bold text-sm tracking-wide">VIGIL GPS RADAR LIVE</Text>
               </View>
               <View className="bg-emerald-800 px-2 py-0.5 rounded-full">
                 <Text className="text-emerald-200 text-xs font-semibold">
@@ -371,7 +423,7 @@ export default function ActiveTourScreen() {
             </View>
 
             <Text className="text-emerald-200 text-xs mb-2">
-              Office admin is viewing your real-time vehicle location on the live fleet map.
+              Office dispatch is viewing your real-time vehicle location on the live fleet map.
             </Text>
 
             <View className="flex-row items-center justify-between pt-2 border-t border-emerald-800 text-xs">

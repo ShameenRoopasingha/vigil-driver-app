@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -52,14 +52,19 @@ export default function LiveLocationNotificationBar() {
         style={styles.touchable}
       >
         <View style={styles.leftRow}>
+          <Image 
+            source={require('../../assets/logo-icon.png')} 
+            style={{ width: 22, height: 22, marginRight: 8 }} 
+            resizeMode="contain" 
+          />
           <View style={styles.pulseDotWrapper}>
             <View style={styles.pulseDotRing} />
             <View style={styles.pulseDot} />
           </View>
           <View style={styles.textColumn}>
-            <Text style={styles.titleText}>📍 Currently Sharing Live Location</Text>
+            <Text style={styles.titleText}>VIGIL Live Radar Active</Text>
             <Text style={styles.subtitleText}>
-              GPS Radar Active • {speedText} • {status.pendingOfflineCount > 0 ? `📦 ${status.pendingOfflineCount} cached` : 'Synced with office'}
+              {speedText} • {status.pendingOfflineCount > 0 ? `📦 ${status.pendingOfflineCount} cached` : 'Synced with office'}
             </Text>
           </View>
         </View>

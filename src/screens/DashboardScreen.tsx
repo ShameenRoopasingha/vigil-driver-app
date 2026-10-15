@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -20,8 +20,15 @@ interface Tour {
   status: string;
 }
 
+interface DriverProfile {
+  id?: string;
+  name?: string;
+  companyName?: string;
+  companyLogoUrl?: string | null;
+}
+
 export default function DashboardScreen() {
-  const [driverName, setDriverName] = useState('');
+  const [driverData, setDriverData] = useState<DriverProfile>({});
   const [tours, setTours] = useState<Tour[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -31,12 +38,21 @@ export default function DashboardScreen() {
     try {
       const driverStr = await AsyncStorage.getItem('driverData');
       if (driverStr) {
-        setDriverName(JSON.parse(driverStr).name);
+        try {
+          const parsed = JSON.parse(driverStr);
+          setDriverData(parsed);
+        } catch {}
       }
 
       const response = await apiClient.get('/driver/tours');
       if (response.data?.success) {
         setTours(response.data.data);
+
+        // Update driver profile if returned by API
+        if (response.data.driver) {
+          setDriverData(response.data.driver);
+          await AsyncStorage.setItem('driverData', JSON.stringify(response.data.driver));
+        }
 
         // Auto-resume live location tracking if an ongoing tour exists
         const ongoing = response.data.data.find((t: Tour) => t.status === 'ONGOING');
@@ -136,14 +152,58 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <View className="px-6 py-4 bg-white border-b border-gray-200 flex-row justify-between items-center">
-        <View>
-          <Text className="text-gray-500 text-sm">Welcome back,</Text>
-          <Text className="text-xl font-bold text-gray-800">{driverName || 'Driver'}</Text>
+      {/* Top Branding & Action Bar */}
+      <View className="px-5 py-3 bg-white border-b border-gray-100 flex-row justify-between items-center">
+        {/* VIGIL Platform Badge */}
+        <View className="flex-row items-center bg-slate-900 px-3 py-1.5 rounded-full border border-slate-800">
+          <Image 
+            source={require('../../assets/logo-icon.png')} 
+            style={{ width: 18, height: 18 }} 
+            resizeMode="contain" 
+          />
+          <Text className="text-white font-black text-xs tracking-wider ml-1.5">
+            VIGIL <Text className="text-emerald-400 font-semibold">DRIVER</Text>
+          </Text>
         </View>
-        <TouchableOpacity onPress={handleLogout} className="bg-gray-100 p-2 rounded-full">
-          <Text className="text-red-500 font-bold text-xs px-2">Logout</Text>
+
+        <TouchableOpacity 
+          onPress={handleLogout} 
+          className="bg-gray-100 px-3 py-1.5 rounded-full flex-row items-center active:bg-gray-200"
+        >
+          <Text className="text-red-500 font-bold text-xs">Sign Out</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Driver & Tour Operating Company Profile Card */}
+      <View className="px-5 py-3.5 bg-white border-b border-gray-200 flex-row items-center shadow-sm">
+        {driverData.companyLogoUrl ? (
+          <View className="w-13 h-13 bg-white rounded-xl shadow-sm border border-gray-200 p-1 items-center justify-center mr-3.5">
+            <Image 
+              source={{ uri: driverData.companyLogoUrl }} 
+              style={{ width: 46, height: 46, borderRadius: 8 }} 
+              resizeMode="contain" 
+            />
+          </View>
+        ) : (
+          <View className="w-12 h-12 bg-blue-50 rounded-xl items-center justify-center border border-blue-200 mr-3.5">
+            <Text className="text-blue-800 font-extrabold text-base">
+              {(driverData.companyName || 'TC').substring(0, 2).toUpperCase()}
+            </Text>
+          </View>
+        )}
+
+        <View className="flex-1 min-w-0">
+          <Text className="text-xs font-bold text-blue-700 tracking-wide uppercase">
+            {driverData.companyName || 'Tour Transport Company'}
+          </Text>
+          <Text className="text-lg font-bold text-gray-900">
+            {driverData.name ? `Welcome, ${driverData.name}` : 'Welcome, Driver'}
+          </Text>
+          <View className="flex-row items-center mt-0.5">
+            <View className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5" />
+            <Text className="text-[11px] text-gray-500">Live GPS Radar Connected</Text>
+          </View>
+        </View>
       </View>
 
       <View className="flex-1 px-4 pt-4">

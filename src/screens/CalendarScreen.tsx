@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import { useNavigation } from '@react-navigation/native';
@@ -55,11 +55,22 @@ export default function CalendarScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <View className="px-6 py-4 bg-white border-b border-gray-200 flex-row items-center">
-        <TouchableOpacity onPress={() => navigation.goBack()} className="mr-4">
-          <Text className="text-blue-600 text-lg font-bold">← Back</Text>
-        </TouchableOpacity>
-        <Text className="text-xl font-bold text-gray-800">My Booking Calendar</Text>
+      <View className="px-5 py-3.5 bg-white border-b border-gray-200 flex-row items-center justify-between">
+        <View className="flex-row items-center">
+          <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
+            <Text className="text-blue-600 text-base font-bold">← Back</Text>
+          </TouchableOpacity>
+          <Text className="text-lg font-bold text-gray-800">Booking Calendar</Text>
+        </View>
+
+        <View className="flex-row items-center bg-slate-900 px-2.5 py-1 rounded-full border border-slate-800">
+          <Image 
+            source={require('../../assets/logo-icon.png')} 
+            style={{ width: 14, height: 14 }} 
+            resizeMode="contain" 
+          />
+          <Text className="text-white text-[10px] font-bold ml-1 tracking-wider">VIGIL</Text>
+        </View>
       </View>
 
       <View className="flex-1 p-4">
