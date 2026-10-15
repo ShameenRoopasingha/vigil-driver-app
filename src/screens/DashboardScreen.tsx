@@ -160,25 +160,63 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       {/* Top Branding & Action Bar */}
-      <View className="px-5 py-3 bg-white border-b border-gray-100 flex-row justify-between items-center">
-        {/* VIGIL Platform Badge */}
-        <View className="flex-row items-center bg-slate-900 px-3 py-1.5 rounded-full border border-slate-800">
-          <Image 
-            source={require('../../assets/logo-icon.png')} 
-            style={{ width: 18, height: 18 }} 
-            resizeMode="contain" 
-          />
-          <Text className="text-white font-black text-xs tracking-wider ml-1.5">
-            VIGIL <Text className="text-emerald-400 font-semibold">DRIVER</Text>
-          </Text>
+      <View style={{ backgroundColor: '#ffffff', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* VIGIL Platform Brand */}
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ 
+            width: 40, 
+            height: 40, 
+            backgroundColor: '#ffffff', 
+            borderRadius: 10, 
+            borderWidth: 1.5, 
+            borderColor: '#e2e8f0', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.08,
+            shadowRadius: 2,
+            elevation: 2,
+            marginRight: 10
+          }}>
+            <Image 
+              source={require('../../assets/logo-icon.png')} 
+              style={{ width: 30, height: 30 }} 
+              resizeMode="contain" 
+            />
+          </View>
+          <View>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ fontSize: 18, fontWeight: '900', color: '#0f172a', letterSpacing: 1.2 }}>
+                VIGIL
+              </Text>
+              <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 6, marginLeft: 6, borderWidth: 1, borderColor: '#a7f3d0' }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#047857', letterSpacing: 0.5 }}>
+                  DRIVER
+                </Text>
+              </View>
+            </View>
+            <Text style={{ fontSize: 10, color: '#64748b', fontWeight: '600', marginTop: 1 }}>
+              Fleet & Travel Management
+            </Text>
+          </View>
         </View>
 
         <TouchableOpacity 
           onPress={handleLogout} 
           activeOpacity={0.7}
-          className="bg-gray-100 px-3 py-1.5 rounded-full flex-row items-center"
+          style={{ 
+            backgroundColor: '#fef2f2', 
+            paddingHorizontal: 12, 
+            paddingVertical: 7, 
+            borderRadius: 9999, 
+            borderWidth: 1, 
+            borderColor: '#fecaca',
+            flexDirection: 'row',
+            alignItems: 'center'
+          }}
         >
-          <Text className="text-red-500 font-bold text-xs">Sign Out</Text>
+          <Text style={{ color: '#dc2626', fontWeight: '700', fontSize: 12 }}>Sign Out</Text>
         </TouchableOpacity>
       </View>
 

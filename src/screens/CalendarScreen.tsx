@@ -63,13 +63,13 @@ export default function CalendarScreen() {
           <Text className="text-lg font-bold text-gray-800">Booking Calendar</Text>
         </View>
 
-        <View className="flex-row items-center bg-slate-900 px-2.5 py-1 rounded-full border border-slate-800">
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }}>
           <Image 
             source={require('../../assets/logo-icon.png')} 
-            style={{ width: 14, height: 14 }} 
+            style={{ width: 20, height: 20, marginRight: 6 }} 
             resizeMode="contain" 
           />
-          <Text className="text-white text-[10px] font-bold ml-1 tracking-wider">VIGIL</Text>
+          <Text style={{ color: '#0f172a', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>VIGIL</Text>
         </View>
       </View>
 

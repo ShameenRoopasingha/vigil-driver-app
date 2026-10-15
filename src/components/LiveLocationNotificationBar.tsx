@@ -49,11 +49,13 @@ export default function LiveLocationNotificationBar() {
         style={styles.touchable}
       >
         <View style={styles.leftRow}>
-          <Image 
-            source={require('../../assets/logo-icon.png')} 
-            style={{ width: 22, height: 22, marginRight: 8 }} 
-            resizeMode="contain" 
-          />
+          <View style={{ width: 28, height: 28, backgroundColor: '#ffffff', borderRadius: 7, justifyContent: 'center', alignItems: 'center', marginRight: 8 }}>
+            <Image 
+              source={require('../../assets/logo-icon.png')} 
+              style={{ width: 22, height: 22 }} 
+              resizeMode="contain" 
+            />
+          </View>
           <View style={styles.pulseDotWrapper}>
             <View style={styles.pulseDotRing} />
             <View style={styles.pulseDot} />

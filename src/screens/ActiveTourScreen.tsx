@@ -419,11 +419,13 @@ export default function ActiveTourScreen() {
           <View className="bg-emerald-900 border border-emerald-700 rounded-xl p-4 shadow-sm mb-4">
             <View className="flex-row items-center justify-between mb-2">
               <View className="flex-row items-center">
-                <Image 
-                  source={require('../../assets/logo-icon.png')} 
-                  style={{ width: 20, height: 20, marginRight: 8 }} 
-                  resizeMode="contain" 
-                />
+                <View style={{ width: 28, height: 28, backgroundColor: '#ffffff', borderRadius: 7, justifyContent: 'center', alignItems: 'center', marginRight: 8 }}>
+                  <Image 
+                    source={require('../../assets/logo-icon.png')} 
+                    style={{ width: 20, height: 20 }} 
+                    resizeMode="contain" 
+                  />
+                </View>
                 <Text className="text-white font-bold text-sm tracking-wide">VIGIL GPS RADAR LIVE</Text>
               </View>
               <View className="bg-emerald-800 px-2 py-0.5 rounded-full">
