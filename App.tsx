@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import './global.css';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import SplashScreen from './src/screens/SplashScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import AddExpenseScreen from './src/screens/AddExpenseScreen';
@@ -11,6 +12,7 @@ import CalendarScreen from './src/screens/CalendarScreen';
 import LiveLocationNotificationBar from './src/components/LiveLocationNotificationBar';
 
 export type RootStackParamList = {
+  Splash: undefined;
   Login: undefined;
   Dashboard: undefined;
   Calendar: undefined;
@@ -25,7 +27,8 @@ export default function App() {
     <SafeAreaProvider>
         <NavigationContainer>
           <LiveLocationNotificationBar />
-          <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
+          <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="Splash" component={SplashScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Dashboard" component={DashboardScreen} />
             <Stack.Screen name="Calendar" component={CalendarScreen} />

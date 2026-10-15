@@ -226,7 +226,17 @@ export default function DashboardScreen() {
         </View>
         
         {loading ? (
-          <ActivityIndicator size="large" color="#2563eb" className="mt-10" />
+          <View className="items-center justify-center py-20">
+            <View className="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 mb-3 items-center justify-center">
+              <Image 
+                source={require('../../assets/logo-icon.png')} 
+                style={{ width: 44, height: 44 }} 
+                resizeMode="contain" 
+              />
+            </View>
+            <ActivityIndicator size="small" color="#2563eb" className="mb-2" />
+            <Text className="text-gray-500 text-xs font-medium">Syncing tours with office...</Text>
+          </View>
         ) : (
           <FlatList
             data={tours}

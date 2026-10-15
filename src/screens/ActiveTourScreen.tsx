@@ -265,8 +265,19 @@ export default function ActiveTourScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50 items-center justify-center">
-        <ActivityIndicator size="large" color="#2563eb" />
+      <SafeAreaView className="flex-1 bg-gray-50 items-center justify-center px-6">
+        <View className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-3 items-center justify-center">
+          <Image 
+            source={require('../../assets/logo-icon.png')} 
+            style={{ width: 56, height: 56 }} 
+            resizeMode="contain" 
+          />
+        </View>
+        <Text className="text-xl font-black text-gray-900 tracking-tight">VIGIL</Text>
+        <Text className="text-blue-600 font-bold text-xs uppercase tracking-widest mt-1">
+          Loading Tour & GPS Radar...
+        </Text>
+        <ActivityIndicator size="small" color="#2563eb" className="mt-4" />
       </SafeAreaView>
     );
   }
