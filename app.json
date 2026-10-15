@@ -33,6 +33,12 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c999d55d-9da3-4bfc-a214-2b2bc55726d7"
+    },
     "extra": {
       "eas": {
         "projectId": "c999d55d-9da3-4bfc-a214-2b2bc55726d7"
