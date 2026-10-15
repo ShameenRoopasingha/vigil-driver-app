@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput, Linking, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { apiClient } from '../api/client';
@@ -20,6 +20,11 @@ export default function ActiveTourScreen() {
   const [loading, setLoading] = useState(true);
   const [meterReading, setMeterReading] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [showHandoverModal, setShowHandoverModal] = useState(false);
+  const [handoverReason, setHandoverReason] = useState('Medical / Sickness');
+  const [handoverMeter, setHandoverMeter] = useState('');
+  const [handoverNote, setHandoverNote] = useState('');
+  const [handoverSubmitting, setHandoverSubmitting] = useState(false);
   const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>({
     isTracking: false,
     isMoving: false,
@@ -29,6 +34,41 @@ export default function ActiveTourScreen() {
     pendingOfflineCount: 0,
     lastError: null,
   });
+
+  const submitHandoverRequest = async () => {
+    if (!handoverMeter.trim()) {
+      Alert.alert('Required', 'Please enter your current dashboard odometer reading. This is required for handover verification.');
+      return;
+    }
+
+    setHandoverSubmitting(true);
+    try {
+      const res = await apiClient.put(`/driver/tours/${bookingId}`, {
+        action: 'REQUEST_HANDOVER',
+        reason: handoverReason,
+        meterReading: handoverMeter.trim(),
+        note: handoverNote.trim() || undefined,
+      });
+
+      if (res.data?.success) {
+        Alert.alert(
+          'Handover Request Sent',
+          'Company dispatch has been notified with your reported meter reading and reason. Please remain with the vehicle until dispatch confirms the replacement driver.'
+        );
+        setShowHandoverModal(false);
+        setHandoverMeter('');
+        setHandoverNote('');
+        fetchTour();
+      } else {
+        Alert.alert('Error', res.data?.error || 'Failed to submit handover request.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert('Error', err?.response?.data?.error || 'Network error while submitting handover request.');
+    } finally {
+      setHandoverSubmitting(false);
+    }
+  };
 
   const fetchTour = async () => {
     try {
@@ -202,6 +242,9 @@ export default function ActiveTourScreen() {
   const activities = tour.tripActivities || [];
   const handoverIdx = activities.findIndex((a: any) => a.type === 'HANDOVER');
   const takeoverIdx = activities.findIndex((a: any) => a.type === 'TAKEOVER');
+  const handoverReqIdx = activities.findIndex((a: any) => a.type === 'HANDOVER_REQUESTED');
+
+  const isHandoverRequested = isStarted && handoverReqIdx !== -1 && (handoverIdx === -1 || handoverReqIdx < handoverIdx);
   const needsTakeover = isStarted && handoverIdx !== -1 && (takeoverIdx === -1 || handoverIdx < takeoverIdx);
 
   return (
@@ -214,12 +257,24 @@ export default function ActiveTourScreen() {
       </View>
 
       <ScrollView className="flex-1 px-4 pt-4">
-        {/* Mid-Tour Handover Takeover Banner */}
+        {/* Mid-Tour Handover Takeover Banner (for replacement driver) */}
         {needsTakeover && (
           <View className="bg-amber-50 border border-amber-300 rounded-xl p-4 shadow-sm mb-4">
             <Text className="text-amber-800 font-bold text-base mb-1">⚡ Mid-Tour Handover Assigned</Text>
             <Text className="text-amber-700 text-xs leading-relaxed">
               This tour was previously underway and has been reassigned to you by dispatch. Please verify the vehicle and enter your takeover meter reading below to assume live GPS tracking.
+            </Text>
+          </View>
+        )}
+
+        {/* Handover Request Pending Banner (for current driver) */}
+        {isHandoverRequested && (
+          <View className="bg-amber-50 border border-amber-400 rounded-xl p-4 shadow-sm mb-4">
+            <View className="flex-row items-center mb-1">
+              <Text className="text-amber-900 font-bold text-base">⏳ Handover Request Sent to Dispatch</Text>
+            </View>
+            <Text className="text-amber-800 text-xs leading-relaxed">
+              Company dispatch has received your handover request and is assigning a replacement driver. Your live GPS tracking remains active so dispatch can locate you.
             </Text>
           </View>
         )}
@@ -388,13 +443,25 @@ export default function ActiveTourScreen() {
               {actionLoading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-lg">Take Over Tour & Resume GPS</Text>}
             </TouchableOpacity>
           ) : isStarted ? (
-            <TouchableOpacity 
-              onPress={() => handleAction('END_TRIP')}
-              disabled={actionLoading}
-              className="bg-red-600 py-3 rounded-lg items-center shadow-sm"
-            >
-              {actionLoading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-lg">End Trip & Stop GPS</Text>}
-            </TouchableOpacity>
+            <View>
+              <TouchableOpacity 
+                onPress={() => handleAction('END_TRIP')}
+                disabled={actionLoading}
+                className="bg-red-600 py-3 rounded-lg items-center shadow-sm"
+              >
+                {actionLoading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-lg">End Trip & Stop GPS</Text>}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setShowHandoverModal(true)}
+                disabled={actionLoading}
+                className="mt-3 border border-amber-500 bg-amber-50 py-3 rounded-lg items-center shadow-sm"
+              >
+                <Text className="text-amber-800 font-bold text-base">
+                  {isHandoverRequested ? '✏️ Update Handover Request' : '⚠️ Request Mid-Tour Driver Handover'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <TouchableOpacity 
               onPress={() => handleAction('START_TRIP')}
@@ -415,6 +482,7 @@ export default function ActiveTourScreen() {
             tour.tripActivities?.map((activity: any) => {
               const type = activity.type;
               const barColor = type === 'HANDOVER' ? 'bg-amber-500' :
+                type === 'HANDOVER_REQUESTED' ? 'bg-orange-500' :
                 type === 'TAKEOVER' ? 'bg-purple-500' :
                 type === 'START' ? 'bg-blue-500' :
                 type === 'END' ? 'bg-green-500' :
@@ -440,6 +508,81 @@ export default function ActiveTourScreen() {
 
         <View className="h-10" />
       </ScrollView>
+
+      {/* Mid-Tour Handover Request Modal */}
+      <Modal
+        visible={showHandoverModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowHandoverModal(false)}
+      >
+        <View className="flex-1 justify-end bg-black/60">
+          <View className="bg-white rounded-t-3xl p-6 shadow-xl">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-xl font-bold text-gray-800">Request Mid-Tour Handover</Text>
+              <TouchableOpacity onPress={() => setShowHandoverModal(false)} className="p-1">
+                <Text className="text-gray-400 font-bold text-lg">✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text className="text-gray-500 text-xs mb-4">
+              If you cannot continue driving due to sickness, fatigue, or emergency, notify dispatch immediately.
+            </Text>
+
+            <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">Reason for Handover</Text>
+            <View className="flex-row flex-wrap gap-2 mb-4">
+              {['Medical / Sickness', 'Family Emergency', 'Vehicle Issue', 'Shift End / Fatigue', 'Other'].map((r) => (
+                <TouchableOpacity
+                  key={r}
+                  onPress={() => setHandoverReason(r)}
+                  className={`px-3 py-1.5 rounded-full border ${handoverReason === r ? 'bg-amber-100 border-amber-600' : 'bg-gray-50 border-gray-200'}`}
+                >
+                  <Text className={`text-xs font-semibold ${handoverReason === r ? 'text-amber-900' : 'text-gray-600'}`}>{r}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">
+              Current Odometer Reading (KM) <Text className="text-red-600 font-bold">* (Required)</Text>
+            </Text>
+            <TextInput
+              className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-800 mb-4"
+              placeholder="e.g. 45350"
+              keyboardType="numeric"
+              value={handoverMeter}
+              onChangeText={setHandoverMeter}
+            />
+
+            <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">Current Location / Notes</Text>
+            <TextInput
+              className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-800 mb-6"
+              placeholder="e.g. Stopped at Ambepussa rest area, high fever"
+              value={handoverNote}
+              onChangeText={setHandoverNote}
+            />
+
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => setShowHandoverModal(false)}
+                className="flex-1 bg-gray-100 py-3 rounded-xl items-center"
+              >
+                <Text className="text-gray-700 font-bold">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={submitHandoverRequest}
+                disabled={handoverSubmitting}
+                className="flex-1 bg-amber-600 py-3 rounded-xl items-center flex-row justify-center"
+              >
+                {handoverSubmitting ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text className="text-white font-bold">Send to Dispatch</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
