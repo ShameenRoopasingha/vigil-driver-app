@@ -46,10 +46,10 @@ export default function SplashScreen({ navigation }: Props) {
   }, [navigation]);
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-950 items-center justify-center px-6">
-      <View className="items-center">
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#020617', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+      <View style={{ alignItems: 'center' }}>
         {/* VIGIL Logo Card */}
-        <View className="bg-white p-4 rounded-3xl shadow-2xl mb-4 items-center justify-center border border-slate-800">
+        <View style={{ backgroundColor: '#ffffff', padding: 16, borderRadius: 24, marginBottom: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#1e293b' }}>
           <Image 
             source={require('../../assets/logo-icon.png')} 
             style={{ width: 84, height: 84 }} 
@@ -57,17 +57,17 @@ export default function SplashScreen({ navigation }: Props) {
           />
         </View>
 
-        <Text className="text-3xl font-black text-white tracking-widest">VIGIL</Text>
-        <Text className="text-emerald-400 font-bold text-xs uppercase tracking-widest mt-1">
+        <Text style={{ fontSize: 30, fontWeight: '900', color: '#ffffff', letterSpacing: 4 }}>VIGIL</Text>
+        <Text style={{ color: '#34d399', fontWeight: '700', fontSize: 12, textTransform: 'uppercase', letterSpacing: 2, marginTop: 4 }}>
           Driver Fleet Portal
         </Text>
-        <Text className="text-slate-400 text-xs mt-1 text-center">
+        <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 4, textAlign: 'center' }}>
           Real-time GPS Radar & Travel Management
         </Text>
 
-        <View className="mt-8 flex-row items-center gap-2 bg-slate-900/90 px-4 py-2 rounded-full border border-slate-800">
+        <View style={{ marginTop: 32, flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 9999, borderWidth: 1, borderColor: '#1e293b' }}>
           <ActivityIndicator size="small" color="#10b981" />
-          <Text className="text-slate-300 text-xs font-medium">Initializing workspace...</Text>
+          <Text style={{ color: '#cbd5e1', fontSize: 12, fontWeight: '500', marginLeft: 8 }}>Initializing workspace...</Text>
         </View>
       </View>
     </SafeAreaView>

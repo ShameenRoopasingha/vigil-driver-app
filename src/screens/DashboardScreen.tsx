@@ -175,19 +175,20 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
 
         <TouchableOpacity 
           onPress={handleLogout} 
-          className="bg-gray-100 px-3 py-1.5 rounded-full flex-row items-center active:bg-gray-200"
+          activeOpacity={0.7}
+          className="bg-gray-100 px-3 py-1.5 rounded-full flex-row items-center"
         >
           <Text className="text-red-500 font-bold text-xs">Sign Out</Text>
         </TouchableOpacity>
       </View>
 
       {/* Driver & Tour Operating Company Profile Card */}
-      <View className="px-5 py-3.5 bg-white border-b border-gray-200 flex-row items-center shadow-sm">
+      <View className="px-5 py-3.5 bg-white border-b border-gray-200 flex-row items-center">
         {driverData.companyLogoUrl ? (
-          <View className="w-13 h-13 bg-white rounded-xl shadow-sm border border-gray-200 p-1 items-center justify-center mr-3.5">
+          <View className="w-12 h-12 bg-white rounded-xl border border-gray-200 p-1 items-center justify-center mr-3.5">
             <Image 
               source={{ uri: driverData.companyLogoUrl }} 
-              style={{ width: 46, height: 46, borderRadius: 8 }} 
+              style={{ width: 44, height: 44, borderRadius: 8 }} 
               resizeMode="contain" 
             />
           </View>
@@ -234,7 +235,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
         
         {loading ? (
           <View className="items-center justify-center py-20">
-            <View className="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 mb-3 items-center justify-center">
+            <View className="bg-white p-3 rounded-2xl border border-gray-100 mb-3 items-center justify-center">
               <Image 
                 source={require('../../assets/logo-icon.png')} 
                 style={{ width: 44, height: 44 }} 
