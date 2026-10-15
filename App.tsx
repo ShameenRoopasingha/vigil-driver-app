@@ -3,22 +3,12 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import './global.css';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import * as Notifications from 'expo-notifications';
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
 
 import LoginScreen from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import AddExpenseScreen from './src/screens/AddExpenseScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
+import LiveLocationNotificationBar from './src/components/LiveLocationNotificationBar';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -34,6 +24,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
         <NavigationContainer>
+          <LiveLocationNotificationBar />
           <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Dashboard" component={DashboardScreen} />

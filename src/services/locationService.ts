@@ -1,42 +1,8 @@
 import * as Location from 'expo-location';
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient } from '../api/client';
 
 const OFFLINE_STORAGE_KEY = '@offline_gps_breadcrumbs';
-const NOTIFICATION_ID = 'vigil_live_location_tracking';
-const CHANNEL_ID = 'vigil_live_tracking_channel';
-
-async function setupNotificationChannel() {
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-      name: 'Live GPS Location Tracking',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250],
-      lightColor: '#059669',
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-      showBadge: true,
-      sound: null,
-      enableVibrate: false,
-    });
-  }
-}
-
-async function requestNotificationPermission(): Promise<boolean> {
-  try {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    return finalStatus === 'granted';
-  } catch (e) {
-    console.warn('Error checking notification permission:', e);
-    return false;
-  }
-}
 
 export interface LocationPing {
   lat: number;
@@ -51,6 +17,8 @@ export interface LocationPing {
 export interface TrackingStatus {
   isTracking: boolean;
   isMoving: boolean;
+  activeBookingId: string | null;
+  currentSpeed: number;
   lastPingTime: Date | null;
   pendingOfflineCount: number;
   lastError: string | null;
@@ -72,6 +40,10 @@ class DriverLocationService {
     this.refreshOfflineCount();
   }
 
+  public getActiveBookingId(): string | null {
+    return this.activeBookingId;
+  }
+
   // Subscribe to tracking status updates in UI
   public subscribeStatus(listener: (status: TrackingStatus) => void) {
     this.statusListeners.push(listener);
@@ -85,6 +57,8 @@ class DriverLocationService {
     const status: TrackingStatus = {
       isTracking: this.isTracking,
       isMoving: this.currentSpeed > 5,
+      activeBookingId: this.activeBookingId,
+      currentSpeed: this.currentSpeed,
       lastPingTime: this.lastSentTime ? new Date(this.lastSentTime) : null,
       pendingOfflineCount: this.offlineCount,
       lastError: this.lastError,
@@ -145,10 +119,7 @@ class DriverLocationService {
       // 3. Kick off adaptive transmitter loop
       this.scheduleNextPing();
 
-      // 4. Show persistent notification in Android notification bar
-      await this.showTrackingNotification(bookingId);
-
-      // 5. Try flushing any remaining offline queue from previous sessions
+      // 4. Try flushing any remaining offline queue from previous sessions
       this.flushOfflineQueue();
 
       return true;
@@ -176,69 +147,7 @@ class DriverLocationService {
       this.locationSubscription = null;
     }
 
-    // Dismiss status bar notification
-    await this.hideTrackingNotification();
-
     this.notifyStatus();
-  }
-
-  // Notification Bar Helpers
-  private async showTrackingNotification(bookingId: string) {
-    try {
-      await setupNotificationChannel();
-      const hasPerm = await requestNotificationPermission();
-      if (!hasPerm) return;
-
-      await Notifications.scheduleNotificationAsync({
-        identifier: NOTIFICATION_ID,
-        content: {
-          title: '📍 Currently Sharing Live Location',
-          body: 'Active Tour: GPS radar is live and sharing location with office dispatch.',
-          data: { bookingId },
-          sticky: true,
-          autoDismiss: false,
-          color: '#059669',
-          priority: Notifications.AndroidNotificationPriority.HIGH,
-        },
-        trigger: null,
-      });
-    } catch (e) {
-      console.warn('Failed to display tracking notification:', e);
-    }
-  }
-
-  private async updateTrackingNotification() {
-    if (!this.isTracking) return;
-    try {
-      const speedText = this.currentSpeed > 5
-        ? `Moving • ${Math.round(this.currentSpeed)} km/h`
-        : 'Stationary / Parked';
-
-      await Notifications.scheduleNotificationAsync({
-        identifier: NOTIFICATION_ID,
-        content: {
-          title: '📍 Currently Sharing Live Location',
-          body: `Active Tour • ${speedText} • Synced with office`,
-          data: { bookingId: this.activeBookingId },
-          sticky: true,
-          autoDismiss: false,
-          color: '#059669',
-          priority: Notifications.AndroidNotificationPriority.HIGH,
-        },
-        trigger: null,
-      });
-    } catch {
-      // Ignore background notification update errors
-    }
-  }
-
-  private async hideTrackingNotification() {
-    try {
-      await Notifications.dismissNotificationAsync(NOTIFICATION_ID);
-      await Notifications.cancelScheduledNotificationAsync(NOTIFICATION_ID);
-    } catch (e) {
-      console.warn('Failed to hide tracking notification:', e);
-    }
   }
 
   private handleNewLocation(loc: Location.LocationObject) {
@@ -305,7 +214,6 @@ class DriverLocationService {
         this.lastSentTime = Date.now();
         this.lastError = null;
         this.notifyStatus();
-        this.updateTrackingNotification();
 
         // Flush offline queue if any points are pending
         await this.flushOfflineQueue();

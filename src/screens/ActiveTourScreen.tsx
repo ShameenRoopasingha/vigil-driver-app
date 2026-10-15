@@ -23,6 +23,8 @@ export default function ActiveTourScreen() {
   const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>({
     isTracking: false,
     isMoving: false,
+    activeBookingId: null,
+    currentSpeed: 0,
     lastPingTime: null,
     pendingOfflineCount: 0,
     lastError: null,
