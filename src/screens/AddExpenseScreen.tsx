@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { apiClient } from '../api/client';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../navigation/types';
 
 type AddExpenseRouteProp = RouteProp<RootStackParamList, 'AddExpense'>;
 type AddExpenseNavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddExpense'>;

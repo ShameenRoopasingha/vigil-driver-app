@@ -1,30 +1,25 @@
 import React from 'react';
-import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import { View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import './global.css';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+import { RootStackParamList } from './src/navigation/types';
+import { navigationRef } from './src/navigation/navigationRef';
 
 import SplashScreen from './src/screens/SplashScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
-import AddExpenseScreen from './src/screens/AddExpenseScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
+import AddExpenseScreen from './src/screens/AddExpenseScreen';
+import ActiveTourScreen from './src/screens/ActiveTourScreen';
 import LiveLocationNotificationBar from './src/components/LiveLocationNotificationBar';
 
-export type RootStackParamList = {
-  Splash: undefined;
-  Login: undefined;
-  Dashboard: undefined;
-  Calendar: undefined;
-  AddExpense: { bookingId?: string; vehicleNo?: string };
-  ActiveTour: { bookingId: string };
-};
-
-export const navigationRef = createNavigationContainerRef<RootStackParamList>();
+export { RootStackParamList } from './src/navigation/types';
+export { navigationRef } from './src/navigation/navigationRef';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-
-import { View } from 'react-native';
 
 export default function App() {
   return (
@@ -37,10 +32,10 @@ export default function App() {
             <Stack.Screen name="Dashboard" component={DashboardScreen} />
             <Stack.Screen name="Calendar" component={CalendarScreen} />
             <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
-            <Stack.Screen name="ActiveTour" component={require('./src/screens/ActiveTourScreen').default} />
+            <Stack.Screen name="ActiveTour" component={ActiveTourScreen} />
           </Stack.Navigator>
+          <LiveLocationNotificationBar />
         </NavigationContainer>
-        <LiveLocationNotificationBar />
       </View>
     </SafeAreaProvider>
   );

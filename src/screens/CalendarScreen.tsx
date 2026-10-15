@@ -5,7 +5,7 @@ import { Calendar } from 'react-native-calendars';
 import { useNavigation } from '@react-navigation/native';
 import { apiClient } from '../api/client';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../navigation/types';
 
 type CalendarNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Calendar'>;
 

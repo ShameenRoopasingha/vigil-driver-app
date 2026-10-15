@@ -4,7 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList, navigationRef } from '../../App';
+import { RootStackParamList } from '../navigation/types';
+import { navigationRef } from '../navigation/navigationRef';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 

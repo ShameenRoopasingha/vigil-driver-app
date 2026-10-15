@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { locationService, TrackingStatus } from '../services/locationService';
-import { navigationRef } from '../../App';
+import { navigationRef } from '../navigation/navigationRef';
 
 export default function LiveLocationNotificationBar() {
   const insets = useSafeAreaInsets();

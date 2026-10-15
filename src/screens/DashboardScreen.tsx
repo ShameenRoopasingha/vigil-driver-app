@@ -6,7 +6,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { apiClient } from '../api/client';
 import { locationService } from '../services/locationService';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../navigation/types';
 
 type DashboardNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Dashboard'>;
 
@@ -27,12 +27,19 @@ interface DriverProfile {
   companyLogoUrl?: string | null;
 }
 
-export default function DashboardScreen() {
+export default function DashboardScreen({ navigation: propNavigation }: { navigation?: DashboardNavigationProp }) {
   const [driverData, setDriverData] = useState<DriverProfile>({});
   const [tours, setTours] = useState<Tour[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const navigation = useNavigation<DashboardNavigationProp>();
+  
+  let hookNavigation: DashboardNavigationProp | null = null;
+  try {
+    hookNavigation = useNavigation<DashboardNavigationProp>();
+  } catch {
+    // Fallback gracefully if context is mounting
+  }
+  const navigation = (propNavigation || hookNavigation)!;
 
   const loadData = async () => {
     try {
