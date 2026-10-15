@@ -3,14 +3,12 @@ import { View, Text, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList, navigationRef } from '../../App';
 
-type SplashScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Splash'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
-export default function SplashScreen() {
-  const navigation = useNavigation<SplashScreenNavigationProp>();
-
+export default function SplashScreen({ navigation }: Props) {
   useEffect(() => {
     let isMounted = true;
 
@@ -21,13 +19,21 @@ export default function SplashScreen() {
         if (!isMounted) return;
 
         const token = await AsyncStorage.getItem('driverToken');
-        if (token) {
-          navigation.replace('Dashboard');
-        } else {
-          navigation.replace('Login');
+        const targetRoute = token ? 'Dashboard' : 'Login';
+
+        if (navigation?.reset) {
+          navigation.reset({ index: 0, routes: [{ name: targetRoute }] });
+        } else if (navigationRef.isReady()) {
+          navigationRef.reset({ index: 0, routes: [{ name: targetRoute }] });
         }
       } catch (e) {
-        if (isMounted) navigation.replace('Login');
+        if (isMounted) {
+          if (navigation?.reset) {
+            navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+          } else if (navigationRef.isReady()) {
+            navigationRef.reset({ index: 0, routes: [{ name: 'Login' }] });
+          }
+        }
       }
     };
 

@@ -24,11 +24,13 @@ export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+import { View } from 'react-native';
+
 export default function App() {
   return (
     <SafeAreaProvider>
+      <View style={{ flex: 1 }}>
         <NavigationContainer ref={navigationRef}>
-          <LiveLocationNotificationBar />
           <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Splash" component={SplashScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
@@ -38,6 +40,8 @@ export default function App() {
             <Stack.Screen name="ActiveTour" component={require('./src/screens/ActiveTourScreen').default} />
           </Stack.Navigator>
         </NavigationContainer>
+        <LiveLocationNotificationBar />
+      </View>
     </SafeAreaProvider>
   );
 }

@@ -76,6 +76,10 @@ export default function LiveLocationNotificationBar() {
 
 const styles = StyleSheet.create({
   container: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     backgroundColor: '#064e3b', // Deep emerald green
     borderBottomWidth: 1,
     borderBottomColor: '#059669',
