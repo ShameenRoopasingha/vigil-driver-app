@@ -1,14 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { locationService, TrackingStatus } from '../services/locationService';
-import { RootStackParamList } from '../../App';
+import { navigationRef } from '../../App';
 
 export default function LiveLocationNotificationBar() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   
   const [status, setStatus] = useState<TrackingStatus>({
     isTracking: false,
@@ -35,8 +32,8 @@ export default function LiveLocationNotificationBar() {
 
   const handlePress = () => {
     const bookingId = status.activeBookingId || locationService.getActiveBookingId();
-    if (bookingId) {
-      navigation.navigate('ActiveTour', { bookingId });
+    if (bookingId && navigationRef.isReady()) {
+      navigationRef.navigate('ActiveTour', { bookingId });
     }
   };
 

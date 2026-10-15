@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import './global.css';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -20,12 +20,14 @@ export type RootStackParamList = {
   ActiveTour: { bookingId: string };
 };
 
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
     <SafeAreaProvider>
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
           <LiveLocationNotificationBar />
           <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Splash" component={SplashScreen} />
