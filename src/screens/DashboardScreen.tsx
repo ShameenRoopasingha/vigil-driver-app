@@ -44,6 +44,9 @@ export default function DashboardScreen() {
           if (!locationService.isTripTrackingActive() || locationService.getActiveBookingId() !== ongoing.id) {
             locationService.startTripTracking(ongoing.id);
           }
+        } else if (locationService.isTripTrackingActive()) {
+          // Tour was completed or handed over to another driver
+          locationService.stopTripTracking();
         }
       }
     } catch (error) {

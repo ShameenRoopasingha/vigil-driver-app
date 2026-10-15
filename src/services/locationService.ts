@@ -248,6 +248,13 @@ class DriverLocationService {
         throw new Error(res.data?.error || 'Server rejected ping');
       }
     } catch (err: any) {
+      if (err?.response?.data?.code === 'TOUR_HANDED_OVER' || err?.response?.status === 403) {
+        console.warn('Tour has been reassigned to another driver. Stopping live tracking.');
+        await this.stopTripTracking();
+        this.lastError = 'Tour has been reassigned by dispatch';
+        this.notifyStatus();
+        return;
+      }
       // Offline / Network Failure -> Cache locally
       console.warn('Network offline or error transmitting GPS, caching breadcrumb locally:', err?.message);
       await this.savePointOffline(ping);

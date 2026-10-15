@@ -37,15 +37,33 @@ export default function ActiveTourScreen() {
         const tourData = response.data.data;
         setTour(tourData);
 
-        // If tour is ONGOING, ensure live GPS streaming is active
+        // If tour is ONGOING, check if it needs takeover first or can stream tracking
         if (tourData.status === 'ONGOING') {
-          locationService.startTripTracking(bookingId);
+          const acts = tourData.tripActivities || [];
+          const handoverIdx = acts.findIndex((a: any) => a.type === 'HANDOVER');
+          const takeoverIdx = acts.findIndex((a: any) => a.type === 'TAKEOVER');
+          const pendingTakeover = handoverIdx !== -1 && (takeoverIdx === -1 || handoverIdx < takeoverIdx);
+          
+          if (!pendingTakeover) {
+            locationService.startTripTracking(bookingId);
+          }
         }
       } else {
         Alert.alert('Error', 'Failed to load tour details.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      if (error?.response?.status === 404 || error?.response?.status === 403) {
+        Alert.alert(
+          'Tour Reassigned',
+          'This tour is no longer assigned to your driver account (it may have been handed over to another driver by dispatch).',
+          [{ text: 'OK', onPress: () => {
+            locationService.stopTripTracking();
+            navigation.navigate('Dashboard');
+          }}]
+        );
+        return;
+      }
       Alert.alert('Error', 'Network error while fetching tour.');
     } finally {
       setLoading(false);
@@ -88,7 +106,7 @@ export default function ActiveTourScreen() {
       .catch((err) => console.error('Error opening map navigation:', err));
   };
 
-  const handleAction = async (action: 'START_TRIP' | 'END_TRIP') => {
+  const handleAction = async (action: 'START_TRIP' | 'END_TRIP' | 'TAKEOVER') => {
     if (!meterReading) {
       Alert.alert('Required', 'Please enter the current meter reading on the dashboard.');
       return;
@@ -106,9 +124,11 @@ export default function ActiveTourScreen() {
       }
     }
 
-    const title = action === 'START_TRIP' ? 'Start Trip' : 'End Trip';
+    const title = action === 'START_TRIP' ? 'Start Trip' : action === 'TAKEOVER' ? 'Take Over Tour' : 'End Trip';
     const message = action === 'START_TRIP' 
       ? 'Are you sure you want to START this trip now? Real-time GPS location sharing with the office will be activated.' 
+      : action === 'TAKEOVER'
+      ? 'Are you sure you want to TAKE OVER this ongoing tour? Live GPS tracking will be activated under your driver account.'
       : 'Are you sure you want to END this trip? Live GPS tracking will be terminated.';
 
     Alert.alert(
@@ -128,9 +148,12 @@ export default function ActiveTourScreen() {
               });
 
               if (response.data?.success) {
-                if (action === 'START_TRIP') {
+                if (action === 'START_TRIP' || action === 'TAKEOVER') {
                   await locationService.startTripTracking(bookingId);
-                  Alert.alert('Trip Started', 'GPS Live Tracking is now broadcasting to company dispatch.');
+                  Alert.alert(
+                    action === 'START_TRIP' ? 'Trip Started' : 'Tour Taken Over',
+                    'GPS Live Tracking is now broadcasting to company dispatch.'
+                  );
                 } else if (action === 'END_TRIP') {
                   await locationService.stopTripTracking();
                   Alert.alert('Trip Ended', 'Live GPS tracking has been stopped.');
@@ -176,6 +199,11 @@ export default function ActiveTourScreen() {
   const isCompleted = tour.status === 'COMPLETED';
   const primaryDestination = tour.dropLocation || tour.destination || tour.pickupLocation || '';
 
+  const activities = tour.tripActivities || [];
+  const handoverIdx = activities.findIndex((a: any) => a.type === 'HANDOVER');
+  const takeoverIdx = activities.findIndex((a: any) => a.type === 'TAKEOVER');
+  const needsTakeover = isStarted && handoverIdx !== -1 && (takeoverIdx === -1 || handoverIdx < takeoverIdx);
+
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <View className="px-6 py-4 bg-white border-b border-gray-200 flex-row items-center justify-between">
@@ -186,8 +214,18 @@ export default function ActiveTourScreen() {
       </View>
 
       <ScrollView className="flex-1 px-4 pt-4">
+        {/* Mid-Tour Handover Takeover Banner */}
+        {needsTakeover && (
+          <View className="bg-amber-50 border border-amber-300 rounded-xl p-4 shadow-sm mb-4">
+            <Text className="text-amber-800 font-bold text-base mb-1">⚡ Mid-Tour Handover Assigned</Text>
+            <Text className="text-amber-700 text-xs leading-relaxed">
+              This tour was previously underway and has been reassigned to you by dispatch. Please verify the vehicle and enter your takeover meter reading below to assume live GPS tracking.
+            </Text>
+          </View>
+        )}
+
         {/* Live GPS Broadcast Status Banner (Active only during ONGOING) */}
-        {isStarted && (
+        {isStarted && !needsTakeover && (
           <View className="bg-emerald-900 border border-emerald-700 rounded-xl p-4 shadow-sm mb-4">
             <View className="flex-row items-center justify-between mb-2">
               <View className="flex-row items-center">
@@ -324,7 +362,9 @@ export default function ActiveTourScreen() {
 
           {!isCompleted && (
             <View className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
-              <Text className="text-gray-700 mb-2 font-medium">Dashboard Meter Reading:</Text>
+              <Text className="text-gray-700 mb-2 font-medium">
+                {needsTakeover ? 'Takeover Meter Reading:' : 'Dashboard Meter Reading:'}
+              </Text>
               <TextInput
                 className="bg-white border border-gray-300 rounded-md px-3 py-2 text-gray-800"
                 placeholder="e.g. 45500"
@@ -339,6 +379,14 @@ export default function ActiveTourScreen() {
             <View className="p-4 bg-gray-100 rounded-lg items-center">
               <Text className="text-gray-500 font-bold">This trip is completed.</Text>
             </View>
+          ) : needsTakeover ? (
+            <TouchableOpacity 
+              onPress={() => handleAction('TAKEOVER')}
+              disabled={actionLoading}
+              className="bg-purple-600 py-3 rounded-lg items-center shadow-sm"
+            >
+              {actionLoading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-lg">Take Over Tour & Resume GPS</Text>}
+            </TouchableOpacity>
           ) : isStarted ? (
             <TouchableOpacity 
               onPress={() => handleAction('END_TRIP')}
@@ -360,20 +408,33 @@ export default function ActiveTourScreen() {
 
         {/* Activity Log */}
         <View className="mb-6">
-          <Text className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-3 px-2">Activity Log</Text>
+          <Text className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-3 px-2">Activity & Handover Log</Text>
           {tour.tripActivities?.length === 0 ? (
             <Text className="text-gray-400 italic px-2">No activities logged yet.</Text>
           ) : (
-            tour.tripActivities?.map((activity: any) => (
-              <View key={activity.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 mb-2 flex-row items-center">
-                <View className="w-2 h-10 bg-blue-400 rounded-full mr-3" />
-                <View>
-                  <Text className="font-bold text-gray-700">{activity.type}</Text>
-                  <Text className="text-sm text-gray-500">{activity.note}</Text>
-                  <Text className="text-xs text-gray-400 mt-1">{new Date(activity.timestamp).toLocaleString()}</Text>
+            tour.tripActivities?.map((activity: any) => {
+              const type = activity.type;
+              const barColor = type === 'HANDOVER' ? 'bg-amber-500' :
+                type === 'TAKEOVER' ? 'bg-purple-500' :
+                type === 'START' ? 'bg-blue-500' :
+                type === 'END' ? 'bg-green-500' :
+                type === 'BREAKDOWN' ? 'bg-red-500' : 'bg-gray-400';
+
+              return (
+                <View key={activity.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 mb-2 flex-row items-center">
+                  <View className={`w-2 h-10 rounded-full mr-3 ${barColor}`} />
+                  <View className="flex-1">
+                    <View className="flex-row items-center gap-2 mb-0.5">
+                      <Text className="font-bold text-gray-800 text-xs">{activity.type}</Text>
+                      <Text className="text-xs text-gray-400">
+                        {new Date(activity.timestamp).toLocaleString()}
+                      </Text>
+                    </View>
+                    <Text className="text-sm text-gray-600 font-medium">{activity.note}</Text>
+                  </View>
                 </View>
-              </View>
-            ))
+              );
+            })
           )}
         </View>
 
