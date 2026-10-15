@@ -36,12 +36,18 @@ class DriverLocationService {
   private lastError: string | null = null;
   private offlineCount: number = 0;
 
+  private isTransmitting: boolean = false;
+
   constructor() {
     this.refreshOfflineCount();
   }
 
   public getActiveBookingId(): string | null {
     return this.activeBookingId;
+  }
+
+  public isTripTrackingActive(): boolean {
+    return this.isTracking;
   }
 
   // Subscribe to tracking status updates in UI
@@ -104,22 +110,35 @@ class DriverLocationService {
       this.isTracking = true;
       this.notifyStatus();
 
-      // 2. Start high-accuracy watchPosition
-      this.locationSubscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.Balanced,
-          timeInterval: 5000,
-          distanceInterval: 10, // 10 meters threshold
-        },
-        (loc) => {
-          this.handleNewLocation(loc);
+      // 2. Immediately attempt to fetch initial position and transmit right away
+      try {
+        const cur = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        if (cur) {
+          this.handleNewLocation(cur);
+          this.transmitCurrentPosition().catch((err) => console.warn('Initial ping error:', err));
         }
-      );
+      } catch (e) {
+        console.warn('Initial GPS fetch error:', e);
+      }
 
-      // 3. Kick off adaptive transmitter loop
+      // 3. Start high-accuracy watchPosition if not already subscribed
+      if (!this.locationSubscription) {
+        this.locationSubscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.Balanced,
+            timeInterval: 4000,
+            distanceInterval: 5, // 5 meters threshold
+          },
+          (loc) => {
+            this.handleNewLocation(loc);
+          }
+        );
+      }
+
+      // 4. Kick off adaptive transmitter loop
       this.scheduleNextPing();
 
-      // 4. Try flushing any remaining offline queue from previous sessions
+      // 5. Try flushing any remaining offline queue from previous sessions
       this.flushOfflineQueue();
 
       return true;
@@ -157,9 +176,16 @@ class DriverLocationService {
     const speedKmh = rawSpeed && rawSpeed > 0 ? rawSpeed * 3.6 : 0;
     this.currentSpeed = speedKmh;
     this.notifyStatus();
+
+    // If tracking is active and 15 seconds have elapsed since last sent ping, send fresh coordinates immediately
+    const timeSinceLastPing = Date.now() - this.lastSentTime;
+    if (this.isTracking && timeSinceLastPing >= 15000) {
+      this.transmitCurrentPosition().catch(() => {});
+      this.scheduleNextPing();
+    }
   }
 
-  // Adaptive interval: 20 seconds when moving (> 5 km/h), 60 seconds when stationary
+  // Adaptive interval: 15 seconds when moving (> 5 km/h), 25 seconds when stationary
   private scheduleNextPing() {
     if (!this.isTracking) return;
 
@@ -167,7 +193,7 @@ class DriverLocationService {
       clearTimeout(this.timerId);
     }
 
-    const intervalMs = this.currentSpeed > 5 ? 20000 : 60000;
+    const intervalMs = this.currentSpeed > 5 ? 15000 : 25000;
 
     this.timerId = setTimeout(async () => {
       await this.transmitCurrentPosition();
@@ -177,7 +203,7 @@ class DriverLocationService {
 
   // Transmit location or cache offline if network fails
   private async transmitCurrentPosition() {
-    if (!this.isTracking) return;
+    if (!this.isTracking || this.isTransmitting) return;
 
     // If we haven't received a position yet, query the current position
     let coords = this.latestLocation?.coords;
@@ -193,6 +219,7 @@ class DriverLocationService {
 
     if (!coords) return;
 
+    this.isTransmitting = true;
     const speedKmh = coords.speed && coords.speed > 0 ? coords.speed * 3.6 : 0;
     const ping: LocationPing = {
       lat: coords.latitude,
@@ -226,6 +253,8 @@ class DriverLocationService {
       await this.savePointOffline(ping);
       this.lastError = 'Offline - Location cached locally';
       this.notifyStatus();
+    } finally {
+      this.isTransmitting = false;
     }
   }
 

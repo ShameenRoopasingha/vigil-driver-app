@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { apiClient } from '../api/client';
+import { locationService } from '../services/locationService';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 
@@ -36,6 +37,14 @@ export default function DashboardScreen() {
       const response = await apiClient.get('/driver/tours');
       if (response.data?.success) {
         setTours(response.data.data);
+
+        // Auto-resume live location tracking if an ongoing tour exists
+        const ongoing = response.data.data.find((t: Tour) => t.status === 'ONGOING');
+        if (ongoing) {
+          if (!locationService.isTripTrackingActive() || locationService.getActiveBookingId() !== ongoing.id) {
+            locationService.startTripTracking(ongoing.id);
+          }
+        }
       }
     } catch (error) {
       console.error(error);
