@@ -5,6 +5,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { apiClient } from '../api/client';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { DriverExpenseInputSchema } from '../validations';
 
 type AddExpenseRouteProp = RouteProp<RootStackParamList, 'AddExpense'>;
 type AddExpenseNavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddExpense'>;
@@ -25,14 +26,25 @@ export default function AddExpenseScreen() {
   const categories = ['FUEL', 'SERVICE', 'REPAIR', 'BREAKDOWN', 'OTHER'];
 
   const handleSubmit = async () => {
-    if (!vehicleNo || !amount || !category) {
-      Alert.alert('Error', 'Please fill in vehicle number, amount, and category.');
+    const validation = DriverExpenseInputSchema.safeParse({
+      vehicleNo,
+      amount,
+      category,
+      description: description || undefined,
+      expenseType,
+      bookingId,
+    });
+
+    if (!validation.success) {
+      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please check your expense details.');
       return;
     }
 
+    const validData = validation.data;
+
     Alert.alert(
       'Confirm Expense',
-      `Are you sure you want to save this expense?\n\nAmount: Rs. ${amount}\nCategory: ${category}\nPaid By: ${expenseType}`,
+      `Are you sure you want to save this expense?\n\nVehicle: ${validData.vehicleNo}\nAmount: Rs. ${validData.amount}\nCategory: ${validData.category}\nPaid By: ${validData.expenseType}`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -41,12 +53,12 @@ export default function AddExpenseScreen() {
             setLoading(true);
             try {
               const response = await apiClient.post('/driver/expenses', {
-                vehicleNo,
-                amount,
-                category,
-                description,
-                bookingId,
-                expenseType
+                vehicleNo: validData.vehicleNo,
+                amount: validData.amount,
+                category: validData.category,
+                description: validData.description,
+                bookingId: validData.bookingId,
+                expenseType: validData.expenseType,
               });
 
               if (response.data?.success) {

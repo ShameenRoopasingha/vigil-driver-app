@@ -6,6 +6,11 @@ import { apiClient } from '../api/client';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { locationService, TrackingStatus } from '../services/locationService';
+import { 
+  DriverBreakdownReportSchema, 
+  DriverHandoverRequestSchema, 
+  OdometerReadingSchema 
+} from '../validations';
 
 type ActiveTourRouteProp = RouteProp<RootStackParamList, 'ActiveTour'>;
 type ActiveTourNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ActiveTour'>;
@@ -81,19 +86,27 @@ export default function ActiveTourScreen() {
   };
 
   const submitBreakdownReport = async () => {
-    if (!breakdownMeter.trim()) {
-      Alert.alert('Required', 'Please enter your current dashboard odometer reading. This is required for breakdown verification.');
+    const validation = DriverBreakdownReportSchema.safeParse({
+      meterReading: breakdownMeter,
+      reason: breakdownReason,
+      location: breakdownLocation.trim() || undefined,
+      note: breakdownNote.trim() || undefined,
+    });
+
+    if (!validation.success) {
+      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please check breakdown details.');
       return;
     }
 
+    const validData = validation.data;
     setBreakdownSubmitting(true);
     try {
       const res = await apiClient.put(`/driver/tours/${bookingId}`, {
         action: 'REPORT_BREAKDOWN',
-        reason: breakdownReason,
-        meterReading: breakdownMeter.trim(),
-        location: breakdownLocation.trim() || undefined,
-        note: breakdownNote.trim() || undefined,
+        reason: validData.reason,
+        meterReading: validData.meterReading,
+        location: validData.location,
+        note: validData.note,
       });
 
       if (res.data?.success) {
@@ -118,22 +131,30 @@ export default function ActiveTourScreen() {
   };
 
   const submitHandoverRequest = async () => {
-    if (!handoverMeter.trim()) {
-      Alert.alert('Required', 'Please enter your current dashboard odometer reading. This is required for handover verification.');
+    const validation = DriverHandoverRequestSchema.safeParse({
+      meterReading: handoverMeter,
+      reason: handoverReason,
+      location: handoverLocation.trim() || undefined,
+      note: handoverNote.trim() || undefined,
+    });
+
+    if (!validation.success) {
+      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please check handover details.');
       return;
     }
 
+    const validData = validation.data;
     setHandoverSubmitting(true);
     try {
       const combinedNote = [
-        handoverLocation.trim() ? `Location: ${handoverLocation.trim()}` : null,
-        handoverNote.trim() ? `Notes: ${handoverNote.trim()}` : null,
+        validData.location ? `Location: ${validData.location}` : null,
+        validData.note ? `Notes: ${validData.note}` : null,
       ].filter(Boolean).join(' | ');
 
       const res = await apiClient.put(`/driver/tours/${bookingId}`, {
         action: 'REQUEST_HANDOVER',
-        reason: handoverReason,
-        meterReading: handoverMeter.trim(),
+        reason: validData.reason,
+        meterReading: validData.meterReading,
         note: combinedNote || undefined,
       });
 
@@ -268,8 +289,9 @@ export default function ActiveTourScreen() {
   };
 
   const handleAction = async (action: 'START_TRIP' | 'END_TRIP' | 'TAKEOVER') => {
-    if (!meterReading) {
-      Alert.alert('Required', 'Please enter the current meter reading on the dashboard.');
+    const validation = OdometerReadingSchema.safeParse({ meterReading });
+    if (!validation.success) {
+      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please enter a valid meter reading on the dashboard.');
       return;
     }
 

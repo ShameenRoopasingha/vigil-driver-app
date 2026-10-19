@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
+import { DriverEmailUpdateSchema, DriverPasswordChangeSchema } from '../validations';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 
@@ -82,18 +83,13 @@ export default function ProfileScreen() {
   };
 
   const handleUpdateEmail = async () => {
-    const trimmed = newEmail.trim().toLowerCase();
-    if (!trimmed) {
-      Alert.alert('Validation Error', 'Email address cannot be empty.');
+    const validation = DriverEmailUpdateSchema.safeParse({ email: newEmail });
+    if (!validation.success) {
+      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please enter a valid email address.');
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trimmed)) {
-      Alert.alert('Validation Error', 'Please enter a valid email address.');
-      return;
-    }
-
+    const trimmed = validation.data.email.toLowerCase();
     if (trimmed === currentEmail.toLowerCase()) {
       Alert.alert('No Change', 'The email address is already set to ' + trimmed);
       return;
@@ -123,31 +119,22 @@ export default function ProfileScreen() {
   };
 
   const handleChangePassword = async () => {
-    if (!currentPassword) {
-      Alert.alert('Validation Error', 'Please enter your current password.');
-      return;
-    }
+    const validation = DriverPasswordChangeSchema.safeParse({
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    });
 
-    if (!newPassword) {
-      Alert.alert('Validation Error', 'Please enter a new password.');
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      Alert.alert('Validation Error', 'New password must be at least 6 characters long.');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      Alert.alert('Validation Error', 'New password and confirm password do not match.');
+    if (!validation.success) {
+      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please verify your password details.');
       return;
     }
 
     setPasswordSaving(true);
     try {
       const res = await apiClient.put('/driver/profile', {
-        currentPassword,
-        newPassword,
+        currentPassword: validation.data.currentPassword,
+        newPassword: validation.data.newPassword,
       });
 
       if (res.data?.success) {

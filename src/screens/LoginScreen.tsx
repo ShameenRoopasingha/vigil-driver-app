@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient } from '../api/client';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { DriverLoginInputSchema } from '../validations';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -16,14 +17,18 @@ export default function LoginScreen() {
   const navigation = useNavigation<LoginScreenNavigationProp>();
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter email and password');
+    const validation = DriverLoginInputSchema.safeParse({ email, password });
+    if (!validation.success) {
+      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Invalid email or password');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await apiClient.post('/driver/login', { email, password });
+      const response = await apiClient.post('/driver/login', { 
+        email: validation.data.email, 
+        password: validation.data.password 
+      });
       
       if (response.data?.success && response.data?.data?.token) {
         await AsyncStorage.setItem('driverToken', response.data.data.token);
