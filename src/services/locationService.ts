@@ -50,6 +50,50 @@ class DriverLocationService {
     return this.isTracking;
   }
 
+  public getLatestLocation(): Location.LocationObject | null {
+    return this.latestLocation;
+  }
+
+  // Auto-detect human-readable address for current position (reverse geocoding)
+  public async getCurrentAddress(): Promise<string> {
+    try {
+      let loc = this.latestLocation;
+      if (!loc) {
+        loc = await Location.getLastKnownPositionAsync({});
+      }
+      if (!loc) {
+        loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      }
+
+      if (!loc) return '';
+
+      const { latitude, longitude } = loc.coords;
+      const geocoded = await Location.reverseGeocodeAsync({ latitude, longitude });
+
+      if (geocoded && geocoded.length > 0) {
+        const item = geocoded[0];
+        const parts = [
+          item.street || item.name,
+          item.city || item.subregion || item.district,
+          item.region,
+        ].filter(Boolean);
+
+        if (parts.length > 0) {
+          const unique = Array.from(new Set(parts));
+          return unique.join(', ');
+        }
+      }
+
+      return `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+    } catch (err) {
+      console.warn('Reverse geocoding error:', err);
+      if (this.latestLocation) {
+        return `${this.latestLocation.coords.latitude.toFixed(5)}, ${this.latestLocation.coords.longitude.toFixed(5)}`;
+      }
+      return '';
+    }
+  }
+
   // Subscribe to tracking status updates in UI
   public subscribeStatus(listener: (status: TrackingStatus) => void) {
     this.statusListeners.push(listener);

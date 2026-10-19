@@ -23,8 +23,10 @@ export default function ActiveTourScreen() {
   const [showHandoverModal, setShowHandoverModal] = useState(false);
   const [handoverReason, setHandoverReason] = useState('Medical / Sickness');
   const [handoverMeter, setHandoverMeter] = useState('');
+  const [handoverLocation, setHandoverLocation] = useState('');
   const [handoverNote, setHandoverNote] = useState('');
   const [handoverSubmitting, setHandoverSubmitting] = useState(false);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
   // Emergency Breakdown State
   const [showBreakdownModal, setShowBreakdownModal] = useState(false);
@@ -43,6 +45,40 @@ export default function ActiveTourScreen() {
     pendingOfflineCount: 0,
     lastError: null,
   });
+
+  const autoDetectLocation = async (type: 'breakdown' | 'handover') => {
+    setIsDetectingLocation(true);
+    try {
+      const address = await locationService.getCurrentAddress();
+      if (address) {
+        if (type === 'breakdown') {
+          setBreakdownLocation(address);
+        } else {
+          setHandoverLocation(address);
+        }
+      }
+    } catch (e) {
+      console.warn('Auto-detect location error:', e);
+    } finally {
+      setIsDetectingLocation(false);
+    }
+  };
+
+  const handleOpenBreakdownModal = () => {
+    setShowBreakdownModal(true);
+    // Auto-detect from GPS if empty
+    if (!breakdownLocation) {
+      autoDetectLocation('breakdown');
+    }
+  };
+
+  const handleOpenHandoverModal = () => {
+    setShowHandoverModal(true);
+    // Auto-detect from GPS if empty
+    if (!handoverLocation) {
+      autoDetectLocation('handover');
+    }
+  };
 
   const submitBreakdownReport = async () => {
     if (!breakdownMeter.trim()) {
@@ -81,7 +117,6 @@ export default function ActiveTourScreen() {
     }
   };
 
-
   const submitHandoverRequest = async () => {
     if (!handoverMeter.trim()) {
       Alert.alert('Required', 'Please enter your current dashboard odometer reading. This is required for handover verification.');
@@ -90,11 +125,16 @@ export default function ActiveTourScreen() {
 
     setHandoverSubmitting(true);
     try {
+      const combinedNote = [
+        handoverLocation.trim() ? `Location: ${handoverLocation.trim()}` : null,
+        handoverNote.trim() ? `Notes: ${handoverNote.trim()}` : null,
+      ].filter(Boolean).join(' | ');
+
       const res = await apiClient.put(`/driver/tours/${bookingId}`, {
         action: 'REQUEST_HANDOVER',
         reason: handoverReason,
         meterReading: handoverMeter.trim(),
-        note: handoverNote.trim() || undefined,
+        note: combinedNote || undefined,
       });
 
       if (res.data?.success) {
@@ -104,6 +144,7 @@ export default function ActiveTourScreen() {
         );
         setShowHandoverModal(false);
         setHandoverMeter('');
+        setHandoverLocation('');
         setHandoverNote('');
         fetchTour();
       } else {
@@ -594,7 +635,7 @@ export default function ActiveTourScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => setShowHandoverModal(true)}
+                onPress={handleOpenHandoverModal}
                 disabled={actionLoading}
                 className="mt-3 border border-amber-500 bg-amber-50 py-3 rounded-lg items-center shadow-sm"
               >
@@ -604,7 +645,7 @@ export default function ActiveTourScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => setShowBreakdownModal(true)}
+                onPress={handleOpenBreakdownModal}
                 disabled={actionLoading}
                 className="mt-3 border border-red-500 bg-red-50 py-3 rounded-lg items-center shadow-sm"
               >
@@ -706,10 +747,31 @@ export default function ActiveTourScreen() {
               onChangeText={setHandoverMeter}
             />
 
-            <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">Current Location / Notes</Text>
+            <View className="flex-row justify-between items-center mb-1">
+              <Text className="text-gray-700 font-semibold text-xs uppercase">Current Location (Auto-detected from GPS)</Text>
+              <TouchableOpacity
+                onPress={() => autoDetectLocation('handover')}
+                disabled={isDetectingLocation}
+                className="flex-row items-center gap-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-300"
+              >
+                {isDetectingLocation ? (
+                  <ActivityIndicator size="small" color="#d97706" />
+                ) : (
+                  <Text className="text-[10px] font-bold text-amber-800">🔄 GPS Sync</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-800 mb-4 text-xs font-medium"
+              placeholder={isDetectingLocation ? '📍 Detecting GPS location...' : 'Current location (auto-filled from GPS)'}
+              value={handoverLocation}
+              onChangeText={setHandoverLocation}
+            />
+
+            <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">Additional Notes / Situation</Text>
             <TextInput
               className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-800 mb-6"
-              placeholder="e.g. Stopped at Ambepussa rest area, high fever"
+              placeholder="e.g. Resting at Ambepussa, doctor advised 2 days rest"
               value={handoverNote}
               onChangeText={setHandoverNote}
             />
@@ -790,10 +852,23 @@ export default function ActiveTourScreen() {
                 onChangeText={setBreakdownMeter}
               />
 
-              <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">Current Breakdown Location</Text>
+              <View className="flex-row justify-between items-center mb-1">
+                <Text className="text-gray-700 font-semibold text-xs uppercase">Current Breakdown Location (Auto-detected from GPS)</Text>
+                <TouchableOpacity
+                  onPress={() => autoDetectLocation('breakdown')}
+                  disabled={isDetectingLocation}
+                  className="flex-row items-center gap-1 bg-red-50 px-2 py-0.5 rounded border border-red-300"
+                >
+                  {isDetectingLocation ? (
+                    <ActivityIndicator size="small" color="#dc2626" />
+                  ) : (
+                    <Text className="text-[10px] font-bold text-red-800">🔄 GPS Sync</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
               <TextInput
-                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-800 mb-4"
-                placeholder="e.g. Near Habarana junction, A6 highway"
+                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-800 mb-4 text-xs font-medium"
+                placeholder={isDetectingLocation ? '📍 Detecting GPS location...' : 'Current location (auto-filled from GPS)'}
                 value={breakdownLocation}
                 onChangeText={setBreakdownLocation}
               />
