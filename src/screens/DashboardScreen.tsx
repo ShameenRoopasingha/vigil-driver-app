@@ -47,6 +47,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
   const [tours, setTours] = useState<Tour[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   
   let hookNavigation: DashboardNavigationProp | null = null;
   try {
@@ -69,6 +70,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
       const response = await apiClient.get('/driver/tours');
       if (response.data?.success) {
         setTours(response.data.data);
+        setSyncError(null);
 
         // Update driver profile if returned by API
         if (response.data.driver) {
@@ -87,8 +89,13 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
           locationService.stopTripTracking();
         }
       }
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      console.error('[Dashboard] Error fetching tours:', error);
+      setSyncError(
+        error?.friendlyMessage || 
+        error?.response?.data?.error || 
+        'Could not sync tours with office. Please check your mobile signal.'
+      );
     } finally {
       setLoading(false);
     }
@@ -375,6 +382,21 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
             </TouchableOpacity>
           </View>
         </View>
+
+        {syncError && (
+          <View style={{ marginBottom: 12, backgroundColor: '#fffbeb', borderColor: '#fef3c7', borderWidth: 1, borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Text style={{ color: '#92400e', fontWeight: '700', fontSize: 12 }}>Sync Notice</Text>
+              <Text style={{ color: '#b45309', fontSize: 11, marginTop: 2 }}>{syncError}</Text>
+            </View>
+            <TouchableOpacity 
+              onPress={() => { setLoading(true); setSyncError(null); loadData(); }}
+              style={{ backgroundColor: '#d97706', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
+            >
+              <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         
         {loading ? (
           <View className="items-center justify-center py-20">
@@ -397,7 +419,9 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
             ListEmptyComponent={
               <View className="items-center justify-center py-10">
-                <Text className="text-gray-400 text-base">No tours assigned right now.</Text>
+                <Text className="text-gray-400 text-base">
+                  {syncError ? 'Could not load assigned tours. Tap Retry to reconnect.' : 'No tours assigned right now.'}
+                </Text>
               </View>
             }
           />
