@@ -14,6 +14,7 @@ import DashboardScreen from './src/screens/DashboardScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
 import AddExpenseScreen from './src/screens/AddExpenseScreen';
 import ActiveTourScreen from './src/screens/ActiveTourScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 import LiveLocationNotificationBar from './src/components/LiveLocationNotificationBar';
 
 export { RootStackParamList } from './src/navigation/types';
@@ -33,6 +34,7 @@ export default function App() {
             <Stack.Screen name="Calendar" component={CalendarScreen} />
             <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
             <Stack.Screen name="ActiveTour" component={ActiveTourScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
           </Stack.Navigator>
           <LiveLocationNotificationBar />
         </NavigationContainer>

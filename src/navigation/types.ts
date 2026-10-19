@@ -5,4 +5,5 @@ export type RootStackParamList = {
   Calendar: undefined;
   AddExpense: { bookingId?: string; vehicleNo?: string };
   ActiveTour: { bookingId: string };
+  Profile: undefined;
 };

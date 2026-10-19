@@ -202,55 +202,85 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
           </View>
         </View>
 
-        <TouchableOpacity 
-          onPress={handleLogout} 
-          activeOpacity={0.7}
-          style={{ 
-            backgroundColor: '#fef2f2', 
-            paddingHorizontal: 12, 
-            paddingVertical: 7, 
-            borderRadius: 9999, 
-            borderWidth: 1, 
-            borderColor: '#fecaca',
-            flexDirection: 'row',
-            alignItems: 'center'
-          }}
-        >
-          <Text style={{ color: '#dc2626', fontWeight: '700', fontSize: 12 }}>Sign Out</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('Profile')} 
+            activeOpacity={0.7}
+            style={{ 
+              backgroundColor: '#eff6ff', 
+              paddingHorizontal: 12, 
+              paddingVertical: 7, 
+              borderRadius: 9999, 
+              borderWidth: 1, 
+              borderColor: '#bfdbfe',
+              flexDirection: 'row',
+              alignItems: 'center'
+            }}
+          >
+            <Text style={{ color: '#1d4ed8', fontWeight: '700', fontSize: 12 }}>⚙️ Profile</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            onPress={handleLogout} 
+            activeOpacity={0.7}
+            style={{ 
+              backgroundColor: '#fef2f2', 
+              paddingHorizontal: 12, 
+              paddingVertical: 7, 
+              borderRadius: 9999, 
+              borderWidth: 1, 
+              borderColor: '#fecaca',
+              flexDirection: 'row',
+              alignItems: 'center'
+            }}
+          >
+            <Text style={{ color: '#dc2626', fontWeight: '700', fontSize: 12 }}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Driver & Tour Operating Company Profile Card */}
-      <View className="px-5 py-3.5 bg-white border-b border-gray-200 flex-row items-center">
-        {driverData.companyLogoUrl ? (
-          <View className="w-12 h-12 bg-white rounded-xl border border-gray-200 p-1 items-center justify-center mr-3.5">
-            <Image 
-              source={{ uri: driverData.companyLogoUrl }} 
-              style={{ width: 44, height: 44, borderRadius: 8 }} 
-              resizeMode="contain" 
-            />
-          </View>
-        ) : (
-          <View className="w-12 h-12 bg-blue-50 rounded-xl items-center justify-center border border-blue-200 mr-3.5">
-            <Text className="text-blue-800 font-extrabold text-base">
-              {(driverData.companyName || 'TC').substring(0, 2).toUpperCase()}
-            </Text>
-          </View>
-        )}
+      <TouchableOpacity 
+        onPress={() => navigation.navigate('Profile')}
+        activeOpacity={0.8}
+        className="px-5 py-3.5 bg-white border-b border-gray-200 flex-row items-center justify-between"
+      >
+        <View className="flex-row items-center flex-1 min-w-0 pr-2">
+          {driverData.companyLogoUrl ? (
+            <View className="w-12 h-12 bg-white rounded-xl border border-gray-200 p-1 items-center justify-center mr-3.5">
+              <Image 
+                source={{ uri: driverData.companyLogoUrl }} 
+                style={{ width: 44, height: 44, borderRadius: 8 }} 
+                resizeMode="contain" 
+              />
+            </View>
+          ) : (
+            <View className="w-12 h-12 bg-blue-50 rounded-xl items-center justify-center border border-blue-200 mr-3.5">
+              <Text className="text-blue-800 font-extrabold text-base">
+                {(driverData.companyName || 'TC').substring(0, 2).toUpperCase()}
+              </Text>
+            </View>
+          )}
 
-        <View className="flex-1 min-w-0">
-          <Text className="text-xs font-bold text-blue-700 tracking-wide uppercase">
-            {driverData.companyName || 'Tour Transport Company'}
-          </Text>
-          <Text className="text-lg font-bold text-gray-900">
-            {driverData.name ? `Welcome, ${driverData.name}` : 'Welcome, Driver'}
-          </Text>
-          <View className="flex-row items-center mt-0.5">
-            <View className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5" />
-            <Text className="text-[11px] text-gray-500">Live GPS Radar Connected</Text>
+          <View className="flex-1 min-w-0">
+            <Text className="text-xs font-bold text-blue-700 tracking-wide uppercase" numberOfLines={1}>
+              {driverData.companyName || 'Tour Transport Company'}
+            </Text>
+            <Text className="text-lg font-bold text-gray-900" numberOfLines={1}>
+              {driverData.name ? `Welcome, ${driverData.name}` : 'Welcome, Driver'}
+            </Text>
+            <View className="flex-row items-center mt-0.5">
+              <View className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5" />
+              <Text className="text-[11px] text-gray-500">Live GPS Radar Connected</Text>
+            </View>
           </View>
         </View>
-      </View>
+
+        <View className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 flex-row items-center">
+          <Text className="text-xs font-bold text-slate-700 mr-1">Edit</Text>
+          <Text className="text-slate-400 text-xs">›</Text>
+        </View>
+      </TouchableOpacity>
 
       <View className="flex-1 px-4 pt-4">
         <View className="flex-row justify-between items-center mb-4 px-2">
