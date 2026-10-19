@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, Alert, Image } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, Alert, Image, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -10,6 +10,19 @@ import { RootStackParamList } from '../navigation/types';
 
 type DashboardNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Dashboard'>;
 
+interface HandoverDetails {
+  isHandover?: boolean;
+  needsTakeover?: boolean;
+  previousDriverName?: string | null;
+  meterReading?: string | null;
+  reason?: string | null;
+  location?: string;
+  instructions?: string | null;
+  coordinates?: { lat: number; lon: number } | null;
+  googleMapsUrl?: string | null;
+  wazeUrl?: string | null;
+}
+
 interface Tour {
   id: string;
   customerName: string;
@@ -18,6 +31,8 @@ interface Tour {
   endDate: string | null;
   destination: string | null;
   status: string;
+  needsTakeover?: boolean;
+  handoverDetails?: HandoverDetails | null;
 }
 
 interface DriverProfile {
@@ -115,13 +130,71 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
   };
 
   const renderTour = ({ item }: { item: Tour }) => (
-    <View className="bg-white p-4 rounded-xl mb-4 shadow-sm border border-gray-100">
+    <View className={`bg-white p-4 rounded-xl mb-4 shadow-sm border ${item.needsTakeover ? 'border-amber-300 ring-1 ring-amber-300/50' : 'border-gray-100'}`}>
       <View className="flex-row justify-between items-center mb-2">
         <Text className="font-bold text-lg text-gray-800">{item.customerName}</Text>
-        <View className="bg-blue-100 px-2 py-1 rounded-md">
-          <Text className="text-blue-800 text-xs font-bold">{item.status}</Text>
+        <View className={`${item.needsTakeover ? 'bg-amber-100 border border-amber-300' : 'bg-blue-100'} px-2 py-1 rounded-md`}>
+          <Text className={`${item.needsTakeover ? 'text-amber-900 font-extrabold' : 'text-blue-800 font-bold'} text-xs`}>
+            {item.needsTakeover ? '⚡ TAKEOVER' : item.status}
+          </Text>
         </View>
       </View>
+
+      {/* Mid-Tour Handover Notification & Direct Navigation Card */}
+      {item.needsTakeover && item.handoverDetails && (
+        <View className="bg-amber-50 border border-amber-200 rounded-xl p-3 my-2 shadow-xs">
+          <View className="flex-row items-center justify-between mb-1.5">
+            <View className="flex-row items-center">
+              <View className="w-2 h-2 rounded-full bg-amber-500 mr-1.5" />
+              <Text className="text-amber-900 font-black text-xs uppercase tracking-wide">
+                Mid-Tour Handover Assigned
+              </Text>
+            </View>
+            <View className="bg-amber-200/80 px-2 py-0.5 rounded">
+              <Text className="text-amber-900 text-[10px] font-extrabold">ACTION REQUIRED</Text>
+            </View>
+          </View>
+
+          <View className="flex-row items-start mb-1">
+            <Text className="text-amber-800 text-xs font-bold w-20">📍 Location:</Text>
+            <Text className="text-gray-900 text-xs font-semibold flex-1" numberOfLines={2}>
+              {item.handoverDetails.location || 'Vehicle Handover Point'}
+            </Text>
+          </View>
+
+          {item.handoverDetails.previousDriverName ? (
+            <View className="flex-row items-center mb-1">
+              <Text className="text-amber-800 text-xs font-bold w-20">👤 Driver:</Text>
+              <Text className="text-gray-700 text-xs font-medium flex-1">
+                From {item.handoverDetails.previousDriverName} {item.handoverDetails.reason ? `(${item.handoverDetails.reason})` : ''}
+              </Text>
+            </View>
+          ) : null}
+
+          {item.handoverDetails.meterReading ? (
+            <View className="flex-row items-center mb-1.5">
+              <Text className="text-amber-800 text-xs font-bold w-20">🚗 Odometer:</Text>
+              <Text className="text-gray-700 text-xs font-medium flex-1">
+                {item.handoverDetails.meterReading} km
+              </Text>
+            </View>
+          ) : null}
+
+          {item.handoverDetails.googleMapsUrl ? (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                Linking.openURL(item.handoverDetails!.googleMapsUrl!);
+              }}
+              className="bg-amber-600 active:bg-amber-700 py-2.5 px-3 rounded-lg flex-row items-center justify-center gap-1.5 shadow-sm mt-1"
+            >
+              <Text className="text-white font-extrabold text-xs">
+                🗺️ Navigate to Handover (Google Maps)
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      )}
       
       <View className="flex-row items-center mb-1">
         <Text className="text-gray-500 text-sm w-24">Vehicle:</Text>
@@ -142,10 +215,12 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
       
       <View className="flex-row items-center mt-3 pt-3 border-t border-gray-100 gap-2">
         <TouchableOpacity 
-          className="bg-blue-600 flex-1 py-3 rounded-lg items-center"
+          className={`${item.needsTakeover ? 'bg-amber-600' : 'bg-blue-600'} flex-1 py-3 rounded-lg items-center`}
           onPress={() => navigation.navigate('ActiveTour', { bookingId: item.id })}
         >
-          <Text className="text-white font-bold">Start / View Tour</Text>
+          <Text className="text-white font-bold">
+            {item.needsTakeover ? '⚡ Take Over Tour' : 'Start / View Tour'}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity 
           className="bg-green-100 flex-1 py-3 rounded-lg items-center"

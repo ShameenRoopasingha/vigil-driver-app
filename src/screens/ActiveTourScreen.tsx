@@ -234,6 +234,39 @@ export default function ActiveTourScreen() {
       .catch((err) => console.error('Error opening map navigation:', err));
   };
 
+  const openHandoverNavigation = (type: 'google' | 'waze') => {
+    const handover = tour?.handoverDetails;
+    if (type === 'google' && handover?.googleMapsUrl) {
+      Linking.openURL(handover.googleMapsUrl).catch((err) => {
+        console.error('Error opening Google Maps:', err);
+        Alert.alert('Error', 'Could not open Google Maps navigation.');
+      });
+      return;
+    }
+
+    if (type === 'waze' && handover?.wazeUrl) {
+      Linking.canOpenURL(handover.wazeUrl).then((supported) => {
+        if (supported) {
+          Linking.openURL(handover.wazeUrl);
+        } else {
+          Alert.alert('App Not Installed', 'Waze app is not installed on this device.');
+        }
+      }).catch((err) => console.error('Error opening Waze:', err));
+      return;
+    }
+
+    const target = handover?.coordinates 
+      ? `${handover.coordinates.lat},${handover.coordinates.lon}`
+      : (handover?.location || tour?.pickupLocation || tour?.destination);
+
+    if (!target) {
+      Alert.alert('No Location', 'No handover location or coordinates found.');
+      return;
+    }
+
+    openNavigation(type, target);
+  };
+
   const handleAction = async (action: 'START_TRIP' | 'END_TRIP' | 'TAKEOVER') => {
     if (!meterReading) {
       Alert.alert('Required', 'Please enter the current meter reading on the dashboard.');
@@ -432,13 +465,90 @@ export default function ActiveTourScreen() {
           </View>
         )}
 
-        {/* Mid-Tour Handover Takeover Banner (for replacement driver) */}
+        {/* Mid-Tour Handover Takeover Card (for replacement driver) */}
         {needsTakeover && (
-          <View className="bg-amber-50 border border-amber-300 rounded-xl p-4 shadow-sm mb-4">
-            <Text className="text-amber-800 font-bold text-base mb-1">⚡ Mid-Tour Handover Assigned</Text>
-            <Text className="text-amber-700 text-xs leading-relaxed">
-              This tour was previously underway and has been reassigned to you by dispatch. Please verify the vehicle and enter your takeover meter reading below to assume live GPS tracking.
+          <View className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-4 shadow-sm mb-4">
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center">
+                <Text className="text-amber-900 font-black text-base">⚡ Mid-Tour Handover Assigned</Text>
+              </View>
+              <View className="bg-amber-200 px-2 py-0.5 rounded-full border border-amber-300">
+                <Text className="text-amber-950 font-black text-[10px] tracking-wider">TAKEOVER REQUIRED</Text>
+              </View>
+            </View>
+
+            <Text className="text-amber-800 text-xs leading-relaxed mb-3">
+              This tour is currently underway. You have been assigned as the replacement driver by dispatch. Navigate to the vehicle handover point below to inspect the vehicle and take over the tour.
             </Text>
+
+            {/* Handover Details Box */}
+            <View className="bg-white rounded-xl p-3 border border-amber-200 mb-3 space-y-1.5">
+              <View className="flex-row items-start mb-1">
+                <Text className="text-amber-900 font-bold text-xs w-28">📍 Handover Point:</Text>
+                <Text className="text-slate-900 font-extrabold text-xs flex-1">
+                  {tour.handoverDetails?.location || tour.pickupLocation || 'Current vehicle location'}
+                </Text>
+              </View>
+
+              {tour.handoverDetails?.previousDriverName && (
+                <View className="flex-row items-center mb-1">
+                  <Text className="text-amber-900 font-bold text-xs w-28">👤 Previous Driver:</Text>
+                  <Text className="text-slate-700 font-semibold text-xs flex-1">
+                    {tour.handoverDetails.previousDriverName}
+                  </Text>
+                </View>
+              )}
+
+              {tour.handoverDetails?.reason && (
+                <View className="flex-row items-center mb-1">
+                  <Text className="text-amber-900 font-bold text-xs w-28">⚠️ Handover Reason:</Text>
+                  <Text className="text-slate-700 font-semibold text-xs flex-1">
+                    {tour.handoverDetails.reason}
+                  </Text>
+                </View>
+              )}
+
+              {tour.handoverDetails?.meterReading && (
+                <View className="flex-row items-center mb-1">
+                  <Text className="text-amber-900 font-bold text-xs w-28">🚗 Handover Meter:</Text>
+                  <Text className="text-slate-900 font-black text-xs flex-1">
+                    {tour.handoverDetails.meterReading} km
+                  </Text>
+                </View>
+              )}
+
+              {tour.handoverDetails?.instructions && (
+                <View className="flex-row items-start">
+                  <Text className="text-amber-900 font-bold text-xs w-28">📝 Notes / Info:</Text>
+                  <Text className="text-slate-700 text-xs flex-1">
+                    {tour.handoverDetails.instructions}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Turn-by-Turn Navigation to Handover Location */}
+            <View className="gap-2">
+              <TouchableOpacity
+                onPress={() => openHandoverNavigation('google')}
+                activeOpacity={0.8}
+                className="bg-blue-600 active:bg-blue-700 py-3 px-4 rounded-xl flex-row items-center justify-center shadow-md"
+              >
+                <Text className="text-white font-black text-sm">
+                  🗺️ Navigate to Handover with Google Maps
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => openHandoverNavigation('waze')}
+                activeOpacity={0.8}
+                className="bg-cyan-600 active:bg-cyan-700 py-2.5 px-4 rounded-xl flex-row items-center justify-center"
+              >
+                <Text className="text-white font-bold text-xs">
+                  🚗 Navigate with Waze
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -598,13 +708,26 @@ export default function ActiveTourScreen() {
           </View>
 
           {!isCompleted && (
-            <View className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
-              <Text className="text-gray-700 mb-2 font-medium">
-                {needsTakeover ? 'Takeover Meter Reading:' : 'Dashboard Meter Reading:'}
-              </Text>
+            <View className="bg-gray-50 p-3.5 rounded-xl border border-gray-200 mb-4">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-gray-800 font-bold text-sm">
+                  {needsTakeover ? 'Takeover Meter Reading (KM):' : 'Dashboard Meter Reading (KM):'}
+                </Text>
+                {needsTakeover && tour.handoverDetails?.meterReading ? (
+                  <TouchableOpacity
+                    onPress={() => setMeterReading(tour.handoverDetails.meterReading)}
+                    activeOpacity={0.7}
+                    className="bg-amber-100 border border-amber-300 px-2 py-0.5 rounded"
+                  >
+                    <Text className="text-amber-900 text-[10px] font-bold">
+                      Use Handover ({tour.handoverDetails.meterReading} km)
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
               <TextInput
-                className="bg-white border border-gray-300 rounded-md px-3 py-2 text-gray-800"
-                placeholder="e.g. 45500"
+                className="bg-white border border-gray-300 rounded-lg px-3.5 py-2.5 text-gray-900 font-semibold text-base"
+                placeholder={needsTakeover && tour.handoverDetails?.meterReading ? tour.handoverDetails.meterReading : "e.g. 45500"}
                 keyboardType="numeric"
                 value={meterReading}
                 onChangeText={setMeterReading}
@@ -620,9 +743,9 @@ export default function ActiveTourScreen() {
             <TouchableOpacity 
               onPress={() => handleAction('TAKEOVER')}
               disabled={actionLoading}
-              className="bg-purple-600 py-3 rounded-lg items-center shadow-sm"
+              className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl items-center shadow-md"
             >
-              {actionLoading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-lg">Take Over Tour & Resume GPS</Text>}
+              {actionLoading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-black text-base">✅ Confirm Takeover & Resume Live GPS</Text>}
             </TouchableOpacity>
           ) : isStarted ? (
             <View>
