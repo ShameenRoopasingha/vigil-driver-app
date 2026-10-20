@@ -17,13 +17,16 @@ import {
   searchNominatimOnline,
   mergeSearchResults,
   calculateRoadDistanceOSRM,
+  calculateDirectRouteOSRM,
+  calculateRelativeDetourOSRM,
   SRI_LANKA_LANDMARKS,
   type PlaceSuggestion,
   type OSRMRouteInfo,
+  type RelativeRouteInfo,
 } from '../services/osmService';
 import { locationService } from '../services/locationService';
 
-interface OpenStreetMapPickerProps {
+export interface OpenStreetMapPickerProps {
   onSelectPlace: (place: {
     name: string;
     displayName: string;
@@ -32,19 +35,30 @@ interface OpenStreetMapPickerProps {
     lon: number;
     roadDistanceKm?: number;
     durationText?: string;
+    relativeExtraKm?: number;
+    directDistanceKm?: number;
+    detourTotalKm?: number;
+    distanceToDetourKm?: number;
+    durationToDetourText?: string;
   }) => void;
   currentLocation?: { lat: number; lon: number } | null;
+  destinationLocation?: { lat: number; lon: number; name?: string } | null;
   initialLocationName?: string;
   initialCoords?: { lat: number; lon: number } | null;
   placeholder?: string;
+  routeType?: 'DETOUR' | 'DESTINATION';
+  onRouteCalculated?: (info: RelativeRouteInfo | null) => void;
 }
 
 export default function OpenStreetMapPicker({
   onSelectPlace,
   currentLocation,
+  destinationLocation,
   initialLocationName = '',
   initialCoords = null,
   placeholder = 'Search attraction, city, hotel or address in Sri Lanka...',
+  routeType = 'DETOUR',
+  onRouteCalculated,
 }: OpenStreetMapPickerProps) {
   const [query, setQuery] = useState(initialLocationName);
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
@@ -68,24 +82,55 @@ export default function OpenStreetMapPicker({
       : null
   );
 
-  // Routing calculation info (from current location or tour start)
-  const [routeInfo, setRouteInfo] = useState<OSRMRouteInfo | null>(null);
+  // Relative routing calculation info (direct vs detour)
+  const [relativeRoute, setRelativeRoute] = useState<RelativeRouteInfo | null>(null);
+  const [baseTourRoute, setBaseTourRoute] = useState<{
+    distanceKm: number;
+    durationText: string;
+    geometry?: any;
+  } | null>(null);
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
 
   // Interactive OpenStreetMap preview zoom level
-  const [zoom, setZoom] = useState(15);
+  const [zoom, setZoom] = useState(14);
 
   const webViewRef = useRef<WebView>(null);
   const debounceTimerRef = useRef<any>(null);
   const searchCacheRef = useRef<Map<string, PlaceSuggestion[]>>(new Map());
 
-  // Fly Leaflet map to selected coordinates whenever location changes
+  // Load the initial scheduled tour navigation route when currentLocation or destinationLocation is available
   useEffect(() => {
-    if (selectedPlace && webViewRef.current) {
-      const code = `if (window.updatePosition) { window.updatePosition(${selectedPlace.lat}, ${selectedPlace.lon}); } true;`;
-      webViewRef.current.injectJavaScript(code);
-    }
-  }, [selectedPlace?.lat, selectedPlace?.lon]);
+    let isCancelled = false;
+    const loadBaseTour = async () => {
+      let origin = currentLocation;
+      if (!origin) origin = await locationService.getCurrentCoordinates();
+      if (!origin || !destinationLocation) return;
+
+      const direct = await calculateDirectRouteOSRM(origin, destinationLocation);
+      if (!isCancelled && direct) {
+        setBaseTourRoute(direct);
+        if (webViewRef.current) {
+          const payload = {
+            origin,
+            destination: destinationLocation,
+            directGeoJson: direct.geometry,
+          };
+          webViewRef.current.injectJavaScript(
+            `if (window.renderRoutes) { window.renderRoutes(${JSON.stringify(JSON.stringify(payload))}); } true;`
+          );
+        }
+      }
+    };
+    loadBaseTour();
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    currentLocation?.lat,
+    currentLocation?.lon,
+    destinationLocation?.lat,
+    destinationLocation?.lon,
+  ]);
 
   // Live Instant (Offline First) + Debounced Online OpenStreetMap Search
   useEffect(() => {
@@ -97,8 +142,10 @@ export default function OpenStreetMapPicker({
       return;
     }
 
-    // Do not trigger dropdown if query matches the already selected place
-    if (selectedPlace && (trimmed === selectedPlace.shortName || trimmed === selectedPlace.displayName)) {
+    if (
+      selectedPlace &&
+      (trimmed === selectedPlace.shortName || trimmed === selectedPlace.displayName)
+    ) {
       return;
     }
 
@@ -145,7 +192,7 @@ export default function OpenStreetMapPicker({
     };
   }, [query, currentLocation, selectedPlace]);
 
-  // When a place is selected, compute OSRM driving distance
+  // When a place is selected, compute Relative OSRM driving distance & draw routes
   const handleSelectSuggestion = async (place: PlaceSuggestion) => {
     setShowDropdown(false);
     setQuery(place.shortName);
@@ -156,10 +203,7 @@ export default function OpenStreetMapPicker({
       lon: place.lon,
     });
 
-    let extraKm: number | undefined = undefined;
-    let duration: string | undefined = undefined;
-
-    // Resolve origin coordinates (passed prop, location service GPS, or Sri Lanka center fallback)
+    // Resolve origin coordinates
     let origin = currentLocation;
     if (!origin) {
       origin = await locationService.getCurrentCoordinates();
@@ -170,36 +214,56 @@ export default function OpenStreetMapPicker({
 
     setIsCalculatingRoute(true);
     try {
-      const info = await calculateRoadDistanceOSRM(origin, {
-        lat: place.lat,
-        lon: place.lon,
-      });
-      if (info) {
-        setRouteInfo(info);
-        extraKm = info.distanceKm;
-        duration = info.durationText;
+      const relInfo = await calculateRelativeDetourOSRM(
+        origin,
+        { lat: place.lat, lon: place.lon },
+        routeType === 'DESTINATION' ? null : destinationLocation
+      );
+
+      if (relInfo) {
+        setRelativeRoute(relInfo);
+        onRouteCalculated?.(relInfo);
+
+        // Inject both routes into Leaflet WebView
+        if (webViewRef.current) {
+          const payload = {
+            origin,
+            destination: routeType === 'DESTINATION' ? null : destinationLocation,
+            detour: { lat: place.lat, lon: place.lon },
+            directGeoJson: relInfo.directGeoJson,
+            detourGeoJson: relInfo.detourGeoJson,
+          };
+          webViewRef.current.injectJavaScript(
+            `if (window.renderRoutes) { window.renderRoutes(${JSON.stringify(JSON.stringify(payload))}); } true;`
+          );
+        }
+
+        onSelectPlace({
+          name: place.displayName,
+          displayName: place.displayName,
+          shortName: place.shortName,
+          lat: place.lat,
+          lon: place.lon,
+          roadDistanceKm: relInfo.relativeExtraKm,
+          relativeExtraKm: relInfo.relativeExtraKm,
+          directDistanceKm: relInfo.directDistanceKm,
+          detourTotalKm: relInfo.detourDistanceKm,
+          distanceToDetourKm: relInfo.distanceToDetourKm,
+          durationText: relInfo.detourDurationText,
+          durationToDetourText: relInfo.durationToDetourText,
+        });
       }
     } catch (err) {
-      console.warn('Error calculating road route:', err);
+      console.warn('Error calculating relative detour:', err);
     } finally {
       setIsCalculatingRoute(false);
     }
-
-    onSelectPlace({
-      name: place.displayName,
-      displayName: place.displayName,
-      shortName: place.shortName,
-      lat: place.lat,
-      lon: place.lon,
-      roadDistanceKm: extraKm,
-      durationText: duration,
-    });
   };
 
   const handleClear = () => {
     setQuery('');
     setSelectedPlace(null);
-    setRouteInfo(null);
+    setRelativeRoute(null);
     setSuggestions([]);
     setShowDropdown(false);
   };
@@ -216,8 +280,8 @@ export default function OpenStreetMapPicker({
     Linking.openURL(url).catch((err) => console.warn('Could not open OSM:', err));
   };
 
-  // Real Leaflet.js HTML Template (1:1 identical to Admin Platform)
-  const generateLeafletHtml = (lat: number, lon: number) => `
+  // Real Leaflet.js HTML Template (Renders scheduled tour route & detour deviation)
+  const generateLeafletHtml = (lat: number, lon: number, zoomLevel: number = 14) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -226,14 +290,27 @@ export default function OpenStreetMapPicker({
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body, #map { width: 100%; height: 100%; background: #f1f5f9; }
+    html, body, #map { width: 100%; height: 100%; background: #f8fafc; }
     .custom-pin {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 32px;
-      line-height: 32px;
-      filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));
+      font-size: 28px;
+      line-height: 28px;
+      filter: drop-shadow(0 3px 5px rgba(0,0,0,0.35));
+    }
+    .custom-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 7px;
+      border-radius: 12px;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      border: 1.5px solid #ffffff;
     }
     .leaflet-control-zoom {
       border: 1px solid #cbd5e1 !important;
@@ -250,23 +327,45 @@ export default function OpenStreetMapPicker({
     var map = L.map('map', {
       zoomControl: true,
       attributionControl: false
-    }).setView([${lat}, ${lon}], 14);
+    }).setView([${lat}, ${lon}], ${zoomLevel});
 
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19
     }).addTo(map);
 
-    var pinIcon = L.divIcon({
+    var directRouteLayer = null;
+    var detourRouteLayer = null;
+    var originMarker = null;
+    var destMarker = null;
+    var detourMarker = null;
+
+    var carIcon = L.divIcon({
       className: 'custom-pin',
-      html: '📍',
-      iconSize: [36, 36],
-      iconAnchor: [18, 32]
+      html: '<div class="custom-badge" style="background:#2563eb;">🚗 You</div>',
+      iconSize: [54, 22],
+      iconAnchor: [27, 11]
     });
 
-    var marker = L.marker([${lat}, ${lon}], { icon: pinIcon }).addTo(map);
+    var destIcon = L.divIcon({
+      className: 'custom-pin',
+      html: '<div class="custom-badge" style="background:#dc2626;">🏁 End</div>',
+      iconSize: [54, 22],
+      iconAnchor: [27, 11]
+    });
+
+    var detourIcon = L.divIcon({
+      className: 'custom-pin',
+      html: '<div class="custom-badge" style="background:#059669;">📍 Detour</div>',
+      iconSize: [66, 22],
+      iconAnchor: [33, 11]
+    });
 
     map.on('click', function(e) {
-      marker.setLatLng(e.latlng);
+      if (!detourMarker) {
+        detourMarker = L.marker(e.latlng, { icon: detourIcon }).addTo(map);
+      } else {
+        detourMarker.setLatLng(e.latlng);
+      }
       if (window.ReactNativeWebView) {
         window.ReactNativeWebView.postMessage(JSON.stringify({
           type: 'map_clicked',
@@ -277,8 +376,63 @@ export default function OpenStreetMapPicker({
     });
 
     window.updatePosition = function(newLat, newLon) {
-      map.flyTo([newLat, newLon], 14, { duration: 0.8 });
-      marker.setLatLng([newLat, newLon]);
+      if (!detourMarker) {
+        detourMarker = L.marker([newLat, newLon], { icon: detourIcon }).addTo(map);
+      } else {
+        detourMarker.setLatLng([newLat, newLon]);
+      }
+      map.flyTo([newLat, newLon], 14, { duration: 0.6 });
+    };
+
+    window.renderRoutes = function(dataStr) {
+      try {
+        var data = (typeof dataStr === 'string') ? JSON.parse(dataStr) : dataStr;
+        if (directRouteLayer) { map.removeLayer(directRouteLayer); directRouteLayer = null; }
+        if (detourRouteLayer) { map.removeLayer(detourRouteLayer); detourRouteLayer = null; }
+        if (originMarker) { map.removeLayer(originMarker); originMarker = null; }
+        if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
+
+        var points = [];
+
+        if (data.origin) {
+          originMarker = L.marker([data.origin.lat, data.origin.lon], { icon: carIcon }).addTo(map);
+          points.push([data.origin.lat, data.origin.lon]);
+        }
+
+        if (data.destination) {
+          destMarker = L.marker([data.destination.lat, data.destination.lon], { icon: destIcon }).addTo(map);
+          points.push([data.destination.lat, data.destination.lon]);
+        }
+
+        if (data.detour) {
+          if (!detourMarker) {
+            detourMarker = L.marker([data.detour.lat, data.detour.lon], { icon: detourIcon }).addTo(map);
+          } else {
+            detourMarker.setLatLng([data.detour.lat, data.detour.lon]);
+          }
+          points.push([data.detour.lat, data.detour.lon]);
+        }
+
+        if (data.directGeoJson) {
+          directRouteLayer = L.geoJSON(data.directGeoJson, {
+            style: { color: '#64748b', weight: 4, dashArray: '6, 8', opacity: 0.8 }
+          }).addTo(map);
+        }
+
+        if (data.detourGeoJson) {
+          detourRouteLayer = L.geoJSON(data.detourGeoJson, {
+            style: { color: '#10b981', weight: 5, opacity: 0.95 }
+          }).addTo(map);
+        }
+
+        if (points.length > 1) {
+          map.fitBounds(points, { padding: [35, 35], maxZoom: 14 });
+        } else if (points.length === 1) {
+          map.setView(points[0], 14);
+        }
+      } catch (err) {
+        console.error('renderRoutes error:', err);
+      }
     };
   </script>
 </body>
@@ -322,25 +476,63 @@ export default function OpenStreetMapPicker({
     }
   };
 
-  // Render Real Leaflet.js Map in Native WebView
+  // Render Real Leaflet.js Map in Native WebView (Always available)
   const renderMapTiles = () => {
-    if (!selectedPlace) return null;
+    const centerLat =
+      selectedPlace?.lat ||
+      currentLocation?.lat ||
+      destinationLocation?.lat ||
+      7.8731;
+    const centerLon =
+      selectedPlace?.lon ||
+      currentLocation?.lon ||
+      destinationLocation?.lon ||
+      80.7718;
+    const initialZoom = selectedPlace
+      ? 13
+      : currentLocation && destinationLocation
+      ? 9
+      : 8;
 
     return (
       <View style={styles.mapContainer}>
         <WebView
           ref={webViewRef}
           originWhitelist={['*']}
-          source={{ html: generateLeafletHtml(selectedPlace.lat, selectedPlace.lon) }}
+          source={{ html: generateLeafletHtml(centerLat, centerLon, initialZoom) }}
           style={styles.webView}
           nestedScrollEnabled={true}
           onMessage={onWebViewMessage}
           javaScriptEnabled={true}
           domStorageEnabled={true}
           androidLayerType="hardware"
+          onLoadEnd={() => {
+            const origin = currentLocation || { lat: 6.9271, lon: 79.8612 };
+            if (selectedPlace && relativeRoute) {
+              const payload = {
+                origin,
+                destination: routeType === 'DESTINATION' ? null : destinationLocation,
+                detour: { lat: selectedPlace.lat, lon: selectedPlace.lon },
+                directGeoJson: relativeRoute.directGeoJson,
+                detourGeoJson: relativeRoute.detourGeoJson,
+              };
+              webViewRef.current?.injectJavaScript(
+                `if (window.renderRoutes) { window.renderRoutes(${JSON.stringify(JSON.stringify(payload))}); } true;`
+              );
+            } else if (destinationLocation && baseTourRoute?.geometry) {
+              const payload = {
+                origin,
+                destination: destinationLocation,
+                directGeoJson: baseTourRoute.geometry,
+              };
+              webViewRef.current?.injectJavaScript(
+                `if (window.renderRoutes) { window.renderRoutes(${JSON.stringify(JSON.stringify(payload))}); } true;`
+              );
+            }
+          }}
         />
         <View pointerEvents="none" style={styles.attributionBadge}>
-          <Text style={styles.attributionText}>🗺️ Leaflet • OpenStreetMap</Text>
+          <Text style={styles.attributionText}>🗺️ Leaflet • OpenStreetMap Navigation</Text>
         </View>
       </View>
     );
@@ -465,9 +657,9 @@ export default function OpenStreetMapPicker({
         </ScrollView>
       </View>
 
-      {/* Selected Location Card & OpenStreetMap Preview */}
-      {selectedPlace && (
-        <View style={styles.previewCard}>
+      {/* Selected Location Card / Route Overview */}
+      <View style={styles.previewCard}>
+        {selectedPlace ? (
           <View style={styles.previewHeader}>
             <View style={{ flex: 1 }}>
               <View style={styles.confirmedBadgeRow}>
@@ -484,43 +676,90 @@ export default function OpenStreetMapPicker({
               </Text>
             </View>
           </View>
-
-          {/* OpenStreetMap Interactive Tile View */}
-          {renderMapTiles()}
-
-          {/* OSRM Road Distance Calculation Banner */}
-          <View style={styles.roadInfoBanner}>
-            {isCalculatingRoute ? (
-              <View style={styles.calculatingRow}>
-                <ActivityIndicator size="small" color="#10b981" />
-                <Text style={styles.calculatingText}>
-                  Calculating exact road route via OSRM...
+        ) : destinationLocation ? (
+          <View style={styles.previewHeader}>
+            <View style={{ flex: 1 }}>
+              <View style={styles.confirmedBadgeRow}>
+                <Text style={[styles.confirmedBadge, { backgroundColor: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' }]}>
+                  🏁 ACTIVE TOUR ROUTE
                 </Text>
+                <Text style={styles.coordsBadge}>Destination: {destinationLocation.name || 'Drop-off'}</Text>
               </View>
-            ) : routeInfo ? (
-              <View style={styles.routeResultRow}>
-                <View style={styles.routeResultCol}>
-                  <Text style={styles.routeDistanceText}>
-                    +{routeInfo.distanceKm} KM
-                  </Text>
-                  <Text style={styles.routeDistanceSub}>Estimated road detour</Text>
-                </View>
-                <View style={styles.routeDivider} />
-                <View style={styles.routeResultCol}>
-                  <Text style={styles.routeDurationText}>
-                    {routeInfo.durationText}
-                  </Text>
-                  <Text style={styles.routeDurationSub}>Driving time via OSRM</Text>
-                </View>
-              </View>
-            ) : (
-              <Text style={styles.defaultRouteNotice}>
-                ✓ Coordinates locked. Ready to append to tour itinerary.
+              <Text style={styles.previewSub}>
+                Tap anywhere on the map to pin a detour, or search an attraction above.
               </Text>
-            )}
+            </View>
           </View>
+        ) : null}
 
-          {/* Quick Action Navigation Buttons */}
+        {/* Real Leaflet.js Interactive Map (Live Tour Navigation + Detour Route) */}
+        {renderMapTiles()}
+
+        {/* Relative Route Impact Analysis Banner (Calculated via OSRM) */}
+        <View style={styles.roadInfoBanner}>
+          {isCalculatingRoute ? (
+            <View style={styles.calculatingRow}>
+              <ActivityIndicator size="small" color="#10b981" />
+              <Text style={styles.calculatingText}>
+                Analyzing route deviation via OpenStreetMap OSRM...
+              </Text>
+            </View>
+          ) : relativeRoute ? (
+            <View style={styles.relativeAnalysisContainer}>
+              <View style={styles.relativeMetricsGrid}>
+                {destinationLocation ? (
+                  <>
+                    <View style={styles.relativeMetricCol}>
+                      <Text style={styles.relativeMetricLabel}>Scheduled Route</Text>
+                      <Text style={styles.relativeMetricVal}>{relativeRoute.directDistanceKm} km</Text>
+                      <Text style={styles.relativeMetricSub}>Direct</Text>
+                    </View>
+                    <View style={styles.relativeDivider} />
+                  </>
+                ) : null}
+
+                <View style={styles.relativeMetricCol}>
+                  <Text style={styles.relativeMetricLabel}>To Detour Stop</Text>
+                  <Text style={styles.relativeMetricVal}>{relativeRoute.distanceToDetourKm} km</Text>
+                  <Text style={styles.relativeMetricSub}>~{relativeRoute.durationToDetourText || 'Driving'}</Text>
+                </View>
+
+                <View style={styles.relativeDivider} />
+
+                <View style={styles.relativeMetricColHighlight}>
+                  <Text style={styles.relativeMetricLabelHighlight}>Net Extra Mileage</Text>
+                  <Text style={styles.relativeMetricValHighlight}>+{relativeRoute.relativeExtraKm} KM</Text>
+                  <Text style={styles.relativeMetricSubHighlight}>Added to Tour</Text>
+                </View>
+              </View>
+
+              {/* Map Route Legend */}
+              <View style={styles.routeLegendRow}>
+                <View style={styles.routeLegendItem}>
+                  <View style={[styles.legendBar, { backgroundColor: '#64748b' }]} />
+                  <Text style={styles.routeLegendText}>Scheduled ({relativeRoute.directDistanceKm} km)</Text>
+                </View>
+                <View style={styles.routeLegendItem}>
+                  <View style={[styles.legendBar, { backgroundColor: '#10b981' }]} />
+                  <Text style={styles.routeLegendText}>Via Detour ({relativeRoute.detourDistanceKm} km)</Text>
+                </View>
+              </View>
+            </View>
+          ) : baseTourRoute && destinationLocation ? (
+            <View style={styles.baseTourNoticeRow}>
+              <Text style={styles.baseTourNoticeText}>
+                🏁 Scheduled Tour Route: <Text style={{ fontWeight: '800' }}>{baseTourRoute.distanceKm} KM</Text> ({baseTourRoute.durationText})
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.defaultRouteNotice}>
+              ✓ OpenStreetMap active. Select a place or tap on map to calculate detour distance.
+            </Text>
+          )}
+        </View>
+
+        {/* Quick Action Navigation Buttons */}
+        {selectedPlace ? (
           <View style={styles.actionButtonsRow}>
             <TouchableOpacity
               style={styles.openMapsButton}
@@ -538,8 +777,8 @@ export default function OpenStreetMapPicker({
               <Text style={styles.openOsmButtonText}>🌐 OSM Web View</Text>
             </TouchableOpacity>
           </View>
-        </View>
-      )}
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -863,6 +1102,101 @@ const styles = StyleSheet.create({
     color: '#065f46',
     fontWeight: '600',
     textAlign: 'center',
+  },
+  relativeAnalysisContainer: {
+    paddingVertical: 2,
+  },
+  relativeMetricsGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  relativeMetricCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  relativeMetricColHighlight: {
+    flex: 1.1,
+    alignItems: 'center',
+    backgroundColor: '#ecfdf5',
+    borderRadius: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+  },
+  relativeMetricLabel: {
+    fontSize: 9.5,
+    color: '#64748b',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  relativeMetricVal: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#0f172a',
+    marginTop: 1,
+  },
+  relativeMetricSub: {
+    fontSize: 9.5,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  relativeMetricLabelHighlight: {
+    fontSize: 9.5,
+    color: '#065f46',
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  relativeMetricValHighlight: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#059669',
+    marginTop: 1,
+  },
+  relativeMetricSubHighlight: {
+    fontSize: 9,
+    color: '#047857',
+    fontWeight: '700',
+  },
+  relativeDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: '#e2e8f0',
+  },
+  routeLegendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  routeLegendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendBar: {
+    width: 14,
+    height: 4,
+    borderRadius: 2,
+  },
+  routeLegendText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  baseTourNoticeRow: {
+    paddingVertical: 4,
+    alignItems: 'center',
+  },
+  baseTourNoticeText: {
+    fontSize: 11,
+    color: '#1e40af',
+    fontWeight: '600',
   },
   actionButtonsRow: {
     flexDirection: 'row',

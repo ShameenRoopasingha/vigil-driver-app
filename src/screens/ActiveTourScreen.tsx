@@ -14,7 +14,12 @@ import {
 } from '../validations';
 import OpenStreetMapPicker from '../components/OpenStreetMapPicker';
 import { toast } from '../utils/toast';
-import { calculateRoadDistanceOSRM } from '../services/osmService';
+import { 
+  calculateRoadDistanceOSRM,
+  calculateRelativeDetourOSRM,
+  geocodePlace,
+  type RelativeRouteInfo,
+} from '../services/osmService';
 
 type ActiveTourRouteProp = RouteProp<RootStackParamList, 'ActiveTour'>;
 type ActiveTourNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ActiveTour'>;
@@ -70,23 +75,36 @@ export default function ActiveTourScreen() {
   const [customerAgreed, setCustomerAgreed] = useState(true);
   const [routeChangeSubmitting, setRouteChangeSubmitting] = useState(false);
   const [driverCurrentCoords, setDriverCurrentCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lon: number; name?: string } | null>(null);
   const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
   const [calculatedRouteSummary, setCalculatedRouteSummary] = useState<{
     km: number;
     durationText?: string;
+    directKm?: number;
+    detourTotalKm?: number;
+    distToDetourKm?: number;
   } | null>(null);
 
-  // Auto-resolve driver's current GPS location whenever Route Alteration opens
+  // Auto-resolve driver's current GPS location & destination coords whenever Route Alteration opens
   useEffect(() => {
     if (showRouteChangeModal) {
       locationService.getCurrentCoordinates().then((coords) => {
         if (coords) setDriverCurrentCoords(coords);
       });
+
+      const destTarget = tour?.dropLocation || tour?.destination || tour?.pickupLocation || '';
+      if (destTarget) {
+        geocodePlace(destTarget).then((geo) => {
+          if (geo) {
+            setDestinationCoords({ lat: geo.lat, lon: geo.lon, name: destTarget });
+          }
+        });
+      }
     } else {
       setCalculatedRouteSummary(null);
       setIsCalculatingDistance(false);
     }
-  }, [showRouteChangeModal]);
+  }, [showRouteChangeModal, tour?.dropLocation, tour?.destination, tour?.pickupLocation]);
 
   const handleSelectPopularDetour = async (detour: (typeof POPULAR_DETOURS)[0]) => {
     setNewRouteLocation(detour.location);
@@ -97,15 +115,19 @@ export default function ActiveTourScreen() {
         driverCurrentCoords ||
         (await locationService.getCurrentCoordinates()) ||
         { lat: 6.9271, lon: 79.8612 };
-      const info = await calculateRoadDistanceOSRM(origin, {
-        lat: detour.lat,
-        lon: detour.lon,
-      });
-      if (info) {
-        setExtraKmInput(String(Math.round(info.distanceKm)));
+      const relInfo = await calculateRelativeDetourOSRM(
+        origin,
+        { lat: detour.lat, lon: detour.lon },
+        routeChangeType === 'DESTINATION' ? null : destinationCoords
+      );
+      if (relInfo) {
+        setExtraKmInput(String(Math.round(relInfo.relativeExtraKm)));
         setCalculatedRouteSummary({
-          km: Math.round(info.distanceKm),
-          durationText: info.durationText,
+          km: Math.round(relInfo.relativeExtraKm),
+          durationText: relInfo.durationToDetourText || relInfo.detourDurationText,
+          directKm: relInfo.directDistanceKm,
+          detourTotalKm: relInfo.detourDistanceKm,
+          distToDetourKm: relInfo.distanceToDetourKm,
         });
       }
     } catch (err) {
@@ -1278,6 +1300,8 @@ export default function ActiveTourScreen() {
                       }
                     : null)
                 }
+                destinationLocation={destinationCoords}
+                routeType={routeChangeType}
                 initialLocationName={newRouteLocation}
                 initialCoords={routeChangeCoords}
                 placeholder={
@@ -1288,11 +1312,15 @@ export default function ActiveTourScreen() {
                 onSelectPlace={(place) => {
                   setNewRouteLocation(place.displayName);
                   setRouteChangeCoords({ lat: place.lat, lon: place.lon });
-                  if (place.roadDistanceKm !== undefined && place.roadDistanceKm > 0) {
-                    setExtraKmInput(String(Math.round(place.roadDistanceKm)));
+                  const extra = place.relativeExtraKm !== undefined ? place.relativeExtraKm : place.roadDistanceKm;
+                  if (extra !== undefined && extra >= 0) {
+                    setExtraKmInput(String(Math.round(extra)));
                     setCalculatedRouteSummary({
-                      km: Math.round(place.roadDistanceKm),
-                      durationText: place.durationText,
+                      km: Math.round(extra),
+                      durationText: place.durationToDetourText || place.durationText,
+                      directKm: place.directDistanceKm,
+                      detourTotalKm: place.detourTotalKm,
+                      distToDetourKm: place.distanceToDetourKm,
                     });
                   }
                 }}
@@ -1358,23 +1386,57 @@ export default function ActiveTourScreen() {
                 }}
               />
               {calculatedRouteSummary ? (
-                <View className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 mb-3 flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-2 flex-1">
-                    <Text className="text-base">🛣️</Text>
-                    <View className="flex-1">
-                      <Text className="text-xs font-bold text-emerald-900">
-                        OSM Road Route: +{calculatedRouteSummary.km} KM
+                <View className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 mb-3">
+                  <View className="flex-row items-center justify-between mb-2">
+                    <View className="flex-row items-center gap-1.5">
+                      <Text className="text-sm">🛣️</Text>
+                      <Text className="text-xs font-black text-emerald-950 uppercase tracking-wider">
+                        Route Impact Comparison (OSRM)
                       </Text>
-                      {calculatedRouteSummary.durationText ? (
-                        <Text className="text-[11px] text-emerald-700 font-medium">
-                          Estimated driving time: ~{calculatedRouteSummary.durationText}
-                        </Text>
-                      ) : null}
+                    </View>
+                    <View className="bg-emerald-200 px-2 py-0.5 rounded">
+                      <Text className="text-[10px] font-black text-emerald-900">AUTO-CALCULATED</Text>
                     </View>
                   </View>
-                  <View className="bg-emerald-200 px-2 py-0.5 rounded">
-                    <Text className="text-[10px] font-bold text-emerald-800">Auto-filled</Text>
+
+                  <View className="flex-row items-center justify-between bg-white rounded-lg p-2.5 border border-emerald-200 shadow-xs mb-2">
+                    {calculatedRouteSummary.directKm !== undefined ? (
+                      <View className="items-center flex-1">
+                        <Text className="text-[10px] font-bold text-gray-500 uppercase">Scheduled</Text>
+                        <Text className="text-xs font-black text-gray-800">{calculatedRouteSummary.directKm} KM</Text>
+                      </View>
+                    ) : null}
+
+                    {calculatedRouteSummary.distToDetourKm !== undefined ? (
+                      <>
+                        <View className="w-[1px] h-6 bg-gray-200" />
+                        <View className="items-center flex-1">
+                          <Text className="text-[10px] font-bold text-gray-500 uppercase">To Detour</Text>
+                          <Text className="text-xs font-black text-blue-700">{calculatedRouteSummary.distToDetourKm} KM</Text>
+                        </View>
+                      </>
+                    ) : null}
+
+                    {calculatedRouteSummary.detourTotalKm !== undefined ? (
+                      <>
+                        <View className="w-[1px] h-6 bg-gray-200" />
+                        <View className="items-center flex-1">
+                          <Text className="text-[10px] font-bold text-gray-500 uppercase">Via Detour</Text>
+                          <Text className="text-xs font-black text-gray-800">{calculatedRouteSummary.detourTotalKm} KM</Text>
+                        </View>
+                      </>
+                    ) : null}
+
+                    <View className="w-[1px] h-6 bg-gray-200" />
+                    <View className="items-center flex-1.2 bg-emerald-100 py-1 px-1 rounded border border-emerald-300">
+                      <Text className="text-[10px] font-black text-emerald-900 uppercase">Net Extra</Text>
+                      <Text className="text-sm font-black text-emerald-700">+{calculatedRouteSummary.km} KM</Text>
+                    </View>
                   </View>
+
+                  <Text className="text-[11px] text-emerald-800 font-medium">
+                    ⚡ Relative extra mileage calculated according to Sri Lanka's road network and active tour itinerary.
+                  </Text>
                 </View>
               ) : (
                 <View className="mb-3" />

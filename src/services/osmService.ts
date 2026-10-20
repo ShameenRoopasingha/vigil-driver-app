@@ -497,6 +497,200 @@ export async function searchPlacesOSM(
 /**
  * Calculates road driving distance & duration via Open Source Routing Machine (OSRM)
  */
+export interface RelativeRouteInfo {
+  directDistanceKm: number;
+  detourDistanceKm: number;
+  relativeExtraKm: number;
+  distanceToDetourKm: number;
+  directDurationText?: string;
+  detourDurationText?: string;
+  durationToDetourText?: string;
+  directGeoJson?: any;
+  detourGeoJson?: any;
+}
+
+export async function geocodePlace(
+  query: string
+): Promise<{ lat: number; lon: number; name: string } | null> {
+  const trimmed = (query || '').trim();
+  if (!trimmed) return null;
+
+  // 1. Search offline curated Sri Lanka landmarks with Fuse.js (0ms)
+  const offline = searchLandmarksOffline(trimmed);
+  if (offline && offline.length > 0) {
+    return {
+      lat: offline[0].lat,
+      lon: offline[0].lon,
+      name: offline[0].displayName,
+    };
+  }
+
+  // 2. Search online Nominatim with Sri Lanka boundary box
+  try {
+    const online = await searchNominatimOnline(trimmed);
+    if (online && online.length > 0) {
+      return {
+        lat: online[0].lat,
+        lon: online[0].lon,
+        name: online[0].displayName,
+      };
+    }
+  } catch (err) {
+    console.warn('Geocode place error:', err);
+  }
+
+  return null;
+}
+
+export async function calculateDirectRouteOSRM(
+  origin: { lat: number; lon: number },
+  destination: { lat: number; lon: number }
+): Promise<{ distanceKm: number; durationText: string; geometry?: any } | null> {
+  const headers = { 'User-Agent': 'VigilDriverApp/1.0.4 (support@vigil.app)' };
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}?overview=simplified&geometries=geojson`;
+    const res = await fetch(url, { headers });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.code === 'Ok' && data.routes?.[0]) {
+        const route = data.routes[0];
+        const distanceKm = Math.round((route.distance / 1000) * 10) / 10;
+        const durationMins = Math.round(route.duration / 60);
+        const hours = Math.floor(durationMins / 60);
+        const mins = durationMins % 60;
+        const durationText = hours > 0 ? `${hours}h ${mins}m` : `${mins} mins`;
+        return {
+          distanceKm,
+          durationText,
+          geometry: route.geometry,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Direct route calculation error:', err);
+  }
+  const directKm = Math.round(calculateDirectDistanceKm(origin.lat, origin.lon, destination.lat, destination.lon) * 1.35 * 10) / 10;
+  return {
+    distanceKm: directKm,
+    durationText: `~${Math.round((directKm / 40) * 60)} mins`,
+  };
+}
+
+export async function calculateRelativeDetourOSRM(
+  origin: { lat: number; lon: number },
+  detour: { lat: number; lon: number },
+  destination?: { lat: number; lon: number } | null
+): Promise<RelativeRouteInfo | null> {
+  const headers = { 'User-Agent': 'VigilDriverApp/1.0.4 (support@vigil.app)' };
+
+  // Case 1: Destination exists -> calculate direct A->B and detour A->C->B
+  if (destination) {
+    try {
+      const [directRes, detourRes] = await Promise.all([
+        fetch(
+          `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}?overview=simplified&geometries=geojson`,
+          { headers }
+        ),
+        fetch(
+          `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${detour.lon},${detour.lat};${destination.lon},${destination.lat}?overview=simplified&geometries=geojson`,
+          { headers }
+        ),
+      ]);
+
+      if (directRes.ok && detourRes.ok) {
+        const directJson = await directRes.json();
+        const detourJson = await detourRes.json();
+
+        if (
+          directJson.code === 'Ok' &&
+          detourJson.code === 'Ok' &&
+          directJson.routes?.[0] &&
+          detourJson.routes?.[0]
+        ) {
+          const directRoute = directJson.routes[0];
+          const detourRoute = detourJson.routes[0];
+
+          const directKm = Math.round((directRoute.distance / 1000) * 10) / 10;
+          const detourKm = Math.round((detourRoute.distance / 1000) * 10) / 10;
+          const extraKm = Math.max(0, Math.round((detourKm - directKm) * 10) / 10);
+
+          const leg1 = detourRoute.legs?.[0];
+          const distToDetour = leg1 ? Math.round((leg1.distance / 1000) * 10) / 10 : directKm;
+
+          const toDetourMins = leg1 ? Math.round(leg1.duration / 60) : 0;
+          const toDetourHours = Math.floor(toDetourMins / 60);
+          const toDetourRemMins = toDetourMins % 60;
+          const durationToDetourText =
+            toDetourHours > 0
+              ? `${toDetourHours}h ${toDetourRemMins}m`
+              : `${toDetourRemMins} mins`;
+
+          const totalMins = Math.round(detourRoute.duration / 60);
+          const totalHours = Math.floor(totalMins / 60);
+          const totalRemMins = totalMins % 60;
+          const detourDurationText =
+            totalHours > 0 ? `${totalHours}h ${totalRemMins}m` : `${totalRemMins} mins`;
+
+          return {
+            directDistanceKm: directKm,
+            detourDistanceKm: detourKm,
+            relativeExtraKm: extraKm,
+            distanceToDetourKm: distToDetour,
+            durationToDetourText,
+            detourDurationText,
+            directGeoJson: directRoute.geometry,
+            detourGeoJson: detourRoute.geometry,
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('OSRM relative detour calculation error:', e);
+    }
+  }
+
+  // Case 2: Only Origin -> Detour (e.g. Destination change or no destination specified)
+  try {
+    const res = await fetch(
+      `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${detour.lon},${detour.lat}?overview=simplified&geometries=geojson`,
+      { headers }
+    );
+    if (res.ok) {
+      const json = await res.json();
+      if (json.code === 'Ok' && json.routes?.[0]) {
+        const route = json.routes[0];
+        const distKm = Math.round((route.distance / 1000) * 10) / 10;
+        const mins = Math.round(route.duration / 60);
+        const hours = Math.floor(mins / 60);
+        const remMins = mins % 60;
+        const durationText = hours > 0 ? `${hours}h ${remMins}m` : `${remMins} mins`;
+
+        return {
+          directDistanceKm: distKm,
+          detourDistanceKm: distKm,
+          relativeExtraKm: distKm,
+          distanceToDetourKm: distKm,
+          durationToDetourText: durationText,
+          detourDurationText: durationText,
+          detourGeoJson: route.geometry,
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('OSRM point to point calculation error:', e);
+  }
+
+  // Fallback Haversine calculation
+  const directKm = Math.round(calculateDirectDistanceKm(origin.lat, origin.lon, detour.lat, detour.lon) * 1.35 * 10) / 10;
+  return {
+    directDistanceKm: directKm,
+    detourDistanceKm: directKm,
+    relativeExtraKm: directKm,
+    distanceToDetourKm: directKm,
+    durationToDetourText: `~${Math.round((directKm / 40) * 60)} mins`,
+    detourDurationText: `~${Math.round((directKm / 40) * 60)} mins`,
+  };
+}
+
 export async function calculateRoadDistanceOSRM(
   origin: { lat: number; lon: number },
   destination: { lat: number; lon: number }
