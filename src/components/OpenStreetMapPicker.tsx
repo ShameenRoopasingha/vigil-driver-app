@@ -254,12 +254,7 @@ export default function OpenStreetMapPicker({
             return (
               <Image
                 key={`${tileX}-${tileY}-${zoom}`}
-                source={{
-                  uri: tileUrl,
-                  headers: {
-                    'User-Agent': 'VigilDriverApp/1.0.3 (driver@vigil.app)',
-                  },
-                }}
+                source={{ uri: tileUrl }}
                 style={[
                   styles.mapTile,
                   {
@@ -300,7 +295,7 @@ export default function OpenStreetMapPicker({
 
         {/* OpenStreetMap Attribution & Level Badge */}
         <View style={styles.attributionBadge}>
-          <Text style={styles.attributionText}>© OpenStreetMap • Z{zoom}</Text>
+          <Text style={styles.attributionText}>© OpenStreetMap • CARTO • Z{zoom}</Text>
         </View>
       </View>
     );
