@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,12 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Linking,
+  Vibration,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
@@ -67,6 +69,12 @@ export default function ProfileScreen() {
   useEffect(() => {
     loadProfile();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [])
+  );
 
   const loadProfile = async () => {
     try {
@@ -160,6 +168,22 @@ export default function ProfileScreen() {
     setAvatarUrl(url);
     setShowCustomUrlInput(false);
     setCustomUrlInput('');
+  };
+
+  const handleBrowseFiles = async () => {
+    try {
+      const token = await AsyncStorage.getItem('driverToken');
+      if (!token) {
+        Alert.alert('Session Error', 'Please log in again to upload a photo.');
+        return;
+      }
+      Vibration.vibrate(10);
+      const url = `https://vigil-pos.vercel.app/driver/upload-avatar?token=${encodeURIComponent(token)}`;
+      await Linking.openURL(url);
+    } catch (err: any) {
+      console.error('Error opening file uploader:', err);
+      Alert.alert('File Browser', 'Could not open mobile browser.');
+    }
   };
 
   const handleUpdateEmail = async () => {
@@ -337,9 +361,73 @@ export default function ProfileScreen() {
               </Text>
 
               {/* Avatar Selector Gallery */}
-              <Text className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                Choose Profile Avatar
+              <Text className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">
+                Profile Photo & Avatar
               </Text>
+
+              {/* Primary Mobile File & Photo Browser Button */}
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={handleBrowseFiles}
+                style={{
+                  backgroundColor: '#eff6ff',
+                  borderWidth: 1.5,
+                  borderColor: '#93c5fd',
+                  borderRadius: 16,
+                  paddingVertical: 14,
+                  paddingHorizontal: 16,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginBottom: 14,
+                  shadowColor: '#3b82f6',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
+              >
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    backgroundColor: '#dbeafe',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 12,
+                  }}
+                >
+                  <Text style={{ fontSize: 24 }}>📁</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={{ color: '#1d4ed8', fontWeight: '900', fontSize: 14 }}>
+                      Browse Mobile Photos & Files
+                    </Text>
+                    <View style={{ backgroundColor: '#10b981', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 4 }}>
+                      <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '900' }}>PHONE FILES</Text>
+                    </View>
+                  </View>
+                  <Text style={{ color: '#64748b', fontSize: 11, fontWeight: '500', marginTop: 2 }}>
+                    Open device gallery, files or camera to set custom photo
+                  </Text>
+                </View>
+                <Text style={{ color: '#3b82f6', fontSize: 20, fontWeight: '800', marginLeft: 4 }}>›</Text>
+              </TouchableOpacity>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <Text className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  OR Choose Avatar Preset
+                </Text>
+                <TouchableOpacity
+                  onPress={loadProfile}
+                  activeOpacity={0.7}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#cbd5e1' }}
+                >
+                  <Text style={{ fontSize: 11 }}>🔄</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569' }}>Sync Photo</Text>
+                </TouchableOpacity>
+              </View>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
