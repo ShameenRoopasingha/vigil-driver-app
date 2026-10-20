@@ -552,6 +552,11 @@ export default function ActiveTourScreen() {
   const isBreakdownReported = isStarted && breakdownReqIdx !== -1 && (vehicleSwappedIdx === -1 || breakdownReqIdx < vehicleSwappedIdx);
   const wasVehicleSwapped = vehicleSwappedIdx !== -1;
 
+  const routeChanges = activities.filter((a: any) => a.type === 'ROUTE_CHANGE');
+  const latestRouteChange = routeChanges.length > 0 ? routeChanges[routeChanges.length - 1] : null;
+  const detourMatch = latestRouteChange?.note?.match(/Mid-Tour Detour \/ Extra Stop Added:\s*([^(\n|]+)/i);
+  const activeDetourLocation = detourMatch ? detourMatch[1].trim() : null;
+
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <View className="px-5 py-3.5 bg-white border-b border-gray-200 flex-row items-center justify-between">
@@ -788,37 +793,83 @@ export default function ActiveTourScreen() {
               </Text>
             </View>
             
-            {/* Latest Route Change / Detour Notification */}
-            {tour.tripActivities?.some((a: any) => a.type === 'ROUTE_CHANGE') && (
-              <View className="bg-indigo-50 border border-indigo-200 rounded-lg p-2.5 mb-2.5">
+            {/* Active Detour / Itinerary Alteration Card */}
+            {activeDetourLocation ? (
+              <View className="bg-indigo-50 border border-indigo-200 rounded-xl p-3.5 mb-3.5 shadow-xs">
+                <View className="flex-row items-center justify-between mb-1.5">
+                  <View className="flex-row items-center gap-1.5">
+                    <Text className="text-indigo-900 font-black text-xs uppercase tracking-wide">
+                      📍 Active Detour Stop
+                    </Text>
+                  </View>
+                  <View className="bg-indigo-200 px-2 py-0.5 rounded-full">
+                    <Text className="text-indigo-900 text-[10px] font-black uppercase">CURRENT STOP</Text>
+                  </View>
+                </View>
+                <Text className="text-indigo-950 font-bold text-sm mb-1.5" numberOfLines={2}>
+                  {activeDetourLocation}
+                </Text>
+                {latestRouteChange?.note ? (
+                  <Text className="text-indigo-700 text-[11px] mb-2.5 font-medium leading-4" numberOfLines={2}>
+                    {latestRouteChange.note}
+                  </Text>
+                ) : null}
+
+                {/* Direct 1-Tap Navigation to Detour Stop */}
+                <View className="flex-row gap-2">
+                  <TouchableOpacity
+                    onPress={() => openNavigation('google', activeDetourLocation)}
+                    className="flex-1 bg-indigo-600 py-2.5 px-3 rounded-lg flex-row items-center justify-center shadow-xs"
+                  >
+                    <Text className="text-white font-bold text-xs">🗺️ Maps to Detour</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => openNavigation('waze', activeDetourLocation)}
+                    className="flex-1 bg-cyan-600 py-2.5 px-3 rounded-lg flex-row items-center justify-center shadow-xs"
+                  >
+                    <Text className="text-white font-bold text-xs">🚗 Waze to Detour</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : latestRouteChange ? (
+              <View className="bg-indigo-50 border border-indigo-200 rounded-lg p-2.5 mb-3">
                 <View className="flex-row items-center justify-between mb-0.5">
                   <Text className="text-indigo-900 font-black text-[11px] uppercase tracking-wide">
-                    🗺️ Active Detour / Itinerary Alteration
+                    🗺️ Route Alteration Logged
                   </Text>
                   <View className="bg-indigo-200 px-1.5 py-0.5 rounded">
                     <Text className="text-indigo-900 text-[9px] font-black">LOGGED</Text>
                   </View>
                 </View>
                 <Text className="text-indigo-950 text-xs font-semibold" numberOfLines={2}>
-                  {tour.tripActivities.find((a: any) => a.type === 'ROUTE_CHANGE')?.note}
+                  {latestRouteChange.note}
                 </Text>
               </View>
-            )}
+            ) : null}
 
-            <View className="flex-row gap-2">
-              <TouchableOpacity
-                onPress={() => openNavigation('google')}
-                className="flex-1 bg-blue-600 py-2.5 px-3 rounded-lg flex-row items-center justify-center shadow-sm"
-              >
-                <Text className="text-white font-bold text-sm">🗺️ Google Maps</Text>
-              </TouchableOpacity>
+            {/* Final Tour Destination Navigation */}
+            <View className={activeDetourLocation ? "border-t border-gray-100 pt-3" : ""}>
+              {activeDetourLocation && (
+                <Text className="text-gray-500 text-[11px] font-bold uppercase tracking-wider mb-2">
+                  🏁 Final Tour Destination ({primaryDestination})
+                </Text>
+              )}
+              <View className="flex-row gap-2">
+                <TouchableOpacity
+                  onPress={() => openNavigation('google')}
+                  className="flex-1 bg-blue-600 py-2.5 px-3 rounded-lg flex-row items-center justify-center shadow-sm"
+                >
+                  <Text className="text-white font-bold text-sm">🗺️ Google Maps</Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => openNavigation('waze')}
-                className="flex-1 bg-cyan-600 py-2.5 px-3 rounded-lg flex-row items-center justify-center shadow-sm"
-              >
-                <Text className="text-white font-bold text-sm">🚗 Waze Navigation</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => openNavigation('waze')}
+                  className="flex-1 bg-cyan-600 py-2.5 px-3 rounded-lg flex-row items-center justify-center shadow-sm"
+                >
+                  <Text className="text-white font-bold text-sm">🚗 Waze Navigation</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <TouchableOpacity

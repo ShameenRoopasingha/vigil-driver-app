@@ -699,8 +699,9 @@ export async function calculateRoadDistanceOSRM(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3500); // 3.5s fast timeout
 
+    const headers = { 'User-Agent': 'VigilDriverApp/1.0.4 (support@vigil.app)' };
     const url = `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}?overview=false`;
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(url, { headers, signal: controller.signal });
     clearTimeout(timeout);
 
     if (res.ok) {
