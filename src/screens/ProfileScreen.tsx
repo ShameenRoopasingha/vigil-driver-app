@@ -10,7 +10,9 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Vibration,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -160,6 +162,76 @@ export default function ProfileScreen() {
     setAvatarUrl(url);
     setShowCustomUrlInput(false);
     setCustomUrlInput('');
+  };
+
+  const handlePickFromFiles = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please allow access to your device photos & files to select a profile picture.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        let photoUri = asset.uri;
+        if (asset.base64) {
+          const mimeType = asset.mimeType || 'image/jpeg';
+          photoUri = `data:${mimeType};base64,${asset.base64}`;
+        }
+        setAvatarUrl(photoUri);
+        Vibration.vibrate(10);
+      }
+    } catch (err: any) {
+      console.error('File picker error:', err);
+      Alert.alert('Photo Selection', err.message || 'Could not open device files.');
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please allow camera permission to take a new profile picture.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        let photoUri = asset.uri;
+        if (asset.base64) {
+          const mimeType = asset.mimeType || 'image/jpeg';
+          photoUri = `data:${mimeType};base64,${asset.base64}`;
+        }
+        setAvatarUrl(photoUri);
+        Vibration.vibrate(10);
+      }
+    } catch (err: any) {
+      console.error('Camera error:', err);
+      Alert.alert('Camera', err.message || 'Could not open camera.');
+    }
   };
 
   const handleUpdateEmail = async () => {
@@ -337,9 +409,80 @@ export default function ProfileScreen() {
               </Text>
 
               {/* Avatar Selector Gallery */}
-              <Text className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                Choose Profile Avatar
+              <Text className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">
+                Profile Photo & Avatar
               </Text>
+
+              {/* 2 Primary Device Action Cards: Browse Files + Camera */}
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={handlePickFromFiles}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#eff6ff',
+                    borderWidth: 1.5,
+                    borderColor: '#93c5fd',
+                    borderRadius: 14,
+                    paddingVertical: 12,
+                    paddingHorizontal: 8,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    shadowColor: '#3b82f6',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 3,
+                    elevation: 1,
+                  }}
+                >
+                  <Text style={{ fontSize: 22, marginBottom: 3 }}>📁</Text>
+                  <Text style={{ color: '#1d4ed8', fontWeight: '800', fontSize: 13 }}>
+                    Browse Files
+                  </Text>
+                  <Text style={{ color: '#64748b', fontSize: 10, fontWeight: '600', marginTop: 1 }}>
+                    Gallery & Device
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={handleTakePhoto}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#ecfdf5',
+                    borderWidth: 1.5,
+                    borderColor: '#a7f3d0',
+                    borderRadius: 14,
+                    paddingVertical: 12,
+                    paddingHorizontal: 8,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    shadowColor: '#10b981',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 3,
+                    elevation: 1,
+                  }}
+                >
+                  <Text style={{ fontSize: 22, marginBottom: 3 }}>📷</Text>
+                  <Text style={{ color: '#065f46', fontWeight: '800', fontSize: 13 }}>
+                    Take Photo
+                  </Text>
+                  <Text style={{ color: '#64748b', fontSize: 10, fontWeight: '600', marginTop: 1 }}>
+                    Use Camera
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Divider */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
+                <Text style={{ color: '#94a3b8', fontSize: 10, fontWeight: '800', marginHorizontal: 8, letterSpacing: 0.5 }}>
+                  OR SELECT AVATAR
+                </Text>
+                <View style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
+              </View>
+
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
