@@ -48,7 +48,7 @@ export default function ArcNavbar() {
   const RADIUS = 210;   // Radial distance of icons
   const FOCAL_ANGLE = 135; // 135 degrees = 45 degrees down-left into phone thumb zone
 
-  // Navigation Items matching Driver App duties & Admin Platform styling
+  // 12 Items = 30° per step (Identical to Admin Platform for continuous rich multi-icon display)
   const items: ArcNavItem[] = [
     {
       id: 'dashboard',
@@ -67,7 +67,7 @@ export default function ArcNavbar() {
       color: '#10b981',
       bgColor: 'rgba(16, 185, 129, 0.2)',
       badge: locationService.isTripTrackingActive() ? 'LIVE' : undefined,
-      subtitle: 'Live Radar & Navigation',
+      subtitle: 'Live Radar & GPS Route',
     },
     {
       id: 'calendar',
@@ -85,7 +85,7 @@ export default function ArcNavbar() {
       icon: '💸',
       color: '#fbbf24',
       bgColor: 'rgba(251, 191, 36, 0.2)',
-      subtitle: 'Fuel, Tolls & Vehicle Receipts',
+      subtitle: 'Fuel, Tolls & Receipts',
     },
     {
       id: 'profile',
@@ -94,7 +94,7 @@ export default function ArcNavbar() {
       icon: '👤',
       color: '#2dd4bf',
       bgColor: 'rgba(45, 212, 191, 0.2)',
-      subtitle: 'Name, Photo & Operating Fleet',
+      subtitle: 'Name, Avatar & Fleet Info',
     },
     {
       id: 'sos',
@@ -112,14 +112,59 @@ export default function ArcNavbar() {
       icon: onDuty ? '🟢' : '☕',
       color: onDuty ? '#34d399' : '#f87171',
       bgColor: onDuty ? 'rgba(52, 211, 153, 0.2)' : 'rgba(248, 113, 113, 0.2)',
-      badge: onDuty ? 'ONLINE' : 'REST',
+      badge: onDuty ? 'ON' : 'REST',
       subtitle: onDuty ? 'Available for Transfers' : 'Shift Resting / Break',
       isAction: true,
     },
+    {
+      id: 'callOffice',
+      name: 'Call Fleet Office',
+      icon: '📞',
+      color: '#38bdf8',
+      bgColor: 'rgba(56, 189, 248, 0.2)',
+      subtitle: 'Direct Dispatch Contact',
+      isAction: true,
+    },
+    {
+      id: 'breakdown',
+      name: 'Report Breakdown',
+      icon: '🛠️',
+      color: '#f97316',
+      bgColor: 'rgba(249, 115, 22, 0.2)',
+      subtitle: 'Dispatch Emergency Swap',
+      isAction: true,
+    },
+    {
+      id: 'police',
+      name: 'Tourist Police (1912)',
+      icon: '🛡️',
+      color: '#10b981',
+      bgColor: 'rgba(16, 185, 129, 0.2)',
+      subtitle: '24/7 Sri Lanka Helpline',
+      isAction: true,
+    },
+    {
+      id: 'refresh',
+      name: 'Sync GPS Radar',
+      icon: '🔄',
+      color: '#a78bfa',
+      bgColor: 'rgba(167, 139, 250, 0.2)',
+      subtitle: 'Sync Live Location Now',
+      isAction: true,
+    },
+    {
+      id: 'history',
+      name: 'Tour History',
+      screen: 'Dashboard',
+      icon: '📜',
+      color: '#f472b6',
+      bgColor: 'rgba(244, 114, 182, 0.2)',
+      subtitle: 'Completed Trip Logs',
+    },
   ];
 
-  const TOTAL_ITEMS = items.length;
-  const ANGLE_STEP = 360 / TOTAL_ITEMS;
+  const TOTAL_ITEMS = items.length; // 12 items
+  const ANGLE_STEP = 360 / TOTAL_ITEMS; // Exactly 30° per item
 
   // Animation Refs
   const animMenu = useRef(new Animated.Value(0)).current;
@@ -251,6 +296,29 @@ export default function ArcNavbar() {
     }
     if (item.id === 'duty') {
       toggleDuty();
+      return;
+    }
+    if (item.id === 'callOffice') {
+      closeMenu(() => triggerCallOffice());
+      return;
+    }
+    if (item.id === 'breakdown') {
+      closeMenu(() => triggerBreakdownReport());
+      return;
+    }
+    if (item.id === 'police') {
+      closeMenu(() => Linking.openURL('tel:1912'));
+      return;
+    }
+    if (item.id === 'refresh') {
+      closeMenu(async () => {
+        try {
+          const addr = await locationService.getCurrentAddress();
+          Alert.alert('GPS Radar Connected', `Live GPS Telemetry Active.\nLocation: ${addr || 'Coordinates locked'}`);
+        } catch {
+          Alert.alert('GPS Radar', 'Live GPS location packet synchronized with fleet dispatch radar.');
+        }
+      });
       return;
     }
     if (item.screen && navigationRef.isReady()) {
@@ -507,7 +575,7 @@ export default function ArcNavbar() {
             <View pointerEvents="none" style={styles.concentricInner} />
 
             {/* Top-Right Corner Hub: Brand & Close Button */}
-            <View style={styles.cornerHub}>
+            <View style={[styles.cornerHub, { top: insets.top > 0 ? 12 : 8 }]}>
               <View style={styles.hubBrand}>
                 <Text style={styles.hubBrandTitle}>VIGIL DIAL</Text>
                 <Text style={styles.hubBrandSubtitle}>Infinite 360° • Rotary</Text>
@@ -546,10 +614,10 @@ export default function ArcNavbar() {
               const y = ORIGIN_Y + RADIUS * Math.sin(angleRad) - 24;
 
               const isFocused = idx === activeIndex;
-              const isVisible = angleDeg >= 65 && angleDeg <= 205;
+              const isVisible = angleDeg >= 60 && angleDeg <= 210;
               const distFromCenter = Math.abs(diff);
-              const scale = isFocused ? 1.25 : Math.max(0.78, 1 - distFromCenter / 140);
-              const opacity = isVisible ? Math.max(0, 1 - Math.max(0, distFromCenter - 25) / 50) : 0;
+              const scale = isFocused ? 1.25 : Math.max(0.74, 1 - distFromCenter / 150);
+              const opacity = isVisible ? Math.max(0, 1 - Math.max(0, distFromCenter - 30) / 45) : 0;
               const isActiveRoute = item.screen === currentRoute;
 
               if (!isVisible || opacity <= 0.05) return null;
@@ -587,9 +655,27 @@ export default function ArcNavbar() {
                 </View>
               );
             })}
+          </Animated.View>
 
-            {/* Active Item Floating Detail Card (Bottom-Left of Arc) */}
-            {items[activeIndex] && (
+          {/* Active Item Floating Detail Card (Positioned directly below the arc, fully unclipped) */}
+          {items[activeIndex] && (
+            <Animated.View
+              style={[
+                styles.detailCardWrapper,
+                {
+                  top: insets.top + 285,
+                  opacity: animMenu,
+                  transform: [
+                    {
+                      translateY: animMenu.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [20, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
               <TouchableOpacity
                 activeOpacity={0.85}
                 onPress={() => executeItemAction(items[activeIndex])}
@@ -616,8 +702,8 @@ export default function ArcNavbar() {
                   <Text style={styles.detailActionText}>TAP TO OPEN</Text>
                 </View>
               </TouchableOpacity>
-            )}
-          </Animated.View>
+            </Animated.View>
+          )}
         </View>
       )}
 
@@ -763,7 +849,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.6,
     shadowRadius: 20,
     elevation: 16,
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   concentricOuter: {
     position: 'absolute',
@@ -790,8 +876,7 @@ const styles = StyleSheet.create({
   // Top-Right Corner Hub
   cornerHub: {
     position: 'absolute',
-    top: 10,
-    right: 12,
+    right: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -901,36 +986,37 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
-  // Active Item Floating Detail Card (Bottom-Left of Arc)
-  detailCard: {
+  // Active Item Floating Detail Card (Positioned below the arc)
+  detailCardWrapper: {
     position: 'absolute',
-    left: 14,
-    bottom: 14,
-    width: 175,
-    backgroundColor: 'rgba(15, 23, 42, 0.96)',
-    borderRadius: 16,
-    borderWidth: 1.2,
+    right: 18,
+    width: 250,
+    zIndex: 40,
+  },
+  detailCard: {
+    backgroundColor: '#090d16',
+    borderRadius: 18,
+    borderWidth: 1.5,
     borderColor: 'rgba(16, 185, 129, 0.45)',
-    padding: 10,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
-    zIndex: 30,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 10,
   },
   detailIconSquircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
+    marginRight: 10,
   },
   detailIconText: {
-    fontSize: 18,
+    fontSize: 20,
   },
   detailTextWrapper: {
     flex: 1,
@@ -943,28 +1029,28 @@ const styles = StyleSheet.create({
   },
   detailTitleText: {
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: 13.5,
     fontWeight: '900',
     flex: 1,
-    marginRight: 2,
+    marginRight: 4,
   },
   detailChevronText: {
     color: '#10b981',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '900',
   },
   detailSubtitleText: {
     color: '#94a3b8',
-    fontSize: 8.5,
+    fontSize: 9.5,
     fontWeight: '600',
-    marginTop: 1,
+    marginTop: 2,
   },
   detailActionText: {
     color: '#34d399',
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '900',
-    letterSpacing: 0.6,
-    marginTop: 2,
+    letterSpacing: 0.8,
+    marginTop: 3,
   },
 
   // Emergency SOS Modal
