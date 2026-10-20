@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Linking,
   StyleSheet,
   Dimensions,
+  LayoutChangeEvent,
 } from 'react-native';
 import {
   searchPlacesOSM,
@@ -71,9 +72,18 @@ export default function OpenStreetMapPicker({
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
 
   // Interactive OpenStreetMap preview zoom level
-  const [zoom, setZoom] = useState(14);
+  const [zoom, setZoom] = useState(15);
+
+  // Measured container width for accurate tile centering
+  const [mapWidth, setMapWidth] = useState(Dimensions.get('window').width - 56);
+  const MAP_HEIGHT = 200;
 
   const debounceTimerRef = useRef<any>(null);
+
+  const onMapLayout = useCallback((e: LayoutChangeEvent) => {
+    const { width } = e.nativeEvent.layout;
+    if (width > 0) setMapWidth(width);
+  }, []);
 
   // Live Debounced OpenStreetMap Nominatim Search
   useEffect(() => {
@@ -174,7 +184,7 @@ export default function OpenStreetMapPicker({
     Linking.openURL(url).catch((err) => console.warn('Could not open OSM:', err));
   };
 
-  // Calculate 3x3 Tile Grid for OpenStreetMap
+  // Calculate tile grid for OpenStreetMap (dynamically measured container)
   const renderMapTiles = () => {
     if (!selectedPlace) return null;
 
@@ -184,15 +194,19 @@ export default function OpenStreetMapPicker({
       zoom
     );
 
-    const containerWidth = 320;
-    const containerHeight = 170;
+    const containerWidth = mapWidth;
+    const containerHeight = MAP_HEIGHT;
     const centerX = containerWidth / 2;
     const centerY = containerHeight / 2;
 
-    const tileOffsets = [-1, 0, 1];
+    // Use a 5x5 grid to guarantee full coverage on all screen sizes
+    const tileOffsets = [-2, -1, 0, 1, 2];
 
     return (
-      <View style={[styles.mapContainer, { width: '100%', height: containerHeight }]}>
+      <View
+        style={[styles.mapContainer, { width: '100%', height: containerHeight }]}
+        onLayout={onMapLayout}
+      >
         {tileOffsets.map((dx) =>
           tileOffsets.map((dy) => {
             const tileX = xtile + dx;
@@ -201,10 +215,25 @@ export default function OpenStreetMapPicker({
             const tileTop = centerY - offsetY + dy * 256;
             const tileUrl = getOsmTileUrl(zoom, tileX, tileY);
 
+            // Only render tiles that are at least partially visible
+            if (
+              tileLeft + 256 < 0 ||
+              tileLeft > containerWidth ||
+              tileTop + 256 < 0 ||
+              tileTop > containerHeight
+            ) {
+              return null;
+            }
+
             return (
               <Image
                 key={`${tileX}-${tileY}-${zoom}`}
-                source={{ uri: tileUrl }}
+                source={{
+                  uri: tileUrl,
+                  headers: {
+                    'User-Agent': 'VigilDriverApp/1.0.3 (driver@vigil.app)',
+                  },
+                }}
                 style={[
                   styles.mapTile,
                   {
@@ -220,7 +249,7 @@ export default function OpenStreetMapPicker({
 
         {/* Focal Pin placed exactly at center coordinates */}
         <View pointerEvents="none" style={styles.pinWrapper}>
-          <View style={styles.pinGlowRing} />
+          <View style={styles.pinShadow} />
           <Text style={styles.pinEmoji}>📍</Text>
         </View>
 
@@ -228,7 +257,7 @@ export default function OpenStreetMapPicker({
         <View style={styles.zoomControls}>
           <TouchableOpacity
             style={styles.zoomButton}
-            onPress={() => setZoom((prev) => Math.min(prev + 1, 18))}
+            onPress={() => setZoom((prev) => Math.min(prev + 1, 17))}
             activeOpacity={0.7}
           >
             <Text style={styles.zoomButtonText}>+</Text>
@@ -236,7 +265,7 @@ export default function OpenStreetMapPicker({
           <View style={styles.zoomDivider} />
           <TouchableOpacity
             style={styles.zoomButton}
-            onPress={() => setZoom((prev) => Math.max(prev - 1, 10))}
+            onPress={() => setZoom((prev) => Math.max(prev - 1, 8))}
             activeOpacity={0.7}
           >
             <Text style={styles.zoomButtonText}>−</Text>
@@ -697,19 +726,19 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '50%',
     left: '50%',
-    marginLeft: -16,
-    marginTop: -28,
+    marginLeft: -14,
+    marginTop: -30,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 20,
   },
-  pinGlowRing: {
+  pinShadow: {
     position: 'absolute',
-    bottom: 2,
-    width: 14,
-    height: 6,
-    borderRadius: 7,
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    bottom: 0,
+    width: 12,
+    height: 5,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
   pinEmoji: {
     fontSize: 28,
