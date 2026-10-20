@@ -476,27 +476,8 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
           </View>
         </View>
 
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('Profile')} 
-          activeOpacity={0.7}
-          style={{ 
-            backgroundColor: '#f8fafc', 
-            paddingHorizontal: 14, 
-            paddingVertical: 8, 
-            borderRadius: 9999, 
-            borderWidth: 1.2, 
-            borderColor: '#cbd5e1',
-            flexDirection: 'row',
-            alignItems: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.05,
-            shadowRadius: 2,
-            elevation: 1,
-          }}
-        >
-          <Text style={{ color: '#334155', fontWeight: '800', fontSize: 12 }}>⚙️ Settings</Text>
-        </TouchableOpacity>
+        {/* Empty Spacer reserved for Top-Right Arc Nav Dial Button */}
+        <View style={{ width: 44, height: 40 }} />
       </View>
 
       {/* Driver & Tour Operating Company Profile Hero Card (Admin Platform Design) */}
@@ -561,27 +542,10 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
       </TouchableOpacity>
 
       <View className="flex-1 px-4 pt-4">
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, paddingHorizontal: 4 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={{ fontSize: 17, fontWeight: '900', color: '#0f172a' }}>My Assigned Tours</Text>
-            <View style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' }}>
-              <Text style={{ fontSize: 11, fontWeight: '800', color: '#475569' }}>{tours.length}</Text>
-            </View>
-          </View>
-
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity 
-              style={{ backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
-              onPress={() => navigation.navigate('Calendar')}
-            >
-              <Text style={{ color: '#1d4ed8', fontSize: 11, fontWeight: '800' }}>📅 Calendar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={{ backgroundColor: '#10b981', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, shadowColor: '#10b981', shadowOpacity: 0.3, shadowRadius: 4, elevation: 2 }}
-              onPress={() => navigation.navigate('AddExpense', {})}
-            >
-              <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '800' }}>+ Expense</Text>
-            </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14, paddingHorizontal: 4 }}>
+          <Text style={{ fontSize: 17, fontWeight: '900', color: '#0f172a' }}>My Assigned Tours</Text>
+          <View style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' }}>
+            <Text style={{ fontSize: 11, fontWeight: '800', color: '#475569' }}>{tours.length}</Text>
           </View>
         </View>
 

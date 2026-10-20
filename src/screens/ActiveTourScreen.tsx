@@ -488,7 +488,7 @@ export default function ActiveTourScreen() {
         </TouchableOpacity>
 
         {/* Center / Right: Tour Company Badge */}
-        <View className="flex-row items-center flex-1 justify-end min-w-0">
+        <View className="flex-row items-center flex-1 justify-end min-w-0" style={{ paddingRight: 46 }}>
           {tour?.company?.logoUrl ? (
             <View className="w-8 h-8 bg-white rounded-lg border border-gray-200 p-0.5 mr-2 items-center justify-center shadow-xs">
               <Image 

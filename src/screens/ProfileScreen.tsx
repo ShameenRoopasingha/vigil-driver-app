@@ -271,14 +271,8 @@ export default function ProfileScreen() {
             <Text style={{ fontSize: 17, fontWeight: '900', color: '#0f172a' }}>Settings & Profile</Text>
           </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0' }}>
-            <Image 
-              source={require('../../assets/logo-icon.png')} 
-              style={{ width: 18, height: 18, marginRight: 6 }} 
-              resizeMode="contain" 
-            />
-            <Text style={{ color: '#0f172a', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>VIGIL</Text>
-          </View>
+          {/* Space reserved for Top-Right Arc Nav Button */}
+          <View style={{ width: 44, height: 40 }} />
         </View>
 
         {loading ? (

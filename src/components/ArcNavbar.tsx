@@ -488,9 +488,9 @@ export default function ArcNavbar() {
 
   return (
     <>
-      {/* Sleek Floating Trigger Button (Signature Admin App Dial with glowing dot) */}
+      {/* Sleek Top-Right Corner Trigger Button (Admin App Style) */}
       {!isOpen && (
-        <View style={[styles.triggerWrapper, { bottom: bottomOffset, right: rightOffset }]}>
+        <View style={[styles.triggerWrapper, { top: insets.top + 12, right: 16 }]}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={openMenu}
@@ -499,9 +499,9 @@ export default function ArcNavbar() {
           >
             {/* Dial Rotary Icon */}
             <View style={styles.triggerDialIcon}>
-              <View style={[styles.dialBar, { width: 14, height: 2.5, backgroundColor: '#10b981' }]} />
-              <View style={[styles.dialBar, { width: 18, height: 2.5, backgroundColor: '#38bdf8', marginTop: 3 }]} />
-              <View style={[styles.dialBar, { width: 12, height: 2.5, backgroundColor: '#10b981', marginTop: 3 }]} />
+              <View style={[styles.dialBar, { width: 13, height: 2.2, backgroundColor: '#10b981' }]} />
+              <View style={[styles.dialBar, { width: 17, height: 2.2, backgroundColor: '#38bdf8', marginTop: 2.8 }]} />
+              <View style={[styles.dialBar, { width: 11, height: 2.2, backgroundColor: '#10b981', marginTop: 2.8 }]} />
             </View>
 
             {/* Glowing Emerald Pulse Dot */}
@@ -786,19 +786,19 @@ const styles = StyleSheet.create({
     zIndex: 99,
   },
   triggerButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#090d16',
     borderWidth: 1.5,
-    borderColor: 'rgba(16, 185, 129, 0.45)',
+    borderColor: 'rgba(16, 185, 129, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 6,
   },
   triggerDialIcon: {
     alignItems: 'flex-start',
@@ -809,11 +809,11 @@ const styles = StyleSheet.create({
   },
   pulseDot: {
     position: 'absolute',
-    top: 5,
-    right: 5,
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+    top: 4,
+    right: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#10b981',
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
@@ -823,11 +823,11 @@ const styles = StyleSheet.create({
   },
   liveRing: {
     position: 'absolute',
-    top: -5,
-    left: -5,
-    right: -5,
-    bottom: -5,
-    borderRadius: 30,
+    top: -4,
+    left: -4,
+    right: -4,
+    bottom: -4,
+    borderRadius: 24,
     borderWidth: 1.5,
     borderColor: '#10b981',
     opacity: 0.6,
