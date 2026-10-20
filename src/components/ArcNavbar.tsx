@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { navigationRef } from '../navigation/navigationRef';
 import { locationService } from '../services/locationService';
+import { toast } from '../utils/toast';
 
 export interface ArcNavItem {
   id: string;
@@ -257,8 +258,8 @@ export default function ArcNavbar() {
       const nextDuty = !onDuty;
       setOnDuty(nextDuty);
       await AsyncStorage.setItem('driver_duty_status', String(nextDuty));
-      Alert.alert(
-        nextDuty ? '🟢 Status: On Duty' : '☕ Status: Resting / Break',
+      toast.success(
+        nextDuty ? 'Status: On Duty' : 'Status: Resting',
         nextDuty
           ? 'You are active and ready for passenger pickups & scheduled tours.'
           : 'You are marked as resting. Take your break safely!'
@@ -314,9 +315,9 @@ export default function ArcNavbar() {
       closeMenu(async () => {
         try {
           const addr = await locationService.getCurrentAddress();
-          Alert.alert('GPS Radar Connected', `Live GPS Telemetry Active.\nLocation: ${addr || 'Coordinates locked'}`);
+          toast.info('GPS Radar Connected', addr ? `Location: ${addr}` : 'Coordinates locked.');
         } catch {
-          Alert.alert('GPS Radar', 'Live GPS location packet synchronized with fleet dispatch radar.');
+          toast.info('GPS Radar', 'Live GPS location packet synchronized with fleet dispatch radar.');
         }
       });
       return;
@@ -329,7 +330,7 @@ export default function ArcNavbar() {
             navigationRef.navigate('ActiveTour', { bookingId: activeBookingId });
           } else {
             navigationRef.navigate('Dashboard');
-            Alert.alert('No Active Tour', 'Please select a tour from your dashboard to view its live route.');
+            toast.info('No Active Tour', 'Please select a tour from your dashboard to view its live route.');
           }
         } else {
           navigationRef.navigate(item.screen as any);
@@ -437,7 +438,7 @@ export default function ArcNavbar() {
     if (companyPhone) {
       Linking.openURL(`tel:${companyPhone}`);
     } else {
-      Alert.alert('Office Phone', 'Company dispatch phone number is not configured in your profile.');
+      toast.warning('Office Phone', 'Company dispatch phone number is not configured in your profile.');
     }
   };
 
@@ -446,7 +447,7 @@ export default function ArcNavbar() {
     const activeBookingId = locationService.getActiveBookingId();
     if (activeBookingId && navigationRef.isReady()) {
       navigationRef.navigate('ActiveTour', { bookingId: activeBookingId });
-      Alert.alert(
+      toast.info(
         'Breakdown Dispatch',
         'Please tap "Report Breakdown" under Tour Actions to alert office and request vehicle swap.'
       );

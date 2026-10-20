@@ -13,6 +13,7 @@ import {
   OdometerReadingSchema 
 } from '../validations';
 import OpenStreetMapPicker from '../components/OpenStreetMapPicker';
+import { toast } from '../utils/toast';
 
 type ActiveTourRouteProp = RouteProp<RootStackParamList, 'ActiveTour'>;
 type ActiveTourNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ActiveTour'>;
@@ -121,7 +122,7 @@ export default function ActiveTourScreen() {
     });
 
     if (!validation.success) {
-      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please check breakdown details.');
+      toast.warning('Validation Error', validation.error.issues[0]?.message || 'Please check breakdown details.');
       return;
     }
 
@@ -137,9 +138,9 @@ export default function ActiveTourScreen() {
       });
 
       if (res.data?.success) {
-        Alert.alert(
+        toast.success(
           'Breakdown Reported',
-          'Company dispatch has been notified with your vehicle defect and location. Please park safely while replacement transport is arranged.'
+          'Company dispatch has been notified. Please park safely while replacement transport is arranged.'
         );
         setShowBreakdownModal(false);
         setBreakdownMeter('');
@@ -147,11 +148,11 @@ export default function ActiveTourScreen() {
         setBreakdownNote('');
         fetchTour();
       } else {
-        Alert.alert('Error', res.data?.error || 'Failed to submit breakdown report.');
+        toast.error('Error', res.data?.error || 'Failed to submit breakdown report.');
       }
     } catch (err: any) {
       console.error(err);
-      Alert.alert('Error', err?.response?.data?.error || 'Network error while submitting breakdown report.');
+      toast.error('Error', err?.response?.data?.error || 'Network error while submitting breakdown report.');
     } finally {
       setBreakdownSubmitting(false);
     }
@@ -166,7 +167,7 @@ export default function ActiveTourScreen() {
     });
 
     if (!validation.success) {
-      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please check handover details.');
+      toast.warning('Validation Error', validation.error.issues[0]?.message || 'Please check handover details.');
       return;
     }
 
@@ -186,9 +187,9 @@ export default function ActiveTourScreen() {
       });
 
       if (res.data?.success) {
-        Alert.alert(
+        toast.success(
           'Handover Request Sent',
-          'Company dispatch has been notified with your reported meter reading and reason. Please remain with the vehicle until dispatch confirms the replacement driver.'
+          'Company dispatch has been notified. Please remain with the vehicle until dispatch confirms the replacement driver.'
         );
         setShowHandoverModal(false);
         setHandoverMeter('');
@@ -196,11 +197,11 @@ export default function ActiveTourScreen() {
         setHandoverNote('');
         fetchTour();
       } else {
-        Alert.alert('Error', res.data?.error || 'Failed to submit handover request.');
+        toast.error('Error', res.data?.error || 'Failed to submit handover request.');
       }
     } catch (err: any) {
       console.error(err);
-      Alert.alert('Error', err?.response?.data?.error || 'Network error while submitting handover request.');
+      toast.error('Error', err?.response?.data?.error || 'Network error while submitting handover request.');
     } finally {
       setHandoverSubmitting(false);
     }
@@ -217,7 +218,7 @@ export default function ActiveTourScreen() {
     });
 
     if (!validation.success) {
-      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please check route change details.');
+      toast.warning('Validation Error', validation.error.issues[0]?.message || 'Please check route change details.');
       return;
     }
 
@@ -234,11 +235,11 @@ export default function ActiveTourScreen() {
       });
 
       if (res.data?.success) {
-        Alert.alert(
+        toast.success(
           'Route Updated',
           routeChangeType === 'DESTINATION'
-            ? `New destination set to "${validation.data.location}". In-app GPS navigation and office dispatch have been updated.`
-            : `Added detour stop: "${validation.data.location}". Office dispatch has been alerted of the additional stop.`
+            ? `New destination set to "${validation.data.location}". In-app GPS and dispatch updated.`
+            : `Added detour stop: "${validation.data.location}". Dispatch alerted.`
         );
         setShowRouteChangeModal(false);
         setNewRouteLocation('');
@@ -247,11 +248,11 @@ export default function ActiveTourScreen() {
         setRouteChangeNote('');
         fetchTour();
       } else {
-        Alert.alert('Error', res.data?.error || 'Failed to update tour route.');
+        toast.error('Error', res.data?.error || 'Failed to update tour route.');
       }
     } catch (err: any) {
       console.error(err);
-      Alert.alert('Error', err?.response?.data?.error || 'Network error while updating route.');
+      toast.error('Error', err?.response?.data?.error || 'Network error while updating route.');
     } finally {
       setRouteChangeSubmitting(false);
     }
@@ -276,7 +277,7 @@ export default function ActiveTourScreen() {
           }
         }
       } else {
-        Alert.alert('Error', 'Failed to load tour details.');
+        toast.error('Error', 'Failed to load tour details.');
       }
     } catch (error: any) {
       console.error(error);
@@ -291,7 +292,7 @@ export default function ActiveTourScreen() {
         );
         return;
       }
-      Alert.alert('Error', 'Network error while fetching tour.');
+      toast.error('Error', 'Network error while fetching tour.');
     } finally {
       setLoading(false);
     }
@@ -313,7 +314,7 @@ export default function ActiveTourScreen() {
   const openNavigation = (type: 'google' | 'waze', destinationTarget?: string) => {
     const target = destinationTarget || tour?.dropLocation || tour?.destination || tour?.pickupLocation;
     if (!target) {
-      Alert.alert('No Destination', 'No destination address is set for this tour.');
+      toast.warning('No Destination', 'No destination address is set for this tour.');
       return;
     }
 
@@ -327,7 +328,7 @@ export default function ActiveTourScreen() {
         if (supported || type === 'google') {
           Linking.openURL(url);
         } else {
-          Alert.alert('App Not Installed', 'Waze app is not installed on this device.');
+          toast.warning('App Not Installed', 'Waze app is not installed on this device.');
         }
       })
       .catch((err) => console.error('Error opening map navigation:', err));
@@ -338,7 +339,7 @@ export default function ActiveTourScreen() {
     if (type === 'google' && handover?.googleMapsUrl) {
       Linking.openURL(handover.googleMapsUrl).catch((err) => {
         console.error('Error opening Google Maps:', err);
-        Alert.alert('Error', 'Could not open Google Maps navigation.');
+        toast.error('Navigation Error', 'Could not open Google Maps navigation.');
       });
       return;
     }
@@ -348,7 +349,7 @@ export default function ActiveTourScreen() {
         if (supported) {
           Linking.openURL(handover.wazeUrl);
         } else {
-          Alert.alert('App Not Installed', 'Waze app is not installed on this device.');
+          toast.warning('App Not Installed', 'Waze app is not installed on this device.');
         }
       }).catch((err) => console.error('Error opening Waze:', err));
       return;
@@ -359,7 +360,7 @@ export default function ActiveTourScreen() {
       : (handover?.location || tour?.pickupLocation || tour?.destination);
 
     if (!target) {
-      Alert.alert('No Location', 'No handover location or coordinates found.');
+      toast.warning('No Location', 'No handover location or coordinates found.');
       return;
     }
 
@@ -369,7 +370,7 @@ export default function ActiveTourScreen() {
   const handleAction = async (action: 'START_TRIP' | 'END_TRIP' | 'TAKEOVER') => {
     const validation = OdometerReadingSchema.safeParse({ meterReading });
     if (!validation.success) {
-      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please enter a valid meter reading on the dashboard.');
+      toast.warning('Validation Error', validation.error.issues[0]?.message || 'Please enter a valid meter reading on the dashboard.');
       return;
     }
 
@@ -380,7 +381,7 @@ export default function ActiveTourScreen() {
       tourDate.setHours(0, 0, 0, 0);
       
       if (today < tourDate) {
-        Alert.alert('Too Early', 'You cannot start this trip before its scheduled date.');
+        toast.warning('Too Early', 'You cannot start this trip before its scheduled date.');
         return;
       }
     }
@@ -411,23 +412,23 @@ export default function ActiveTourScreen() {
               if (response.data?.success) {
                 if (action === 'START_TRIP' || action === 'TAKEOVER') {
                   await locationService.startTripTracking(bookingId);
-                  Alert.alert(
+                  toast.success(
                     action === 'START_TRIP' ? 'Trip Started' : 'Tour Taken Over',
                     'GPS Live Tracking is now broadcasting to company dispatch.'
                   );
                 } else if (action === 'END_TRIP') {
                   await locationService.stopTripTracking();
-                  Alert.alert('Trip Ended', 'Live GPS tracking has been stopped.');
+                  toast.info('Trip Ended', 'Live GPS tracking has been stopped.');
                 }
 
                 fetchTour(); // Refresh data
                 setMeterReading(''); // Clear input
               } else {
-                Alert.alert('Error', response.data?.error || 'Failed to update trip.');
+                toast.error('Error', response.data?.error || 'Failed to update trip.');
               }
             } catch (error) {
               console.error(error);
-              Alert.alert('Error', 'Network error.');
+              toast.error('Network Error', 'Failed to communicate with server.');
             } finally {
               setActionLoading(false);
             }

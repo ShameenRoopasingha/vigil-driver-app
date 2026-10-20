@@ -6,6 +6,7 @@ import { apiClient } from '../api/client';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { DriverExpenseInputSchema } from '../validations';
+import { toast } from '../utils/toast';
 
 type AddExpenseRouteProp = RouteProp<RootStackParamList, 'AddExpense'>;
 type AddExpenseNavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddExpense'>;
@@ -42,7 +43,7 @@ export default function AddExpenseScreen() {
     });
 
     if (!validation.success) {
-      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please check your expense details.');
+      toast.warning('Validation Error', validation.error.issues[0]?.message || 'Please check your expense details.');
       return;
     }
 
@@ -68,15 +69,14 @@ export default function AddExpenseScreen() {
               });
 
               if (response.data?.success) {
-                Alert.alert('Success', 'Expense saved successfully!', [
-                  { text: 'OK', onPress: () => navigation.goBack() }
-                ]);
+                toast.success('Expense Saved', 'Expense logged successfully!');
+                navigation.goBack();
               } else {
-                Alert.alert('Error', response.data?.error || 'Failed to save expense');
+                toast.error('Save Failed', response.data?.error || 'Failed to save expense');
               }
             } catch (error: any) {
               console.error(error);
-              Alert.alert('Error', error.response?.data?.error || 'Network error');
+              toast.error('Network Error', error.response?.data?.error || 'Could not save expense.');
             } finally {
               setLoading(false);
             }

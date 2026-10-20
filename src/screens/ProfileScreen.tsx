@@ -24,6 +24,7 @@ import {
   DriverEmailUpdateSchema,
   DriverPasswordChangeSchema,
 } from '../validations';
+import { toast } from '../utils/toast';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 
@@ -125,7 +126,7 @@ export default function ProfileScreen() {
   const handleUpdateDetails = async () => {
     const validation = DriverProfileDetailsSchema.safeParse({ name: editName });
     if (!validation.success) {
-      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please check your name input.');
+      toast.warning('Validation Error', validation.error.issues[0]?.message || 'Please check your name input.');
       return;
     }
 
@@ -134,7 +135,7 @@ export default function ProfileScreen() {
     const isAvatarChanged = avatarUrl !== initialAvatarUrl;
 
     if (!isNameChanged && !isAvatarChanged) {
-      Alert.alert('No Changes', 'Your profile details are already up to date.');
+      toast.info('No Changes', 'Your profile details are already up to date.');
       return;
     }
 
@@ -155,13 +156,13 @@ export default function ProfileScreen() {
         }
 
         Vibration.vibrate(12);
-        Alert.alert('Profile Updated', 'Your chauffeur name and profile photo have been updated successfully!');
+        toast.success('Profile Updated', 'Your chauffeur name and profile photo have been updated successfully!');
       } else {
-        Alert.alert('Update Failed', res.data?.error || 'Could not update profile');
+        toast.error('Update Failed', res.data?.error || 'Could not update profile');
       }
     } catch (error: any) {
       const msg = error.response?.data?.error || error.message || 'Network error updating profile';
-      Alert.alert('Update Failed', msg);
+      toast.error('Update Failed', msg);
     } finally {
       setDetailsSaving(false);
     }
@@ -170,7 +171,7 @@ export default function ProfileScreen() {
   const handleApplyCustomUrl = () => {
     const url = customUrlInput.trim();
     if (!url) {
-      Alert.alert('Invalid URL', 'Please enter a valid image URL');
+      toast.warning('Invalid URL', 'Please enter a valid image URL');
       return;
     }
     setAvatarUrl(url);
@@ -182,7 +183,7 @@ export default function ProfileScreen() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
+        toast.warning(
           'Permission Required',
           'Please allow access to your device photos & files to select a profile picture.'
         );
@@ -209,7 +210,7 @@ export default function ProfileScreen() {
       }
     } catch (err: any) {
       console.error('File picker error:', err);
-      Alert.alert('Photo Selection', err.message || 'Could not open device files.');
+      toast.error('Photo Selection', err.message || 'Could not open device files.');
     }
   };
 
@@ -217,7 +218,7 @@ export default function ProfileScreen() {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
+        toast.warning(
           'Permission Required',
           'Please allow camera permission to take a new profile picture.'
         );
@@ -244,20 +245,20 @@ export default function ProfileScreen() {
       }
     } catch (err: any) {
       console.error('Camera error:', err);
-      Alert.alert('Camera', err.message || 'Could not open camera.');
+      toast.error('Camera', err.message || 'Could not open camera.');
     }
   };
 
   const handleUpdateEmail = async () => {
     const validation = DriverEmailUpdateSchema.safeParse({ email: newEmail });
     if (!validation.success) {
-      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please enter a valid email address.');
+      toast.warning('Validation Error', validation.error.issues[0]?.message || 'Please enter a valid email address.');
       return;
     }
 
     const trimmed = validation.data.email.toLowerCase();
     if (trimmed === currentEmail.toLowerCase()) {
-      Alert.alert('No Change', 'The email address is already set to ' + trimmed);
+      toast.info('No Change', 'The email address is already set to ' + trimmed);
       return;
     }
 
@@ -273,13 +274,13 @@ export default function ProfileScreen() {
           await AsyncStorage.setItem('driverData', JSON.stringify(res.data.data.driver));
         }
         Vibration.vibrate(12);
-        Alert.alert('Success', 'Your email address has been updated successfully!');
+        toast.success('Success', 'Your email address has been updated successfully!');
       } else {
-        Alert.alert('Update Failed', res.data?.error || 'Could not update email');
+        toast.error('Update Failed', res.data?.error || 'Could not update email');
       }
     } catch (error: any) {
       const msg = error.response?.data?.error || error.message || 'Network error while updating email';
-      Alert.alert('Update Failed', msg);
+      toast.error('Update Failed', msg);
     } finally {
       setEmailSaving(false);
     }
@@ -293,7 +294,7 @@ export default function ProfileScreen() {
     });
 
     if (!validation.success) {
-      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please verify your password details.');
+      toast.warning('Validation Error', validation.error.issues[0]?.message || 'Please verify your password details.');
       return;
     }
 
@@ -309,13 +310,13 @@ export default function ProfileScreen() {
         setNewPassword('');
         setConfirmPassword('');
         Vibration.vibrate(12);
-        Alert.alert('Password Updated', 'Your security password has been changed successfully!');
+        toast.success('Password Updated', 'Your security password has been changed successfully!');
       } else {
-        Alert.alert('Update Failed', res.data?.error || 'Could not change password');
+        toast.error('Update Failed', res.data?.error || 'Could not change password');
       }
     } catch (error: any) {
       const msg = error.response?.data?.error || error.message || 'Network error while changing password';
-      Alert.alert('Update Failed', msg);
+      toast.error('Update Failed', msg);
     } finally {
       setPasswordSaving(false);
     }

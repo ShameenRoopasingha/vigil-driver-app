@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -7,6 +7,7 @@ import { apiClient } from '../api/client';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { DriverLoginInputSchema } from '../validations';
+import { toast } from '../utils/toast';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -19,7 +20,7 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     const validation = DriverLoginInputSchema.safeParse({ email, password });
     if (!validation.success) {
-      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Invalid email or password');
+      toast.warning('Validation Error', validation.error.issues[0]?.message || 'Invalid email or password');
       return;
     }
 
@@ -33,13 +34,14 @@ export default function LoginScreen() {
       if (response.data?.success && response.data?.data?.token) {
         await AsyncStorage.setItem('driverToken', response.data.data.token);
         await AsyncStorage.setItem('driverData', JSON.stringify(response.data.data.driver));
+        toast.success('Welcome back!', 'Logged in successfully');
         navigation.replace('Dashboard');
       } else {
-        Alert.alert('Login Failed', response.data?.error || 'Invalid credentials');
+        toast.error('Login Failed', response.data?.error || 'Invalid credentials');
       }
     } catch (error: any) {
       console.error(error);
-      Alert.alert('Login Failed', error.response?.data?.error || 'Cannot connect to server. Check IP address.');
+      toast.error('Login Failed', error.response?.data?.error || 'Cannot connect to server. Check IP address.');
     } finally {
       setLoading(false);
     }

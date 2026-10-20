@@ -3,6 +3,8 @@ import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import Toast from 'react-native-toast-message';
+import { toastConfig } from './src/utils/toast';
 import './global.css';
 
 import { RootStackParamList } from './src/navigation/types';
@@ -40,6 +42,7 @@ export default function App() {
           <LiveLocationNotificationBar />
           <ArcNavbar />
         </NavigationContainer>
+        <Toast config={toastConfig} />
       </View>
     </SafeAreaProvider>
   );
