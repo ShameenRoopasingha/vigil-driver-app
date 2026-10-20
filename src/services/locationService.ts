@@ -54,6 +54,35 @@ class DriverLocationService {
     return this.latestLocation;
   }
 
+  // Get current GPS coordinates (either latest cached or fresh hardware fix)
+  public async getCurrentCoordinates(): Promise<{ lat: number; lon: number } | null> {
+    try {
+      if (this.latestLocation?.coords) {
+        return {
+          lat: this.latestLocation.coords.latitude,
+          lon: this.latestLocation.coords.longitude,
+        };
+      }
+      const last = await Location.getLastKnownPositionAsync({});
+      if (last?.coords) {
+        return {
+          lat: last.coords.latitude,
+          lon: last.coords.longitude,
+        };
+      }
+      const fresh = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      if (fresh?.coords) {
+        return {
+          lat: fresh.coords.latitude,
+          lon: fresh.coords.longitude,
+        };
+      }
+    } catch (err) {
+      console.warn('Error obtaining driver GPS coordinates:', err);
+    }
+    return null;
+  }
+
   // Auto-detect human-readable address for current position (reverse geocoding)
   public async getCurrentAddress(): Promise<string> {
     try {

@@ -21,6 +21,7 @@ import {
   type PlaceSuggestion,
   type OSRMRouteInfo,
 } from '../services/osmService';
+import { locationService } from '../services/locationService';
 
 interface OpenStreetMapPickerProps {
   onSelectPlace: (place: {
@@ -158,23 +159,30 @@ export default function OpenStreetMapPicker({
     let extraKm: number | undefined = undefined;
     let duration: string | undefined = undefined;
 
-    if (currentLocation) {
-      setIsCalculatingRoute(true);
-      try {
-        const info = await calculateRoadDistanceOSRM(currentLocation, {
-          lat: place.lat,
-          lon: place.lon,
-        });
-        if (info) {
-          setRouteInfo(info);
-          extraKm = info.distanceKm;
-          duration = info.durationText;
-        }
-      } catch (err) {
-        console.warn('Error calculating road route:', err);
-      } finally {
-        setIsCalculatingRoute(false);
+    // Resolve origin coordinates (passed prop, location service GPS, or Sri Lanka center fallback)
+    let origin = currentLocation;
+    if (!origin) {
+      origin = await locationService.getCurrentCoordinates();
+    }
+    if (!origin) {
+      origin = { lat: 6.9271, lon: 79.8612 }; // Colombo default fallback
+    }
+
+    setIsCalculatingRoute(true);
+    try {
+      const info = await calculateRoadDistanceOSRM(origin, {
+        lat: place.lat,
+        lon: place.lon,
+      });
+      if (info) {
+        setRouteInfo(info);
+        extraKm = info.distanceKm;
+        duration = info.durationText;
       }
+    } catch (err) {
+      console.warn('Error calculating road route:', err);
+    } finally {
+      setIsCalculatingRoute(false);
     }
 
     onSelectPlace({

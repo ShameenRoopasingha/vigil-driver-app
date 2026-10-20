@@ -14,22 +14,23 @@ import {
 } from '../validations';
 import OpenStreetMapPicker from '../components/OpenStreetMapPicker';
 import { toast } from '../utils/toast';
+import { calculateRoadDistanceOSRM } from '../services/osmService';
 
 type ActiveTourRouteProp = RouteProp<RootStackParamList, 'ActiveTour'>;
 type ActiveTourNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ActiveTour'>;
 
 const POPULAR_DETOURS = [
-  { label: '🐘 Pinnawala Orphanage', location: 'Pinnawala Elephant Orphanage, Rambukkana', km: '25' },
-  { label: '🗼 Ambuluwawa Tower', location: 'Ambuluwawa Biodiversity Complex, Gampola', km: '18' },
-  { label: '🌿 Spice Garden', location: 'Euphoria Spice and Herbal Garden, Mawanella', km: '10' },
-  { label: '🛕 Temple of Tooth', location: 'Sri Dalada Maligawa, Kandy', km: '12' },
-  { label: '🌊 Ramboda Falls', location: 'Ramboda Falls, Pussellawa', km: '15' },
-  { label: '☕ Damro / Tea Factory', location: 'Damro Labookellie Tea Centre, Nuwara Eliya', km: '8' },
-  { label: '🚂 Nine Arch Bridge', location: 'Nine Arches Bridge, Ella', km: '14' },
-  { label: '🦁 Sigiriya Lion Rock', location: 'Sigiriya Rock Fortress, Sigiriya', km: '35' },
-  { label: '🛕 Dambulla Cave', location: 'Dambulla Royal Cave Temple, Dambulla', km: '20' },
-  { label: '🏄 Mirissa Beach', location: 'Mirissa Beach, Mirissa', km: '25' },
-  { label: '🏰 Galle Fort', location: 'Galle Fort, Galle', km: '20' },
+  { label: '🐘 Pinnawala Orphanage', location: 'Pinnawala Elephant Orphanage, Rambukkana', lat: 7.3013, lon: 80.3871 },
+  { label: '🗼 Ambuluwawa Tower', location: 'Ambuluwawa Biodiversity Complex, Gampola', lat: 7.1702, lon: 80.5488 },
+  { label: '🌿 Spice Garden', location: 'Euphoria Spice and Herbal Garden, Mawanella', lat: 7.2541, lon: 80.4512 },
+  { label: '🛕 Dalada Maligawa', location: 'Sri Dalada Maligawa, Kandy', lat: 7.2936, lon: 80.6413 },
+  { label: '🌊 Ramboda Falls', location: 'Ramboda Falls, Pussellawa', lat: 7.0544, lon: 80.6974 },
+  { label: '☕ Damro Tea Factory', location: 'Damro Labookellie Tea Centre, Nuwara Eliya', lat: 7.0267, lon: 80.7354 },
+  { label: '🚂 Nine Arch Bridge', location: 'Nine Arches Bridge, Ella', lat: 6.8768, lon: 81.0608 },
+  { label: '🦁 Sigiriya Lion Rock', location: 'Sigiriya Rock Fortress, Sigiriya', lat: 7.9541, lon: 80.7553 },
+  { label: '🛕 Dambulla Cave', location: 'Dambulla Royal Cave Temple, Dambulla', lat: 7.8567, lon: 80.6485 },
+  { label: '🏄 Mirissa Beach', location: 'Mirissa Beach, Mirissa', lat: 5.9482, lon: 80.4578 },
+  { label: '🏰 Galle Fort', location: 'Galle Fort, Galle', lat: 6.0269, lon: 80.2170 },
 ];
 
 export default function ActiveTourScreen() {
@@ -68,6 +69,51 @@ export default function ActiveTourScreen() {
   const [routeChangeNote, setRouteChangeNote] = useState('');
   const [customerAgreed, setCustomerAgreed] = useState(true);
   const [routeChangeSubmitting, setRouteChangeSubmitting] = useState(false);
+  const [driverCurrentCoords, setDriverCurrentCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
+  const [calculatedRouteSummary, setCalculatedRouteSummary] = useState<{
+    km: number;
+    durationText?: string;
+  } | null>(null);
+
+  // Auto-resolve driver's current GPS location whenever Route Alteration opens
+  useEffect(() => {
+    if (showRouteChangeModal) {
+      locationService.getCurrentCoordinates().then((coords) => {
+        if (coords) setDriverCurrentCoords(coords);
+      });
+    } else {
+      setCalculatedRouteSummary(null);
+      setIsCalculatingDistance(false);
+    }
+  }, [showRouteChangeModal]);
+
+  const handleSelectPopularDetour = async (detour: (typeof POPULAR_DETOURS)[0]) => {
+    setNewRouteLocation(detour.location);
+    setRouteChangeCoords({ lat: detour.lat, lon: detour.lon });
+    setIsCalculatingDistance(true);
+    try {
+      const origin =
+        driverCurrentCoords ||
+        (await locationService.getCurrentCoordinates()) ||
+        { lat: 6.9271, lon: 79.8612 };
+      const info = await calculateRoadDistanceOSRM(origin, {
+        lat: detour.lat,
+        lon: detour.lon,
+      });
+      if (info) {
+        setExtraKmInput(String(Math.round(info.distanceKm)));
+        setCalculatedRouteSummary({
+          km: Math.round(info.distanceKm),
+          durationText: info.durationText,
+        });
+      }
+    } catch (err) {
+      console.warn('Detour road distance calculation error:', err);
+    } finally {
+      setIsCalculatingDistance(false);
+    }
+  };
 
   const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>({
     isTracking: false,
@@ -1224,12 +1270,13 @@ export default function ActiveTourScreen() {
               {/* OpenStreetMap Place & Route Picker (Parity with Admin Platform) */}
               <OpenStreetMapPicker
                 currentLocation={
-                  locationService.getLatestLocation()?.coords
+                  driverCurrentCoords ||
+                  (locationService.getLatestLocation()?.coords
                     ? {
                         lat: locationService.getLatestLocation()!.coords.latitude,
                         lon: locationService.getLatestLocation()!.coords.longitude,
                       }
-                    : null
+                    : null)
                 }
                 initialLocationName={newRouteLocation}
                 initialCoords={routeChangeCoords}
@@ -1243,28 +1290,95 @@ export default function ActiveTourScreen() {
                   setRouteChangeCoords({ lat: place.lat, lon: place.lon });
                   if (place.roadDistanceKm !== undefined && place.roadDistanceKm > 0) {
                     setExtraKmInput(String(Math.round(place.roadDistanceKm)));
+                    setCalculatedRouteSummary({
+                      km: Math.round(place.roadDistanceKm),
+                      durationText: place.durationText,
+                    });
                   }
                 }}
               />
+
+              {/* Quick Detour Suggestions (One-tap calculation via OSM) */}
+              {routeChangeType === 'DETOUR' ? (
+                <View className="mb-3">
+                  <Text className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                    ⚡ Quick Sightseeing Suggestions
+                  </Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+                    {POPULAR_DETOURS.map((item, index) => {
+                      const isSelected = newRouteLocation === item.location;
+                      return (
+                        <TouchableOpacity
+                          key={index}
+                          onPress={() => handleSelectPopularDetour(item)}
+                          className={`mr-2 px-3 py-1.5 rounded-full border flex-row items-center ${
+                            isSelected
+                              ? 'bg-emerald-100 border-emerald-600'
+                              : 'bg-white border-gray-200'
+                          }`}
+                        >
+                          <Text
+                            className={`text-xs font-semibold ${
+                              isSelected ? 'text-emerald-900 font-bold' : 'text-gray-700'
+                            }`}
+                          >
+                            {item.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              ) : null}
 
               {/* Estimated Extra KM (auto-calculated via OSRM, editable) */}
               <View className="flex-row items-center justify-between mb-1">
                 <Text className="text-gray-700 font-semibold text-xs uppercase">
                   Estimated Extra Distance (KM)
                 </Text>
-                {extraKmInput ? (
+                {isCalculatingDistance ? (
+                  <View className="flex-row items-center gap-1">
+                    <ActivityIndicator size="small" color="#059669" />
+                    <Text className="text-[11px] font-bold text-emerald-700">OSRM calculating...</Text>
+                  </View>
+                ) : extraKmInput ? (
                   <Text className="text-[11px] font-bold text-emerald-700">
-                    Calculated via OSRM Road Router
+                    ✓ Auto-Calculated via OSM
                   </Text>
                 ) : null}
               </View>
               <TextInput
-                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 mb-3 text-sm font-medium"
+                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 mb-1.5 text-sm font-medium"
                 placeholder="e.g. 25"
                 keyboardType="numeric"
                 value={extraKmInput}
-                onChangeText={setExtraKmInput}
+                onChangeText={(val) => {
+                  setExtraKmInput(val);
+                  if (!val) setCalculatedRouteSummary(null);
+                }}
               />
+              {calculatedRouteSummary ? (
+                <View className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 mb-3 flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-2 flex-1">
+                    <Text className="text-base">🛣️</Text>
+                    <View className="flex-1">
+                      <Text className="text-xs font-bold text-emerald-900">
+                        OSM Road Route: +{calculatedRouteSummary.km} KM
+                      </Text>
+                      {calculatedRouteSummary.durationText ? (
+                        <Text className="text-[11px] text-emerald-700 font-medium">
+                          Estimated driving time: ~{calculatedRouteSummary.durationText}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                  <View className="bg-emerald-200 px-2 py-0.5 rounded">
+                    <Text className="text-[10px] font-bold text-emerald-800">Auto-filled</Text>
+                  </View>
+                </View>
+              ) : (
+                <View className="mb-3" />
+              )}
 
               {/* Reason Selector */}
               <Text className="text-gray-700 font-semibold text-xs mb-1.5 uppercase">
