@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Updates from 'expo-updates';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -10,13 +11,35 @@ import { navigationRef } from '../navigation/navigationRef';
 type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
 export default function SplashScreen({ navigation }: Props) {
+  const [statusMessage, setStatusMessage] = useState('Initializing workspace...');
+
   useEffect(() => {
     let isMounted = true;
 
     const checkAuth = async () => {
       try {
-        // Smooth brand exposure pause (800ms)
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        // Fast background check for EAS OTA updates
+        try {
+          if (Updates.isEnabled) {
+            const updateCheck = await Promise.race([
+              Updates.checkForUpdateAsync(),
+              new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500)),
+            ]);
+
+            if (updateCheck && updateCheck.isAvailable) {
+              if (isMounted) setStatusMessage('Downloading latest update...');
+              await Updates.fetchUpdateAsync();
+              if (isMounted) setStatusMessage('Applying update...');
+              await Updates.reloadAsync();
+              return;
+            }
+          }
+        } catch (updateErr) {
+          console.log('[Splash] OTA check bypassed:', updateErr);
+        }
+
+        // Smooth brand exposure pause (600ms)
+        await new Promise((resolve) => setTimeout(resolve, 600));
         if (!isMounted) return;
 
         const token = await AsyncStorage.getItem('driverToken');
@@ -67,7 +90,7 @@ export default function SplashScreen({ navigation }: Props) {
 
         <View style={{ marginTop: 32, flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 9999, borderWidth: 1, borderColor: '#1e293b' }}>
           <ActivityIndicator size="small" color="#10b981" />
-          <Text style={{ color: '#cbd5e1', fontSize: 12, fontWeight: '500', marginLeft: 8 }}>Initializing workspace...</Text>
+          <Text style={{ color: '#cbd5e1', fontSize: 12, fontWeight: '500', marginLeft: 8 }}>{statusMessage}</Text>
         </View>
       </View>
     </SafeAreaView>

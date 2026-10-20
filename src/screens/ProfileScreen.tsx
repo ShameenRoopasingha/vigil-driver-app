@@ -13,6 +13,7 @@ import {
   Vibration,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as Updates from 'expo-updates';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -65,6 +66,7 @@ export default function ProfileScreen() {
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -320,6 +322,46 @@ export default function ProfileScreen() {
         },
       },
     ]);
+  };
+
+  const handleManualCheckUpdates = async () => {
+    try {
+      setIsCheckingUpdate(true);
+      if (!Updates.isEnabled) {
+        Alert.alert('OTA Updates', 'Over-the-air updates are active in standalone production or preview builds.');
+        return;
+      }
+      const check = await Updates.checkForUpdateAsync();
+      if (check.isAvailable) {
+        Alert.alert(
+          'Update Found! 🚀',
+          'A new version of Vigil Driver App is available. Do you want to download and install it now?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Update & Restart',
+              onPress: async () => {
+                try {
+                  setIsCheckingUpdate(true);
+                  await Updates.fetchUpdateAsync();
+                  await Updates.reloadAsync();
+                } catch (e: any) {
+                  Alert.alert('Update Failed', e.message || 'Could not download update.');
+                } finally {
+                  setIsCheckingUpdate(false);
+                }
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Up to Date! ✅', 'Your Vigil Driver App is already running the latest fleet version.');
+      }
+    } catch (err: any) {
+      Alert.alert('Update Check', err.message || 'Could not reach EAS update server.');
+    } finally {
+      setIsCheckingUpdate(false);
+    }
   };
 
   const isDetailsDirty = editName.trim() !== initialDriverName || avatarUrl !== initialAvatarUrl;
@@ -773,6 +815,48 @@ export default function ProfileScreen() {
                   >
                     Update Password
                   </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* App System & Updates Card */}
+            <View style={{ backgroundColor: '#ffffff', borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', padding: 18, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Text style={{ fontSize: 14, fontWeight: '900', color: '#0f172a' }}>Fleet App Updates</Text>
+                <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#a7f3d0' }}>
+                  <Text style={{ color: '#065f46', fontSize: 11, fontWeight: '800' }}>v1.0.2</Text>
+                </View>
+              </View>
+              <Text style={{ fontSize: 12, color: '#64748b', marginBottom: 14, lineHeight: 18 }}>
+                Check and download the latest over-the-air features, GPS radar improvements, and profile options directly.
+              </Text>
+
+              <TouchableOpacity
+                onPress={handleManualCheckUpdates}
+                disabled={isCheckingUpdate}
+                activeOpacity={0.8}
+                style={{
+                  backgroundColor: '#f0fdf4',
+                  borderWidth: 1.5,
+                  borderColor: '#86efac',
+                  paddingVertical: 12,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+              >
+                {isCheckingUpdate ? (
+                  <>
+                    <ActivityIndicator size="small" color="#16a34a" />
+                    <Text style={{ color: '#16a34a', fontWeight: '800', fontSize: 13 }}>Checking Fleet Servers...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={{ fontSize: 15 }}>🔄</Text>
+                    <Text style={{ color: '#15803d', fontWeight: '800', fontSize: 13 }}>Check for Updates Now</Text>
+                  </>
                 )}
               </TouchableOpacity>
             </View>
