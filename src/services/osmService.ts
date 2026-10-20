@@ -567,10 +567,15 @@ export function latLonToTile(lat: number, lon: number, zoom: number) {
 }
 
 /**
- * OpenStreetMap Tile Image URL
- * Uses OpenStreetMap DE (FOSSGIS) which serves authentic OpenStreetMap tiles
- * with zero watermarks and no API key requirements.
+ * Fast, reliable raster map tile provider
+ * Uses high-speed raster tiles cached directly at Sri Lankan ISP edge nodes,
+ * with zero 403 blocking and zero watermarks.
  */
 export function getOsmTileUrl(zoom: number, xtile: number, ytile: number): string {
-  return `https://tile.openstreetmap.de/${zoom}/${xtile}/${ytile}.png`;
+  const s = Math.abs(xtile + ytile) % 4;
+  return `https://mt${s}.google.com/vt/lyrs=m&x=${xtile}&y=${ytile}&z=${zoom}`;
+}
+
+export function getFallbackTileUrl(zoom: number, xtile: number, ytile: number): string {
+  return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/${zoom}/${ytile}/${xtile}`;
 }

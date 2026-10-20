@@ -19,6 +19,7 @@ import {
   calculateRoadDistanceOSRM,
   latLonToTile,
   getOsmTileUrl,
+  getFallbackTileUrl,
   SRI_LANKA_LANDMARKS,
   type PlaceSuggestion,
   type OSRMRouteInfo,
@@ -225,8 +226,8 @@ export default function OpenStreetMapPicker({
     const centerX = containerWidth / 2;
     const centerY = containerHeight / 2;
 
-    // Use a 5x5 grid to guarantee full coverage on all screen sizes
-    const tileOffsets = [-2, -1, 0, 1, 2];
+    // Fast 3x3 tile grid around center (only ~4-6 visible tiles rendered)
+    const tileOffsets = [-1, 0, 1];
 
     return (
       <View
@@ -262,6 +263,7 @@ export default function OpenStreetMapPicker({
                     top: tileTop,
                   },
                 ]}
+                fadeDuration={0}
                 resizeMode="cover"
               />
             );
@@ -293,9 +295,9 @@ export default function OpenStreetMapPicker({
           </TouchableOpacity>
         </View>
 
-        {/* OpenStreetMap Attribution & Level Badge */}
+        {/* Live Map Attribution & Level Badge */}
         <View style={styles.attributionBadge}>
-          <Text style={styles.attributionText}>© OpenStreetMap contributors • Z{zoom}</Text>
+          <Text style={styles.attributionText}>🗺️ Map Radar • Z{zoom}</Text>
         </View>
       </View>
     );
