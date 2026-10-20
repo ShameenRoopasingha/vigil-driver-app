@@ -295,7 +295,7 @@ export default function OpenStreetMapPicker({
 
         {/* OpenStreetMap Attribution & Level Badge */}
         <View style={styles.attributionBadge}>
-          <Text style={styles.attributionText}>© OpenStreetMap • CARTO • Z{zoom}</Text>
+          <Text style={styles.attributionText}>© OpenStreetMap contributors • Z{zoom}</Text>
         </View>
       </View>
     );

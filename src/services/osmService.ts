@@ -568,11 +568,9 @@ export function latLonToTile(lat: number, lon: number, zoom: number) {
 
 /**
  * OpenStreetMap Tile Image URL
- * Uses CartoDB OpenStreetMap Voyager raster tiles which are fast, reliable,
- * officially open for mobile applications, and never block requests with 403.
+ * Uses OpenStreetMap DE (FOSSGIS) which serves authentic OpenStreetMap tiles
+ * with zero watermarks and no API key requirements.
  */
 export function getOsmTileUrl(zoom: number, xtile: number, ytile: number): string {
-  const subdomains = ['a', 'b', 'c', 'd'];
-  const s = subdomains[Math.abs(xtile + ytile) % subdomains.length];
-  return `https://${s}.basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${xtile}/${ytile}.png`;
+  return `https://tile.openstreetmap.de/${zoom}/${xtile}/${ytile}.png`;
 }
