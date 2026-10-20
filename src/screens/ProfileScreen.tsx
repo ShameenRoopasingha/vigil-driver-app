@@ -268,7 +268,7 @@ export default function ProfileScreen() {
             >
               <Text style={{ color: '#0f172a', fontSize: 13, fontWeight: '800' }}>← Back</Text>
             </TouchableOpacity>
-            <Text style={{ fontSize: 17, fontWeight: '900', color: '#0f172a' }}>Driver Profile</Text>
+            <Text style={{ fontSize: 17, fontWeight: '900', color: '#0f172a' }}>Settings & Profile</Text>
           </View>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0' }}>
@@ -640,14 +640,31 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Sign Out Card */}
-            <View className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            {/* Sign Out Card (Settings) */}
+            <View style={{ backgroundColor: '#ffffff', borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', padding: 18, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}>
+              <Text style={{ fontSize: 14, fontWeight: '900', color: '#0f172a', marginBottom: 4 }}>Account Session</Text>
+              <Text style={{ fontSize: 12, color: '#64748b', marginBottom: 14, lineHeight: 18 }}>
+                Sign out of this chauffeur account on this mobile device. You will need your login credentials to sign back in.
+              </Text>
               <TouchableOpacity
                 onPress={handleLogout}
                 activeOpacity={0.8}
-                className="bg-red-50 border border-red-200 py-3 rounded-xl items-center flex-row justify-center"
+                style={{
+                  backgroundColor: '#fef2f2',
+                  borderWidth: 1.5,
+                  borderColor: '#fecaca',
+                  paddingVertical: 13,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
               >
-                <Text className="text-red-600 font-bold text-sm">Sign Out from this Device</Text>
+                <Text style={{ fontSize: 16 }}>🚪</Text>
+                <Text style={{ color: '#dc2626', fontWeight: '900', fontSize: 13 }}>
+                  Sign Out from this Device
+                </Text>
               </TouchableOpacity>
             </View>
           </ScrollView>

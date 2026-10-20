@@ -476,41 +476,27 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
           </View>
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('Profile')} 
-            activeOpacity={0.7}
-            style={{ 
-              backgroundColor: '#eff6ff', 
-              paddingHorizontal: 12, 
-              paddingVertical: 7, 
-              borderRadius: 9999, 
-              borderWidth: 1, 
-              borderColor: '#bfdbfe',
-              flexDirection: 'row',
-              alignItems: 'center'
-            }}
-          >
-            <Text style={{ color: '#1d4ed8', fontWeight: '700', fontSize: 12 }}>⚙️ Profile</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            onPress={handleLogout} 
-            activeOpacity={0.7}
-            style={{ 
-              backgroundColor: '#fef2f2', 
-              paddingHorizontal: 12, 
-              paddingVertical: 7, 
-              borderRadius: 9999, 
-              borderWidth: 1, 
-              borderColor: '#fecaca',
-              flexDirection: 'row',
-              alignItems: 'center'
-            }}
-          >
-            <Text style={{ color: '#dc2626', fontWeight: '700', fontSize: 12 }}>Sign Out</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Profile')} 
+          activeOpacity={0.7}
+          style={{ 
+            backgroundColor: '#f8fafc', 
+            paddingHorizontal: 14, 
+            paddingVertical: 8, 
+            borderRadius: 9999, 
+            borderWidth: 1.2, 
+            borderColor: '#cbd5e1',
+            flexDirection: 'row',
+            alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.05,
+            shadowRadius: 2,
+            elevation: 1,
+          }}
+        >
+          <Text style={{ color: '#334155', fontWeight: '800', fontSize: 12 }}>⚙️ Settings</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Driver & Tour Operating Company Profile Hero Card (Admin Platform Design) */}
