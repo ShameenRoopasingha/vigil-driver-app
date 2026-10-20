@@ -13,7 +13,9 @@ import {
   LayoutChangeEvent,
 } from 'react-native';
 import {
-  searchPlacesOSM,
+  searchLandmarksOffline,
+  searchNominatimOnline,
+  mergeSearchResults,
   calculateRoadDistanceOSRM,
   latLonToTile,
   getOsmTileUrl,
@@ -79,25 +81,47 @@ export default function OpenStreetMapPicker({
   const MAP_HEIGHT = 200;
 
   const debounceTimerRef = useRef<any>(null);
+  const searchCacheRef = useRef<Map<string, PlaceSuggestion[]>>(new Map());
 
   const onMapLayout = useCallback((e: LayoutChangeEvent) => {
     const { width } = e.nativeEvent.layout;
     if (width > 0) setMapWidth(width);
   }, []);
 
-  // Live Debounced OpenStreetMap Nominatim Search
+  // Live Instant (Offline First) + Debounced Online OpenStreetMap Search
   useEffect(() => {
-    if (!query || query.trim().length < 2) {
+    const trimmed = query.trim();
+    if (!trimmed || trimmed.length < 2) {
       setSuggestions([]);
       setShowDropdown(false);
+      setIsSearching(false);
       return;
     }
 
     // Do not trigger dropdown if query matches the already selected place
-    if (selectedPlace && query === selectedPlace.shortName) {
+    if (selectedPlace && (trimmed === selectedPlace.shortName || trimmed === selectedPlace.displayName)) {
       return;
     }
 
+    const clean = trimmed.toLowerCase();
+
+    // 1. Check memory cache for instant results
+    if (searchCacheRef.current.has(clean)) {
+      const cached = searchCacheRef.current.get(clean)!;
+      setSuggestions(cached);
+      setShowDropdown(cached.length > 0);
+      setIsSearching(false);
+      return;
+    }
+
+    // 2. INSTANT phase: Show curated Sri Lanka landmarks immediately (0ms delay)
+    const instantCurated = searchLandmarksOffline(trimmed, currentLocation);
+    if (instantCurated.length > 0) {
+      setSuggestions(instantCurated);
+      setShowDropdown(true);
+    }
+
+    // 3. ONLINE phase: Debounced Nominatim query in background (250ms)
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
@@ -105,15 +129,17 @@ export default function OpenStreetMapPicker({
     setIsSearching(true);
     debounceTimerRef.current = setTimeout(async () => {
       try {
-        const results = await searchPlacesOSM(query, currentLocation);
-        setSuggestions(results);
-        setShowDropdown(results.length > 0);
+        const onlineResults = await searchNominatimOnline(trimmed, currentLocation);
+        const merged = mergeSearchResults(instantCurated, onlineResults);
+        searchCacheRef.current.set(clean, merged);
+        setSuggestions(merged);
+        if (merged.length > 0) setShowDropdown(true);
       } catch (err) {
         console.warn('OSM search error:', err);
       } finally {
         setIsSearching(false);
       }
-    }, 320);
+    }, 250);
 
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);

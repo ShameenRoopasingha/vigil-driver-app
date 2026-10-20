@@ -231,6 +231,102 @@ export const SRI_LANKA_LANDMARKS = [
     lat: 8.3449,
     lon: 80.3964,
   },
+  {
+    name: 'Galle Face Green & Promenade, Colombo',
+    shortName: 'Galle Face Green, Colombo',
+    category: 'Urban Attraction',
+    aliases: ['galle face', 'galle face green', 'colombo galle face'],
+    lat: 6.9248,
+    lon: 79.8437,
+  },
+  {
+    name: 'Lotus Tower (Colombo Viewpoint & Observatory)',
+    shortName: 'Lotus Tower, Colombo',
+    category: 'Urban Landmark',
+    aliases: ['lotus tower', 'colombo lotus tower', 'nelum kuluna'],
+    lat: 6.9298,
+    lon: 79.8578,
+  },
+  {
+    name: 'Negombo Beach Park & Lagoon',
+    shortName: 'Negombo Beach',
+    category: 'Beach & Coastal',
+    aliases: ['negombo', 'negombo beach', 'negombo lagoon'],
+    lat: 7.2285,
+    lon: 79.8427,
+  },
+  {
+    name: 'Grand Hotel, Nuwara Eliya',
+    shortName: 'Grand Hotel, Nuwara Eliya',
+    category: 'Hotel / Resort',
+    aliases: ['grand hotel', 'grand hotel nuwara eliya', 'nuwara eliya grand hotel'],
+    lat: 6.9682,
+    lon: 80.7672,
+  },
+  {
+    name: 'Victoria Park, Nuwara Eliya',
+    shortName: 'Victoria Park, Nuwara Eliya',
+    category: 'Recreation & Park',
+    aliases: ['victoria park', 'victoria park nuwara eliya'],
+    lat: 6.9664,
+    lon: 80.7712,
+  },
+  {
+    name: 'Kandy Lake Round (Viewpoint Promenade)',
+    shortName: 'Kandy Lake, Kandy',
+    category: 'Scenic Viewpoint',
+    aliases: ['kandy lake', 'nuwara wewa kandy', 'kandy lake round'],
+    lat: 7.2912,
+    lon: 80.6420,
+  },
+  {
+    name: 'Bahirawakanda Vihara Buddha Statue, Kandy',
+    shortName: 'Bahirawakanda Temple, Kandy',
+    category: 'Cultural Temple',
+    aliases: ['bahirawakanda', 'bahirawakanda temple', 'big buddha kandy'],
+    lat: 7.2954,
+    lon: 80.6275,
+  },
+  {
+    name: 'Kitulgala White Water Rafting Center',
+    shortName: 'Kitulgala White Water Rafting',
+    category: 'Adventure & Sports',
+    aliases: ['kitulgala', 'kitulgala rafting', 'white water rafting'],
+    lat: 6.9936,
+    lon: 80.4168,
+  },
+  {
+    name: 'Minneriya National Park (Elephant Gathering Gate)',
+    shortName: 'Minneriya Elephant Gathering',
+    category: 'Safari Park',
+    aliases: ['minneriya', 'minneriya national park', 'minneriya safari'],
+    lat: 8.0315,
+    lon: 80.8315,
+  },
+  {
+    name: 'Koneswaram Hindu Temple, Trincomalee',
+    shortName: 'Koneswaram Temple, Trincomalee',
+    category: 'Cultural Temple',
+    aliases: ['koneswaram', 'trincomalee temple', 'swami rock'],
+    lat: 8.5878,
+    lon: 81.2423,
+  },
+  {
+    name: 'Hiriketiya Bay & Surf Beach, Dikwella',
+    shortName: 'Hiriketiya Bay, Dikwella',
+    category: 'Beach & Coastal',
+    aliases: ['hiriketiya', 'hiriketiya beach', 'dikwella'],
+    lat: 5.9612,
+    lon: 80.6975,
+  },
+  {
+    name: 'Nallur Kandaswamy Kovil, Jaffna',
+    shortName: 'Nallur Kovil, Jaffna',
+    category: 'Cultural Temple',
+    aliases: ['nallur', 'nallur kovil', 'nallur temple', 'jaffna kovil'],
+    lat: 9.6744,
+    lon: 80.0298,
+  },
 ];
 
 /**
@@ -256,18 +352,17 @@ export function calculateDirectDistanceKm(
 }
 
 /**
- * Search places using OpenStreetMap Nominatim with Sri Lanka Landmark Fast-Matching
+ * INSTANT offline search — curated Sri Lanka landmarks only (zero network latency)
  */
-export async function searchPlacesOSM(
+export function searchLandmarksOffline(
   query: string,
   userCoords?: { lat: number; lon: number } | null
-): Promise<PlaceSuggestion[]> {
+): PlaceSuggestion[] {
   if (!query || query.trim().length < 2) return [];
 
   const cleanQuery = query.trim().toLowerCase();
-  const matchedCurated: PlaceSuggestion[] = [];
+  const results: PlaceSuggestion[] = [];
 
-  // 1. Check curated landmarks for instant zero-latency match
   for (const lm of SRI_LANKA_LANDMARKS) {
     const isDirectMatch = lm.aliases.some(
       (a) =>
@@ -284,7 +379,7 @@ export async function searchPlacesOSM(
         ? calculateDirectDistanceKm(userCoords.lat, userCoords.lon, lm.lat, lm.lon)
         : undefined;
 
-      matchedCurated.push({
+      results.push({
         displayName: lm.name,
         shortName: lm.shortName,
         category: lm.category,
@@ -293,27 +388,45 @@ export async function searchPlacesOSM(
         distanceKm,
       });
 
-      if (matchedCurated.length >= 4) break;
+      if (results.length >= 6) break;
     }
   }
 
-  // 2. Query OpenStreetMap Nominatim API
+  return results;
+}
+
+/**
+ * ONLINE search — OpenStreetMap Nominatim API (network required, ~0.5–3s)
+ * Returns only the OSM results; caller merges with offline results.
+ */
+export async function searchNominatimOnline(
+  query: string,
+  userCoords?: { lat: number; lon: number } | null
+): Promise<PlaceSuggestion[]> {
+  if (!query || query.trim().length < 2) return [];
+
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000); // 4s hard timeout
+
     const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
       query.trim()
-    )}&countrycodes=lk&limit=8&addressdetails=1`;
+    )}&countrycodes=lk&limit=6&addressdetails=1`;
 
     const res = await fetch(nominatimUrl, {
       headers: {
         'User-Agent': 'VigilDriverApp/1.0.3 (driver@vigil.app)',
         'Accept-Language': 'en',
       },
+      signal: controller.signal,
     });
+
+    clearTimeout(timeout);
 
     if (res.ok) {
       const json = await res.json();
       if (Array.isArray(json)) {
-        const osmResults: PlaceSuggestion[] = json.map((item: any) => {
+        return json.map((item: any) => {
           const parts = (item.display_name || '').split(',');
           const shortName = parts.slice(0, 2).join(',').trim();
           const lat = parseFloat(item.lat);
@@ -322,7 +435,6 @@ export async function searchPlacesOSM(
             ? calculateDirectDistanceKm(userCoords.lat, userCoords.lon, lat, lon)
             : undefined;
 
-          // Categorize loosely based on OSM type
           let category = 'Location';
           if (item.type === 'tourism' || item.class === 'tourism') category = 'Tourist Attraction';
           else if (item.type === 'hotel' || item.class === 'tourism') category = 'Hotel / Resort';
@@ -338,28 +450,48 @@ export async function searchPlacesOSM(
             distanceKm,
           };
         });
-
-        // Merge curated and OSM results, deduplicating close coordinates
-        const combined = [...matchedCurated];
-        for (const osmItem of osmResults) {
-          const alreadyExists = combined.some(
-            (c) =>
-              calculateDirectDistanceKm(c.lat, c.lon, osmItem.lat, osmItem.lon) < 0.5 ||
-              c.shortName.toLowerCase() === osmItem.shortName.toLowerCase()
-          );
-          if (!alreadyExists) {
-            combined.push(osmItem);
-          }
-        }
-
-        return combined.slice(0, 8);
       }
     }
-  } catch (err) {
-    console.warn('Nominatim OSM search failed, using curated results:', err);
+  } catch (err: any) {
+    if (err?.name !== 'AbortError') {
+      console.warn('Nominatim search failed:', err);
+    }
   }
 
-  return matchedCurated;
+  return [];
+}
+
+/**
+ * Merge curated + OSM results, deduplicating nearby coordinates
+ */
+export function mergeSearchResults(
+  curated: PlaceSuggestion[],
+  online: PlaceSuggestion[]
+): PlaceSuggestion[] {
+  const combined = [...curated];
+  for (const osmItem of online) {
+    const alreadyExists = combined.some(
+      (c) =>
+        calculateDirectDistanceKm(c.lat, c.lon, osmItem.lat, osmItem.lon) < 0.5 ||
+        c.shortName.toLowerCase() === osmItem.shortName.toLowerCase()
+    );
+    if (!alreadyExists) {
+      combined.push(osmItem);
+    }
+  }
+  return combined.slice(0, 8);
+}
+
+/**
+ * Full search (kept for backward compatibility) — curated + Nominatim combined
+ */
+export async function searchPlacesOSM(
+  query: string,
+  userCoords?: { lat: number; lon: number } | null
+): Promise<PlaceSuggestion[]> {
+  const curated = searchLandmarksOffline(query, userCoords);
+  const online = await searchNominatimOnline(query, userCoords);
+  return mergeSearchResults(curated, online);
 }
 
 /**
@@ -370,31 +502,38 @@ export async function calculateRoadDistanceOSRM(
   destination: { lat: number; lon: number }
 ): Promise<OSRMRouteInfo | null> {
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500); // 3.5s fast timeout
+
     const url = `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}?overview=false`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
 
-    const data = await res.json();
-    if (data.code === 'Ok' && Array.isArray(data.routes) && data.routes.length > 0) {
-      const route = data.routes[0];
-      const distanceKm = Math.round((route.distance / 1000) * 10) / 10;
-      const durationMinutes = Math.round(route.duration / 60);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.code === 'Ok' && Array.isArray(data.routes) && data.routes.length > 0) {
+        const route = data.routes[0];
+        const distanceKm = Math.round((route.distance / 1000) * 10) / 10;
+        const durationMinutes = Math.round(route.duration / 60);
 
-      const hours = Math.floor(durationMinutes / 60);
-      const mins = durationMinutes % 60;
-      const durationText = hours > 0 ? `${hours}h ${mins}m` : `${mins} mins`;
+        const hours = Math.floor(durationMinutes / 60);
+        const mins = durationMinutes % 60;
+        const durationText = hours > 0 ? `${hours}h ${mins}m` : `${mins} mins`;
 
-      return {
-        distanceKm,
-        durationMinutes,
-        durationText,
-      };
+        return {
+          distanceKm,
+          durationMinutes,
+          durationText,
+        };
+      }
     }
-  } catch (err) {
-    console.warn('OSRM route calculation error:', err);
+  } catch (err: any) {
+    if (err?.name !== 'AbortError') {
+      console.warn('OSRM route calculation error:', err);
+    }
   }
 
-  // Fallback: Estimate ~1.3x haversine road winding factor if OSRM is unreachable
+  // Fallback: Estimate ~1.35x haversine road winding factor if OSRM is unreachable or timed out
   const directKm = calculateDirectDistanceKm(origin.lat, origin.lon, destination.lat, destination.lon);
   const estimatedRoadKm = Math.round(directKm * 1.35 * 10) / 10;
   const estimatedMins = Math.round((estimatedRoadKm / 40) * 60);
