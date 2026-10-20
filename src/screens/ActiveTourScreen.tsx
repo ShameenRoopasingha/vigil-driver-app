@@ -12,6 +12,7 @@ import {
   DriverRouteChangeSchema,
   OdometerReadingSchema 
 } from '../validations';
+import OpenStreetMapPicker from '../components/OpenStreetMapPicker';
 
 type ActiveTourRouteProp = RouteProp<RootStackParamList, 'ActiveTour'>;
 type ActiveTourNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ActiveTour'>;
@@ -60,6 +61,7 @@ export default function ActiveTourScreen() {
   const [showRouteChangeModal, setShowRouteChangeModal] = useState(false);
   const [routeChangeType, setRouteChangeType] = useState<'DETOUR' | 'DESTINATION'>('DETOUR');
   const [newRouteLocation, setNewRouteLocation] = useState('');
+  const [routeChangeCoords, setRouteChangeCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [extraKmInput, setExtraKmInput] = useState('');
   const [routeChangeReason, setRouteChangeReason] = useState('Guest Requested Sightseeing Detour');
   const [routeChangeNote, setRouteChangeNote] = useState('');
@@ -240,6 +242,7 @@ export default function ActiveTourScreen() {
         );
         setShowRouteChangeModal(false);
         setNewRouteLocation('');
+        setRouteChangeCoords(null);
         setExtraKmInput('');
         setRouteChangeNote('');
         fetchTour();
@@ -1186,7 +1189,7 @@ export default function ActiveTourScreen() {
       >
         <View className="flex-1 justify-end bg-black/60">
           <View className="bg-white rounded-t-3xl p-6 shadow-xl max-h-[90%]">
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <View className="flex-row justify-between items-center mb-3">
                 <View>
                   <Text className="text-xl font-black text-gray-900">Tour Route Alteration</Text>
@@ -1217,43 +1220,43 @@ export default function ActiveTourScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Quick Detour Presets (Sri Lanka Popular Hotspots) */}
-              <Text className="text-gray-700 font-bold text-xs mb-1.5 uppercase tracking-wider">
-                Popular Sri Lanka Sightseeing Detours
-              </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4" contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
-                {POPULAR_DETOURS.map((spot, idx) => (
-                  <TouchableOpacity
-                    key={idx}
-                    activeOpacity={0.8}
-                    onPress={() => {
-                      setNewRouteLocation(spot.location);
-                      setExtraKmInput(spot.km);
-                    }}
-                    className={`px-3 py-1.5 rounded-full border ${newRouteLocation === spot.location ? 'bg-indigo-100 border-indigo-600' : 'bg-gray-50 border-gray-200'}`}
-                  >
-                    <Text className={`text-xs font-semibold ${newRouteLocation === spot.location ? 'text-indigo-900 font-bold' : 'text-gray-700'}`}>
-                      {spot.label} (+{spot.km}km)
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              {/* Location Input */}
-              <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">
-                {routeChangeType === 'DESTINATION' ? 'New Destination Address' : 'New Stop / Attraction Name'} <Text className="text-red-600 font-bold">*</Text>
-              </Text>
-              <TextInput
-                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 mb-3 font-medium text-sm"
-                placeholder="e.g. Pinnawala Elephant Orphanage or Grand Hotel, Nuwara Eliya"
-                value={newRouteLocation}
-                onChangeText={setNewRouteLocation}
+              {/* OpenStreetMap Place & Route Picker (Parity with Admin Platform) */}
+              <OpenStreetMapPicker
+                currentLocation={
+                  locationService.getLatestLocation()?.coords
+                    ? {
+                        lat: locationService.getLatestLocation()!.coords.latitude,
+                        lon: locationService.getLatestLocation()!.coords.longitude,
+                      }
+                    : null
+                }
+                initialLocationName={newRouteLocation}
+                initialCoords={routeChangeCoords}
+                placeholder={
+                  routeChangeType === 'DESTINATION'
+                    ? 'Search new destination on OpenStreetMap...'
+                    : 'Search extra detour stop on OpenStreetMap...'
+                }
+                onSelectPlace={(place) => {
+                  setNewRouteLocation(place.displayName);
+                  setRouteChangeCoords({ lat: place.lat, lon: place.lon });
+                  if (place.roadDistanceKm !== undefined && place.roadDistanceKm > 0) {
+                    setExtraKmInput(String(Math.round(place.roadDistanceKm)));
+                  }
+                }}
               />
 
-              {/* Estimated Extra KM */}
-              <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">
-                Estimated Extra Distance (KM)
-              </Text>
+              {/* Estimated Extra KM (auto-calculated via OSRM, editable) */}
+              <View className="flex-row items-center justify-between mb-1">
+                <Text className="text-gray-700 font-semibold text-xs uppercase">
+                  Estimated Extra Distance (KM)
+                </Text>
+                {extraKmInput ? (
+                  <Text className="text-[11px] font-bold text-emerald-700">
+                    Calculated via OSRM Road Router
+                  </Text>
+                ) : null}
+              </View>
               <TextInput
                 className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 mb-3 text-sm font-medium"
                 placeholder="e.g. 25"
