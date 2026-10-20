@@ -6,20 +6,17 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Image,
   Linking,
   StyleSheet,
   Dimensions,
   LayoutChangeEvent,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import {
   searchLandmarksOffline,
   searchNominatimOnline,
   mergeSearchResults,
   calculateRoadDistanceOSRM,
-  latLonToTile,
-  getOsmTileUrl,
-  getFallbackTileUrl,
   SRI_LANKA_LANDMARKS,
   type PlaceSuggestion,
   type OSRMRouteInfo,
@@ -77,17 +74,17 @@ export default function OpenStreetMapPicker({
   // Interactive OpenStreetMap preview zoom level
   const [zoom, setZoom] = useState(15);
 
-  // Measured container width for accurate tile centering
-  const [mapWidth, setMapWidth] = useState(Dimensions.get('window').width - 56);
-  const MAP_HEIGHT = 200;
-
+  const webViewRef = useRef<WebView>(null);
   const debounceTimerRef = useRef<any>(null);
   const searchCacheRef = useRef<Map<string, PlaceSuggestion[]>>(new Map());
 
-  const onMapLayout = useCallback((e: LayoutChangeEvent) => {
-    const { width } = e.nativeEvent.layout;
-    if (width > 0) setMapWidth(width);
-  }, []);
+  // Fly Leaflet map to selected coordinates whenever location changes
+  useEffect(() => {
+    if (selectedPlace && webViewRef.current) {
+      const code = `if (window.updatePosition) { window.updatePosition(${selectedPlace.lat}, ${selectedPlace.lon}); } true;`;
+      webViewRef.current.injectJavaScript(code);
+    }
+  }, [selectedPlace?.lat, selectedPlace?.lon]);
 
   // Live Instant (Offline First) + Debounced Online OpenStreetMap Search
   useEffect(() => {
@@ -211,93 +208,131 @@ export default function OpenStreetMapPicker({
     Linking.openURL(url).catch((err) => console.warn('Could not open OSM:', err));
   };
 
-  // Calculate tile grid for OpenStreetMap (dynamically measured container)
+  // Real Leaflet.js HTML Template (1:1 identical to Admin Platform)
+  const generateLeafletHtml = (lat: number, lon: number) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #map { width: 100%; height: 100%; background: #f1f5f9; }
+    .custom-pin {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      line-height: 32px;
+      filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));
+    }
+    .leaflet-control-zoom {
+      border: 1px solid #cbd5e1 !important;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
+      border-radius: 8px !important;
+      overflow: hidden !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+  <script>
+    var map = L.map('map', {
+      zoomControl: true,
+      attributionControl: false
+    }).setView([${lat}, ${lon}], 14);
+
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    }).addTo(map);
+
+    var pinIcon = L.divIcon({
+      className: 'custom-pin',
+      html: '📍',
+      iconSize: [36, 36],
+      iconAnchor: [18, 32]
+    });
+
+    var marker = L.marker([${lat}, ${lon}], { icon: pinIcon }).addTo(map);
+
+    map.on('click', function(e) {
+      marker.setLatLng(e.latlng);
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'map_clicked',
+          lat: e.latlng.lat,
+          lon: e.latlng.lng
+        }));
+      }
+    });
+
+    window.updatePosition = function(newLat, newLon) {
+      map.flyTo([newLat, newLon], 14, { duration: 0.8 });
+      marker.setLatLng([newLat, newLon]);
+    };
+  </script>
+</body>
+</html>
+`;
+
+  const onWebViewMessage = async (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'map_clicked') {
+        const { lat, lon } = data;
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`,
+            { headers: { 'User-Agent': 'VigilDriverApp/1.0.4 (driver@vigil.app)' } }
+          );
+          if (res.ok) {
+            const json = await res.json();
+            const parts = (json.display_name || '').split(',');
+            const shortName = parts.slice(0, 2).join(',').trim();
+            handleSelectSuggestion({
+              displayName: json.display_name,
+              shortName: shortName || `${lat.toFixed(4)}, ${lon.toFixed(4)}`,
+              category: 'Tapped on Map',
+              lat,
+              lon,
+            });
+          }
+        } catch {
+          handleSelectSuggestion({
+            displayName: `Selected Coordinate (${lat.toFixed(4)}, ${lon.toFixed(4)})`,
+            shortName: `Pinned (${lat.toFixed(4)}, ${lon.toFixed(4)})`,
+            category: 'Tapped on Map',
+            lat,
+            lon,
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('WebView message parse error:', err);
+    }
+  };
+
+  // Render Real Leaflet.js Map in Native WebView
   const renderMapTiles = () => {
     if (!selectedPlace) return null;
 
-    const { xtile, ytile, offsetX, offsetY } = latLonToTile(
-      selectedPlace.lat,
-      selectedPlace.lon,
-      zoom
-    );
-
-    const containerWidth = mapWidth;
-    const containerHeight = MAP_HEIGHT;
-    const centerX = containerWidth / 2;
-    const centerY = containerHeight / 2;
-
-    // Fast 3x3 tile grid around center (only ~4-6 visible tiles rendered)
-    const tileOffsets = [-1, 0, 1];
-
     return (
-      <View
-        style={[styles.mapContainer, { width: '100%', height: containerHeight }]}
-        onLayout={onMapLayout}
-      >
-        {tileOffsets.map((dx) =>
-          tileOffsets.map((dy) => {
-            const tileX = xtile + dx;
-            const tileY = ytile + dy;
-            const tileLeft = centerX - offsetX + dx * 256;
-            const tileTop = centerY - offsetY + dy * 256;
-            const tileUrl = getOsmTileUrl(zoom, tileX, tileY);
-
-            // Only render tiles that are at least partially visible
-            if (
-              tileLeft + 256 < 0 ||
-              tileLeft > containerWidth ||
-              tileTop + 256 < 0 ||
-              tileTop > containerHeight
-            ) {
-              return null;
-            }
-
-            return (
-              <Image
-                key={`${tileX}-${tileY}-${zoom}`}
-                source={{ uri: tileUrl }}
-                style={[
-                  styles.mapTile,
-                  {
-                    left: tileLeft,
-                    top: tileTop,
-                  },
-                ]}
-                fadeDuration={0}
-                resizeMode="cover"
-              />
-            );
-          })
-        )}
-
-        {/* Focal Pin placed exactly at center coordinates */}
-        <View pointerEvents="none" style={styles.pinWrapper}>
-          <View style={styles.pinShadow} />
-          <Text style={styles.pinEmoji}>📍</Text>
-        </View>
-
-        {/* Zoom Controls */}
-        <View style={styles.zoomControls}>
-          <TouchableOpacity
-            style={styles.zoomButton}
-            onPress={() => setZoom((prev) => Math.min(prev + 1, 17))}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.zoomButtonText}>+</Text>
-          </TouchableOpacity>
-          <View style={styles.zoomDivider} />
-          <TouchableOpacity
-            style={styles.zoomButton}
-            onPress={() => setZoom((prev) => Math.max(prev - 1, 8))}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.zoomButtonText}>−</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Live Map Attribution & Level Badge */}
-        <View style={styles.attributionBadge}>
-          <Text style={styles.attributionText}>🗺️ Map Radar • Z{zoom}</Text>
+      <View style={styles.mapContainer}>
+        <WebView
+          ref={webViewRef}
+          originWhitelist={['*']}
+          source={{ html: generateLeafletHtml(selectedPlace.lat, selectedPlace.lon) }}
+          style={styles.webView}
+          nestedScrollEnabled={true}
+          onMessage={onWebViewMessage}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          androidLayerType="hardware"
+        />
+        <View pointerEvents="none" style={styles.attributionBadge}>
+          <Text style={styles.attributionText}>🗺️ Leaflet • OpenStreetMap</Text>
         </View>
       </View>
     );
@@ -732,81 +767,34 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   mapContainer: {
-    position: 'relative',
-    borderRadius: 12,
+    height: 220,
+    borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: '#e2e8f0',
-    borderWidth: 1,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1.5,
     borderColor: '#cbd5e1',
     marginVertical: 8,
   },
-  mapTile: {
-    position: 'absolute',
-    width: 256,
-    height: 256,
-  },
-  pinWrapper: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    marginLeft: -14,
-    marginTop: -30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 20,
-  },
-  pinShadow: {
-    position: 'absolute',
-    bottom: 0,
-    width: 12,
-    height: 5,
-    borderRadius: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-  },
-  pinEmoji: {
-    fontSize: 28,
-  },
-  zoomControls: {
-    position: 'absolute',
-    right: 8,
-    bottom: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    overflow: 'hidden',
-    zIndex: 30,
-    elevation: 4,
-  },
-  zoomButton: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  zoomButtonText: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#0f172a',
-  },
-  zoomDivider: {
-    height: 1,
-    backgroundColor: '#e2e8f0',
+  webView: {
+    flex: 1,
+    backgroundColor: '#f1f5f9',
   },
   attributionBadge: {
     position: 'absolute',
-    left: 6,
-    bottom: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    left: 8,
+    bottom: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
     zIndex: 30,
   },
   attributionText: {
-    fontSize: 9,
-    color: '#64748b',
-    fontWeight: '700',
+    fontSize: 9.5,
+    color: '#0f172a',
+    fontWeight: '800',
   },
   roadInfoBanner: {
     backgroundColor: '#f8fafc',
