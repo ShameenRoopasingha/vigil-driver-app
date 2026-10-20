@@ -151,3 +151,23 @@ export const DriverExpenseInputSchema = z.object({
 });
 
 export type DriverExpenseInput = z.infer<typeof DriverExpenseInputSchema>;
+
+// ==========================================
+// 8. Mid-Tour Detour & Route Change Schema
+// ==========================================
+export const DriverRouteChangeSchema = z.object({
+  location: z.string().trim().min(2, 'New location or stop name is required'),
+  changeType: z.enum(['DETOUR', 'DESTINATION']),
+  extraKm: z
+    .string()
+    .trim()
+    .optional()
+    .refine((val) => !val || (!isNaN(Number(val)) && Number(val) >= 0), {
+      message: 'Extra KM must be a valid positive number',
+    }),
+  reason: z.string().trim().min(1, 'Reason for route change is required'),
+  note: z.string().trim().optional(),
+  agreedByCustomer: z.boolean().default(true),
+});
+
+export type DriverRouteChangeInput = z.infer<typeof DriverRouteChangeSchema>;

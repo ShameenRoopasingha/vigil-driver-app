@@ -9,11 +9,26 @@ import { locationService, TrackingStatus } from '../services/locationService';
 import { 
   DriverBreakdownReportSchema, 
   DriverHandoverRequestSchema, 
+  DriverRouteChangeSchema,
   OdometerReadingSchema 
 } from '../validations';
 
 type ActiveTourRouteProp = RouteProp<RootStackParamList, 'ActiveTour'>;
 type ActiveTourNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ActiveTour'>;
+
+const POPULAR_DETOURS = [
+  { label: '🐘 Pinnawala Orphanage', location: 'Pinnawala Elephant Orphanage, Rambukkana', km: '25' },
+  { label: '🗼 Ambuluwawa Tower', location: 'Ambuluwawa Biodiversity Complex, Gampola', km: '18' },
+  { label: '🌿 Spice Garden', location: 'Euphoria Spice and Herbal Garden, Mawanella', km: '10' },
+  { label: '🛕 Temple of Tooth', location: 'Sri Dalada Maligawa, Kandy', km: '12' },
+  { label: '🌊 Ramboda Falls', location: 'Ramboda Falls, Pussellawa', km: '15' },
+  { label: '☕ Damro / Tea Factory', location: 'Damro Labookellie Tea Centre, Nuwara Eliya', km: '8' },
+  { label: '🚂 Nine Arch Bridge', location: 'Nine Arches Bridge, Ella', km: '14' },
+  { label: '🦁 Sigiriya Lion Rock', location: 'Sigiriya Rock Fortress, Sigiriya', km: '35' },
+  { label: '🛕 Dambulla Cave', location: 'Dambulla Royal Cave Temple, Dambulla', km: '20' },
+  { label: '🏄 Mirissa Beach', location: 'Mirissa Beach, Mirissa', km: '25' },
+  { label: '🏰 Galle Fort', location: 'Galle Fort, Galle', km: '20' },
+];
 
 export default function ActiveTourScreen() {
   const route = useRoute<ActiveTourRouteProp>();
@@ -40,6 +55,16 @@ export default function ActiveTourScreen() {
   const [breakdownLocation, setBreakdownLocation] = useState('');
   const [breakdownNote, setBreakdownNote] = useState('');
   const [breakdownSubmitting, setBreakdownSubmitting] = useState(false);
+
+  // Mid-Tour Route Change & Detour State
+  const [showRouteChangeModal, setShowRouteChangeModal] = useState(false);
+  const [routeChangeType, setRouteChangeType] = useState<'DETOUR' | 'DESTINATION'>('DETOUR');
+  const [newRouteLocation, setNewRouteLocation] = useState('');
+  const [extraKmInput, setExtraKmInput] = useState('');
+  const [routeChangeReason, setRouteChangeReason] = useState('Guest Requested Sightseeing Detour');
+  const [routeChangeNote, setRouteChangeNote] = useState('');
+  const [customerAgreed, setCustomerAgreed] = useState(true);
+  const [routeChangeSubmitting, setRouteChangeSubmitting] = useState(false);
 
   const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>({
     isTracking: false,
@@ -176,6 +201,56 @@ export default function ActiveTourScreen() {
       Alert.alert('Error', err?.response?.data?.error || 'Network error while submitting handover request.');
     } finally {
       setHandoverSubmitting(false);
+    }
+  };
+
+  const submitRouteChange = async () => {
+    const validation = DriverRouteChangeSchema.safeParse({
+      location: newRouteLocation,
+      changeType: routeChangeType,
+      extraKm: extraKmInput.trim() || undefined,
+      reason: routeChangeReason,
+      note: routeChangeNote.trim() || undefined,
+      agreedByCustomer: customerAgreed,
+    });
+
+    if (!validation.success) {
+      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please check route change details.');
+      return;
+    }
+
+    setRouteChangeSubmitting(true);
+    try {
+      const res = await apiClient.put(`/driver/tours/${bookingId}`, {
+        action: 'CHANGE_ROUTE',
+        location: validation.data.location,
+        changeType: validation.data.changeType,
+        extraKm: validation.data.extraKm ? Number(validation.data.extraKm) : undefined,
+        reason: validation.data.reason,
+        note: validation.data.note,
+        agreedByCustomer: validation.data.agreedByCustomer,
+      });
+
+      if (res.data?.success) {
+        Alert.alert(
+          'Route Updated',
+          routeChangeType === 'DESTINATION'
+            ? `New destination set to "${validation.data.location}". In-app GPS navigation and office dispatch have been updated.`
+            : `Added detour stop: "${validation.data.location}". Office dispatch has been alerted of the additional stop.`
+        );
+        setShowRouteChangeModal(false);
+        setNewRouteLocation('');
+        setExtraKmInput('');
+        setRouteChangeNote('');
+        fetchTour();
+      } else {
+        Alert.alert('Error', res.data?.error || 'Failed to update tour route.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert('Error', err?.response?.data?.error || 'Network error while updating route.');
+    } finally {
+      setRouteChangeSubmitting(false);
     }
   };
 
@@ -641,6 +716,23 @@ export default function ActiveTourScreen() {
               </Text>
             </View>
             
+            {/* Latest Route Change / Detour Notification */}
+            {tour.tripActivities?.some((a: any) => a.type === 'ROUTE_CHANGE') && (
+              <View className="bg-indigo-50 border border-indigo-200 rounded-lg p-2.5 mb-2.5">
+                <View className="flex-row items-center justify-between mb-0.5">
+                  <Text className="text-indigo-900 font-black text-[11px] uppercase tracking-wide">
+                    🗺️ Active Detour / Itinerary Alteration
+                  </Text>
+                  <View className="bg-indigo-200 px-1.5 py-0.5 rounded">
+                    <Text className="text-indigo-900 text-[9px] font-black">LOGGED</Text>
+                  </View>
+                </View>
+                <Text className="text-indigo-950 text-xs font-semibold" numberOfLines={2}>
+                  {tour.tripActivities.find((a: any) => a.type === 'ROUTE_CHANGE')?.note}
+                </Text>
+              </View>
+            )}
+
             <View className="flex-row gap-2">
               <TouchableOpacity
                 onPress={() => openNavigation('google')}
@@ -656,6 +748,16 @@ export default function ActiveTourScreen() {
                 <Text className="text-white font-bold text-sm">🚗 Waze Navigation</Text>
               </TouchableOpacity>
             </View>
+
+            <TouchableOpacity
+              onPress={() => setShowRouteChangeModal(true)}
+              activeOpacity={0.8}
+              className="mt-2.5 bg-indigo-50 border border-indigo-200 py-2 rounded-lg flex-row items-center justify-center gap-1.5"
+            >
+              <Text className="text-indigo-800 font-bold text-xs">
+                ➕ Add Detour / Change Destination
+              </Text>
+            </TouchableOpacity>
           </View>
         ) : null}
 
@@ -780,6 +882,16 @@ export default function ActiveTourScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
+                onPress={() => setShowRouteChangeModal(true)}
+                disabled={actionLoading}
+                className="mt-3 border border-indigo-500 bg-indigo-50 py-3 rounded-lg items-center shadow-sm"
+              >
+                <Text className="text-indigo-800 font-bold text-base">
+                  🗺️ Add Detour / Change Tour Route
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 onPress={handleOpenHandoverModal}
                 disabled={actionLoading}
                 className="mt-3 border border-amber-500 bg-amber-50 py-3 rounded-lg items-center shadow-sm"
@@ -800,13 +912,25 @@ export default function ActiveTourScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            <TouchableOpacity 
-              onPress={() => handleAction('START_TRIP')}
-              disabled={actionLoading}
-              className="bg-green-600 py-3 rounded-lg items-center shadow-sm"
-            >
-              {actionLoading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-lg">Start Trip & Broadcast GPS</Text>}
-            </TouchableOpacity>
+            <View>
+              <TouchableOpacity 
+                onPress={() => handleAction('START_TRIP')}
+                disabled={actionLoading}
+                className="bg-green-600 py-3 rounded-lg items-center shadow-sm"
+              >
+                {actionLoading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-lg">Start Trip & Broadcast GPS</Text>}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setShowRouteChangeModal(true)}
+                disabled={actionLoading}
+                className="mt-3 border border-indigo-500 bg-indigo-50 py-2.5 rounded-lg items-center shadow-sm"
+              >
+                <Text className="text-indigo-800 font-bold text-sm">
+                  🗺️ Add Detour / Change Route
+                </Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
 
@@ -825,6 +949,7 @@ export default function ActiveTourScreen() {
                 type === 'END' ? 'bg-green-500' :
                 type === 'BREAKDOWN_REPORTED' ? 'bg-red-600' :
                 type === 'VEHICLE_SWAPPED' ? 'bg-indigo-600' :
+                type === 'ROUTE_CHANGE' ? 'bg-violet-600' :
                 type === 'BREAKDOWN' ? 'bg-red-500' : 'bg-gray-400';
 
               return (
@@ -1044,6 +1169,163 @@ export default function ActiveTourScreen() {
                     <ActivityIndicator color="#fff" />
                   ) : (
                     <Text className="text-white font-bold">Report to Dispatch</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Mid-Tour Detour & Route Change Modal */}
+      <Modal
+        visible={showRouteChangeModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowRouteChangeModal(false)}
+      >
+        <View className="flex-1 justify-end bg-black/60">
+          <View className="bg-white rounded-t-3xl p-6 shadow-xl max-h-[90%]">
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View className="flex-row justify-between items-center mb-3">
+                <View>
+                  <Text className="text-xl font-black text-gray-900">Tour Route Alteration</Text>
+                  <Text className="text-gray-500 text-xs mt-0.5">Add an unplanned stop or change destination</Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowRouteChangeModal(false)} className="p-1">
+                  <Text className="text-gray-400 font-bold text-lg">✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Type Switcher */}
+              <View className="flex-row bg-gray-100 p-1 rounded-xl mb-4">
+                <TouchableOpacity
+                  onPress={() => setRouteChangeType('DETOUR')}
+                  className={`flex-1 py-2 rounded-lg items-center ${routeChangeType === 'DETOUR' ? 'bg-white shadow-xs' : ''}`}
+                >
+                  <Text className={`text-xs font-black ${routeChangeType === 'DETOUR' ? 'text-indigo-700' : 'text-gray-600'}`}>
+                    📍 Add Extra Stop / Detour
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setRouteChangeType('DESTINATION')}
+                  className={`flex-1 py-2 rounded-lg items-center ${routeChangeType === 'DESTINATION' ? 'bg-white shadow-xs' : ''}`}
+                >
+                  <Text className={`text-xs font-black ${routeChangeType === 'DESTINATION' ? 'text-indigo-700' : 'text-gray-600'}`}>
+                    🏁 Change Destination
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Quick Detour Presets (Sri Lanka Popular Hotspots) */}
+              <Text className="text-gray-700 font-bold text-xs mb-1.5 uppercase tracking-wider">
+                Popular Sri Lanka Sightseeing Detours
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4" contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
+                {POPULAR_DETOURS.map((spot, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      setNewRouteLocation(spot.location);
+                      setExtraKmInput(spot.km);
+                    }}
+                    className={`px-3 py-1.5 rounded-full border ${newRouteLocation === spot.location ? 'bg-indigo-100 border-indigo-600' : 'bg-gray-50 border-gray-200'}`}
+                  >
+                    <Text className={`text-xs font-semibold ${newRouteLocation === spot.location ? 'text-indigo-900 font-bold' : 'text-gray-700'}`}>
+                      {spot.label} (+{spot.km}km)
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Location Input */}
+              <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">
+                {routeChangeType === 'DESTINATION' ? 'New Destination Address' : 'New Stop / Attraction Name'} <Text className="text-red-600 font-bold">*</Text>
+              </Text>
+              <TextInput
+                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 mb-3 font-medium text-sm"
+                placeholder="e.g. Pinnawala Elephant Orphanage or Grand Hotel, Nuwara Eliya"
+                value={newRouteLocation}
+                onChangeText={setNewRouteLocation}
+              />
+
+              {/* Estimated Extra KM */}
+              <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">
+                Estimated Extra Distance (KM)
+              </Text>
+              <TextInput
+                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 mb-3 text-sm font-medium"
+                placeholder="e.g. 25"
+                keyboardType="numeric"
+                value={extraKmInput}
+                onChangeText={setExtraKmInput}
+              />
+
+              {/* Reason Selector */}
+              <Text className="text-gray-700 font-semibold text-xs mb-1.5 uppercase">
+                Reason for Route Alteration
+              </Text>
+              <View className="flex-row flex-wrap gap-2 mb-3">
+                {[
+                  'Guest Requested Sightseeing Detour',
+                  'Hotel / City Changed by Guests',
+                  'Weather / Road Block Bypass',
+                  'Flight / Timing Reschedule',
+                  'Other',
+                ].map((reason) => (
+                  <TouchableOpacity
+                    key={reason}
+                    onPress={() => setRouteChangeReason(reason)}
+                    className={`px-3 py-1.5 rounded-full border ${routeChangeReason === reason ? 'bg-indigo-100 border-indigo-600' : 'bg-gray-50 border-gray-200'}`}
+                  >
+                    <Text className={`text-xs font-medium ${routeChangeReason === reason ? 'text-indigo-900 font-bold' : 'text-gray-600'}`}>
+                      {reason}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Passenger Agreement Toggle */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setCustomerAgreed(!customerAgreed)}
+                className="flex-row items-center bg-indigo-50 border border-indigo-200 p-3 rounded-xl mb-4"
+              >
+                <View className={`w-5 h-5 rounded border items-center justify-center mr-2.5 ${customerAgreed ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-400'}`}>
+                  {customerAgreed && <Text className="text-white text-xs font-bold">✓</Text>}
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xs font-bold text-indigo-950">Passengers Requested & Agreed</Text>
+                  <Text className="text-[11px] text-indigo-700">Extra km and detour route authorized by guests</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Notes */}
+              <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">Notes / Dispatch Memo</Text>
+              <TextInput
+                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 mb-5 text-xs font-medium"
+                placeholder="e.g. Guests wanted to stop for 1.5 hours to watch elephant bathing"
+                value={routeChangeNote}
+                onChangeText={setRouteChangeNote}
+              />
+
+              <View className="flex-row gap-3 pb-4">
+                <TouchableOpacity
+                  onPress={() => setShowRouteChangeModal(false)}
+                  className="flex-1 bg-gray-100 py-3 rounded-xl items-center"
+                >
+                  <Text className="text-gray-700 font-bold">Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={submitRouteChange}
+                  disabled={routeChangeSubmitting || !newRouteLocation.trim()}
+                  className={`flex-1 py-3 rounded-xl items-center flex-row justify-center ${!newRouteLocation.trim() ? 'bg-indigo-300' : 'bg-indigo-600 shadow-sm'}`}
+                >
+                  {routeChangeSubmitting ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text className="text-white font-bold">Save & Update Route</Text>
                   )}
                 </TouchableOpacity>
               </View>
