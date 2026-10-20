@@ -2,7 +2,7 @@
   "expo": {
     "name": "vigil-driver-app",
     "slug": "vigil-driver-app",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,11 +16,14 @@
     },
     "android": {
       "package": "com.vigil.driverapp",
-      "versionCode": 3,
+      "versionCode": 4,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
@@ -30,6 +33,15 @@
       },
       "predictiveBackGestureEnabled": false
     },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Vigil Driver App to access your device photos and files.",
+          "cameraPermission": "Allow Vigil Driver App to use your camera for profile pictures."
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     },

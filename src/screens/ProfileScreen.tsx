@@ -14,6 +14,7 @@ import {
   Vibration,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -170,19 +171,73 @@ export default function ProfileScreen() {
     setCustomUrlInput('');
   };
 
-  const handleBrowseFiles = async () => {
+  const handlePickFromFiles = async () => {
     try {
-      const token = await AsyncStorage.getItem('driverToken');
-      if (!token) {
-        Alert.alert('Session Error', 'Please log in again to upload a photo.');
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please allow access to your device photos & files to select a profile picture.'
+        );
         return;
       }
-      Vibration.vibrate(10);
-      const url = `https://vigil-pos.vercel.app/driver/upload-avatar?token=${encodeURIComponent(token)}`;
-      await Linking.openURL(url);
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        let photoUri = asset.uri;
+        if (asset.base64) {
+          const mimeType = asset.mimeType || 'image/jpeg';
+          photoUri = `data:${mimeType};base64,${asset.base64}`;
+        }
+        setAvatarUrl(photoUri);
+        Vibration.vibrate(10);
+      }
     } catch (err: any) {
-      console.error('Error opening file uploader:', err);
-      Alert.alert('File Browser', 'Could not open mobile browser.');
+      console.error('File picker error:', err);
+      Alert.alert('Photo Selection', err.message || 'Could not open device files.');
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please allow camera permission to take a new profile picture.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        let photoUri = asset.uri;
+        if (asset.base64) {
+          const mimeType = asset.mimeType || 'image/jpeg';
+          photoUri = `data:${mimeType};base64,${asset.base64}`;
+        }
+        setAvatarUrl(photoUri);
+        Vibration.vibrate(10);
+      }
+    } catch (err: any) {
+      console.error('Camera error:', err);
+      Alert.alert('Camera', err.message || 'Could not open camera.');
     }
   };
 
@@ -365,68 +420,74 @@ export default function ProfileScreen() {
                 Profile Photo & Avatar
               </Text>
 
-              {/* Primary Mobile File & Photo Browser Button */}
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={handleBrowseFiles}
-                style={{
-                  backgroundColor: '#eff6ff',
-                  borderWidth: 1.5,
-                  borderColor: '#93c5fd',
-                  borderRadius: 16,
-                  paddingVertical: 14,
-                  paddingHorizontal: 16,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginBottom: 14,
-                  shadowColor: '#3b82f6',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 4,
-                  elevation: 2,
-                }}
-              >
-                <View
+              {/* 2 In-App Native Device Action Cards */}
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={handlePickFromFiles}
                   style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
-                    backgroundColor: '#dbeafe',
+                    flex: 1,
+                    backgroundColor: '#eff6ff',
+                    borderWidth: 1.5,
+                    borderColor: '#93c5fd',
+                    borderRadius: 14,
+                    paddingVertical: 12,
+                    paddingHorizontal: 8,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    marginRight: 12,
+                    shadowColor: '#3b82f6',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 3,
+                    elevation: 1,
                   }}
                 >
-                  <Text style={{ fontSize: 24 }}>📁</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={{ color: '#1d4ed8', fontWeight: '900', fontSize: 14 }}>
-                      Browse Mobile Photos & Files
-                    </Text>
-                    <View style={{ backgroundColor: '#10b981', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 4 }}>
-                      <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '900' }}>PHONE FILES</Text>
-                    </View>
-                  </View>
-                  <Text style={{ color: '#64748b', fontSize: 11, fontWeight: '500', marginTop: 2 }}>
-                    Open device gallery, files or camera to set custom photo
+                  <Text style={{ fontSize: 22, marginBottom: 3 }}>📁</Text>
+                  <Text style={{ color: '#1d4ed8', fontWeight: '800', fontSize: 13 }}>
+                    Browse Files
                   </Text>
-                </View>
-                <Text style={{ color: '#3b82f6', fontSize: 20, fontWeight: '800', marginLeft: 4 }}>›</Text>
-              </TouchableOpacity>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <Text className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  OR Choose Avatar Preset
-                </Text>
-                <TouchableOpacity
-                  onPress={loadProfile}
-                  activeOpacity={0.7}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#cbd5e1' }}
-                >
-                  <Text style={{ fontSize: 11 }}>🔄</Text>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569' }}>Sync Photo</Text>
+                  <Text style={{ color: '#64748b', fontSize: 10, fontWeight: '600', marginTop: 1 }}>
+                    Gallery & Device
+                  </Text>
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={handleTakePhoto}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#ecfdf5',
+                    borderWidth: 1.5,
+                    borderColor: '#a7f3d0',
+                    borderRadius: 14,
+                    paddingVertical: 12,
+                    paddingHorizontal: 8,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    shadowColor: '#10b981',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 3,
+                    elevation: 1,
+                  }}
+                >
+                  <Text style={{ fontSize: 22, marginBottom: 3 }}>📷</Text>
+                  <Text style={{ color: '#065f46', fontWeight: '800', fontSize: 13 }}>
+                    Take Photo
+                  </Text>
+                  <Text style={{ color: '#64748b', fontSize: 10, fontWeight: '600', marginTop: 1 }}>
+                    Use Camera
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Divider */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
+                <Text style={{ color: '#94a3b8', fontSize: 10, fontWeight: '800', marginHorizontal: 8, letterSpacing: 0.5 }}>
+                  OR SELECT AVATAR
+                </Text>
+                <View style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
               </View>
               <ScrollView
                 horizontal
