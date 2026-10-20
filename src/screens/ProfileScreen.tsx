@@ -17,15 +17,36 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
-import { DriverEmailUpdateSchema, DriverPasswordChangeSchema } from '../validations';
+import {
+  DriverProfileDetailsSchema,
+  DriverEmailUpdateSchema,
+  DriverPasswordChangeSchema,
+} from '../validations';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
+
+const AVATAR_PRESETS = [
+  { id: 'suit', label: 'Chauffeur', uri: 'https://api.dicebear.com/7.x/personas/png?seed=Lucas&backgroundColor=ffd5dc' },
+  { id: 'sunglasses', label: 'Executive', uri: 'https://api.dicebear.com/7.x/personas/png?seed=Captain&backgroundColor=c0aede' },
+  { id: 'safari', label: 'Safari Guide', uri: 'https://api.dicebear.com/7.x/personas/png?seed=Safari&backgroundColor=d1d4f9' },
+  { id: 'friendly', label: 'Friendly', uri: 'https://api.dicebear.com/7.x/personas/png?seed=Alex&backgroundColor=ffdfbf' },
+  { id: 'cap', label: 'Driver Pro', uri: 'https://api.dicebear.com/7.x/personas/png?seed=Oliver&backgroundColor=b6e3f4' },
+  { id: 'guide', label: 'Tour Guide', uri: 'https://api.dicebear.com/7.x/adventurer/png?seed=Guide&backgroundColor=ffd5dc' },
+];
 
 export default function ProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
 
   const [loading, setLoading] = useState(true);
   const [driverName, setDriverName] = useState('');
+  const [editName, setEditName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [customUrlInput, setCustomUrlInput] = useState('');
+  const [showCustomUrlInput, setShowCustomUrlInput] = useState(false);
+  const [initialDriverName, setInitialDriverName] = useState('');
+  const [initialAvatarUrl, setInitialAvatarUrl] = useState<string | null>(null);
+  const [detailsSaving, setDetailsSaving] = useState(false);
+
   const [companyName, setCompanyName] = useState('');
   const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
 
@@ -55,6 +76,10 @@ export default function ProfileScreen() {
         try {
           const local = JSON.parse(localStr);
           setDriverName(local.name || '');
+          setEditName(local.name || '');
+          setInitialDriverName(local.name || '');
+          setAvatarUrl(local.avatarUrl || null);
+          setInitialAvatarUrl(local.avatarUrl || null);
           setCurrentEmail(local.email || '');
           setNewEmail(local.email || '');
           setCompanyName(local.companyName || '');
@@ -67,6 +92,10 @@ export default function ProfileScreen() {
       if (res.data?.success && res.data?.data) {
         const d = res.data.data;
         setDriverName(d.name || '');
+        setEditName(d.name || '');
+        setInitialDriverName(d.name || '');
+        setAvatarUrl(d.avatarUrl || null);
+        setInitialAvatarUrl(d.avatarUrl || null);
         setCurrentEmail(d.email || '');
         setNewEmail(d.email || '');
         setCompanyName(d.companyName || '');
@@ -80,6 +109,57 @@ export default function ProfileScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUpdateDetails = async () => {
+    const trimmedName = editName.trim();
+    const validation = DriverProfileDetailsSchema.safeParse({
+      name: trimmedName,
+      avatarUrl: avatarUrl,
+    });
+
+    if (!validation.success) {
+      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please check your name');
+      return;
+    }
+
+    setDetailsSaving(true);
+    try {
+      const res = await apiClient.put('/driver/profile', {
+        name: trimmedName,
+        avatarUrl: avatarUrl || null,
+      });
+
+      if (res.data?.success) {
+        setDriverName(trimmedName);
+        setInitialDriverName(trimmedName);
+        setInitialAvatarUrl(avatarUrl || null);
+
+        if (res.data.data?.driver) {
+          await AsyncStorage.setItem('driverData', JSON.stringify(res.data.data.driver));
+        }
+
+        Alert.alert('Success', 'Your driver name and profile photo have been updated successfully!');
+      } else {
+        Alert.alert('Update Failed', res.data?.error || 'Could not update profile');
+      }
+    } catch (error: any) {
+      const msg = error.response?.data?.error || error.message || 'Network error updating profile';
+      Alert.alert('Update Failed', msg);
+    } finally {
+      setDetailsSaving(false);
+    }
+  };
+
+  const handleApplyCustomUrl = () => {
+    const url = customUrlInput.trim();
+    if (!url) {
+      Alert.alert('Invalid URL', 'Please enter a valid image URL');
+      return;
+    }
+    setAvatarUrl(url);
+    setShowCustomUrlInput(false);
+    setCustomUrlInput('');
   };
 
   const handleUpdateEmail = async () => {
@@ -170,6 +250,8 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const isDetailsDirty = editName.trim() !== initialDriverName || avatarUrl !== initialAvatarUrl;
+
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
       <KeyboardAvoidingView
@@ -200,23 +282,23 @@ export default function ProfileScreen() {
         ) : (
           <ScrollView
             className="flex-1 px-4 py-4"
-            contentContainerStyle={{ paddingBottom: 40 }}
+            contentContainerStyle={{ paddingBottom: 60 }}
             keyboardShouldPersistTaps="handled"
           >
             {/* Identity Card */}
             <View className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-4">
               <View className="flex-row items-center">
-                {companyLogoUrl ? (
-                  <View className="w-14 h-14 bg-white rounded-2xl border border-slate-200 p-1 items-center justify-center mr-4 shadow-sm">
+                {avatarUrl ? (
+                  <View className="w-16 h-16 rounded-full border-2 border-blue-500 p-0.5 mr-4 shadow-sm bg-blue-50 items-center justify-center">
                     <Image
-                      source={{ uri: companyLogoUrl }}
-                      style={{ width: 48, height: 48, borderRadius: 10 }}
-                      resizeMode="contain"
+                      source={{ uri: avatarUrl }}
+                      style={{ width: 58, height: 58, borderRadius: 29 }}
+                      resizeMode="cover"
                     />
                   </View>
                 ) : (
-                  <View className="w-14 h-14 bg-blue-100 rounded-2xl items-center justify-center border border-blue-200 mr-4">
-                    <Text className="text-blue-800 font-black text-xl">
+                  <View className="w-16 h-16 bg-blue-100 rounded-full items-center justify-center border-2 border-blue-300 mr-4">
+                    <Text className="text-blue-800 font-black text-2xl">
                       {(driverName || 'DR').substring(0, 2).toUpperCase()}
                     </Text>
                   </View>
@@ -224,19 +306,165 @@ export default function ProfileScreen() {
 
                 <View className="flex-1">
                   <View className="flex-row items-center gap-2 mb-1">
-                    <Text className="text-lg font-black text-slate-900">{driverName || 'Driver'}</Text>
+                    <Text className="text-lg font-black text-slate-900" numberOfLines={1}>
+                      {driverName || 'Driver'}
+                    </Text>
                     <View className="bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      <Text className="text-[10px] font-bold text-emerald-700 tracking-wider">DRIVER</Text>
+                      <Text className="text-[10px] font-bold text-emerald-700 tracking-wider">CHAUFFEUR</Text>
                     </View>
                   </View>
-                  <Text className="text-xs font-semibold text-slate-500">
+                  <Text className="text-xs font-semibold text-slate-500" numberOfLines={1}>
                     {companyName || 'Tour Transport Company'}
                   </Text>
-                  <Text className="text-[11px] text-slate-400 mt-0.5">
-                    Current Login: {currentEmail || 'Not configured'}
+                  <Text className="text-[11px] text-slate-400 mt-0.5" numberOfLines={1}>
+                    Login: {currentEmail || 'Not configured'}
                   </Text>
                 </View>
               </View>
+            </View>
+
+            {/* Edit Name & Profile Photo Section */}
+            <View className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-4">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-base font-extrabold text-slate-900">Driver Name & Photo</Text>
+                <Text className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  Public Profile
+                </Text>
+              </View>
+              <Text className="text-xs text-slate-500 mb-4 leading-4">
+                This name and profile picture appear on passenger itineraries and welcome greeting.
+              </Text>
+
+              {/* Avatar Selector Gallery */}
+              <Text className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Choose Profile Avatar
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                className="mb-4"
+                contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+              >
+                {/* Reset to Initials Monogram */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setAvatarUrl(null)}
+                  className={`w-14 h-14 rounded-2xl items-center justify-center border-2 ${
+                    avatarUrl === null ? 'border-blue-600 bg-blue-100' : 'border-slate-200 bg-slate-100'
+                  }`}
+                >
+                  <Text className="text-slate-800 font-extrabold text-xs">
+                    {(driverName || 'DR').substring(0, 2).toUpperCase()}
+                  </Text>
+                  <Text className="text-[9px] text-slate-500 font-semibold mt-0.5">Initials</Text>
+                </TouchableOpacity>
+
+                {/* Preset Avatars */}
+                {AVATAR_PRESETS.map((preset) => {
+                  const isSelected = avatarUrl === preset.uri;
+                  return (
+                    <TouchableOpacity
+                      key={preset.id}
+                      activeOpacity={0.8}
+                      onPress={() => setAvatarUrl(preset.uri)}
+                      className={`w-14 h-14 rounded-2xl items-center justify-center border-2 p-1 ${
+                        isSelected ? 'border-blue-600 bg-blue-50' : 'border-slate-200 bg-white'
+                      }`}
+                    >
+                      <Image
+                        source={{ uri: preset.uri }}
+                        style={{ width: 38, height: 38, borderRadius: 19 }}
+                        resizeMode="cover"
+                      />
+                      <Text
+                        className={`text-[9px] font-bold mt-0.5 ${
+                          isSelected ? 'text-blue-700' : 'text-slate-500'
+                        }`}
+                        numberOfLines={1}
+                      >
+                        {preset.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {/* Custom Photo URL trigger */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setShowCustomUrlInput(!showCustomUrlInput)}
+                  className="w-14 h-14 rounded-2xl items-center justify-center border-2 border-dashed border-slate-300 bg-slate-50"
+                >
+                  <Text className="text-base">🔗</Text>
+                  <Text className="text-[9px] text-slate-500 font-bold mt-0.5">Link</Text>
+                </TouchableOpacity>
+              </ScrollView>
+
+              {/* Custom Image URL Drawer */}
+              {showCustomUrlInput && (
+                <View className="bg-slate-50 p-3 rounded-xl border border-slate-200 mb-4">
+                  <Text className="text-xs font-bold text-slate-700 mb-1.5">Paste Web Image Link</Text>
+                  <TextInput
+                    className="bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 mb-2"
+                    placeholder="https://example.com/driver-photo.jpg"
+                    value={customUrlInput}
+                    onChangeText={setCustomUrlInput}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <View className="flex-row justify-end gap-2">
+                    <TouchableOpacity
+                      onPress={() => setShowCustomUrlInput(false)}
+                      className="px-3 py-1.5 rounded-lg bg-slate-200"
+                    >
+                      <Text className="text-xs font-bold text-slate-700">Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleApplyCustomUrl}
+                      className="px-3 py-1.5 rounded-lg bg-blue-600"
+                    >
+                      <Text className="text-xs font-bold text-white">Apply Photo</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              {/* Name Input */}
+              <Text className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Chauffeur Full Name
+              </Text>
+              <TextInput
+                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-medium text-sm mb-4"
+                placeholder="Enter your full name"
+                value={editName}
+                onChangeText={setEditName}
+                autoCorrect={false}
+              />
+
+              <TouchableOpacity
+                onPress={handleUpdateDetails}
+                disabled={detailsSaving || !isDetailsDirty}
+                activeOpacity={0.8}
+                className={`py-3 rounded-xl items-center flex-row justify-center ${
+                  !isDetailsDirty
+                    ? 'bg-slate-100 border border-slate-200'
+                    : 'bg-emerald-600 shadow-sm'
+                }`}
+              >
+                {detailsSaving ? (
+                  <>
+                    <ActivityIndicator size="small" color="#ffffff" className="mr-2" />
+                    <Text className="text-white font-bold text-sm">Saving Changes...</Text>
+                  </>
+                ) : (
+                  <Text
+                    className={`font-bold text-sm ${
+                      !isDetailsDirty ? 'text-slate-400' : 'text-white'
+                    }`}
+                  >
+                    {!isDetailsDirty ? 'Profile Up to Date' : 'Save Name & Photo'}
+                  </Text>
+                )}
+              </TouchableOpacity>
             </View>
 
             {/* Email Address Section */}

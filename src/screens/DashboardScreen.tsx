@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, Alert, Image, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, Alert, Image, Linking, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -38,12 +38,18 @@ interface Tour {
 interface DriverProfile {
   id?: string;
   name?: string;
+  email?: string;
+  avatarUrl?: string | null;
   companyName?: string;
   companyLogoUrl?: string | null;
+  companyPhone?: string | null;
 }
+
+let hasShownWelcomeThisSession = false;
 
 export default function DashboardScreen({ navigation: propNavigation }: { navigation?: DashboardNavigationProp }) {
   const [driverData, setDriverData] = useState<DriverProfile>({});
+  const [showWelcomeIntro, setShowWelcomeIntro] = useState(false);
   const [tours, setTours] = useState<Tour[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -98,6 +104,10 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
       );
     } finally {
       setLoading(false);
+      if (!hasShownWelcomeThisSession) {
+        hasShownWelcomeThisSession = true;
+        setShowWelcomeIntro(true);
+      }
     }
   };
 
@@ -328,26 +338,35 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
         className="px-5 py-3.5 bg-white border-b border-gray-200 flex-row items-center justify-between"
       >
         <View className="flex-row items-center flex-1 min-w-0 pr-2">
-          {driverData.companyLogoUrl ? (
-            <View className="w-12 h-12 bg-white rounded-xl border border-gray-200 p-1 items-center justify-center mr-3.5">
+          {driverData.avatarUrl ? (
+            <View className="w-12 h-12 rounded-full border-2 border-blue-500 p-0.5 mr-3.5 shadow-sm bg-blue-50 items-center justify-center">
               <Image 
-                source={{ uri: driverData.companyLogoUrl }} 
-                style={{ width: 44, height: 44, borderRadius: 8 }} 
-                resizeMode="contain" 
+                source={{ uri: driverData.avatarUrl }} 
+                style={{ width: 42, height: 42, borderRadius: 21 }} 
+                resizeMode="cover" 
               />
             </View>
           ) : (
-            <View className="w-12 h-12 bg-blue-50 rounded-xl items-center justify-center border border-blue-200 mr-3.5">
+            <View className="w-12 h-12 bg-blue-100 rounded-full items-center justify-center border border-blue-300 mr-3.5">
               <Text className="text-blue-800 font-extrabold text-base">
-                {(driverData.companyName || 'TC').substring(0, 2).toUpperCase()}
+                {(driverData.name || 'DR').substring(0, 2).toUpperCase()}
               </Text>
             </View>
           )}
 
           <View className="flex-1 min-w-0">
-            <Text className="text-xs font-bold text-blue-700 tracking-wide uppercase" numberOfLines={1}>
-              {driverData.companyName || 'Tour Transport Company'}
-            </Text>
+            <View className="flex-row items-center gap-1.5">
+              <Text className="text-xs font-bold text-blue-700 tracking-wide uppercase" numberOfLines={1}>
+                {driverData.companyName || 'Tour Transport Company'}
+              </Text>
+              {driverData.companyLogoUrl ? (
+                <Image 
+                  source={{ uri: driverData.companyLogoUrl }} 
+                  style={{ width: 14, height: 14, borderRadius: 3 }} 
+                  resizeMode="contain" 
+                />
+              ) : null}
+            </View>
             <Text className="text-lg font-bold text-gray-900" numberOfLines={1}>
               {driverData.name ? `Welcome, ${driverData.name}` : 'Welcome, Driver'}
             </Text>
@@ -427,6 +446,88 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
           />
         )}
       </View>
+
+      {/* Welcome Intro Greeting Overlay Modal */}
+      <Modal
+        visible={showWelcomeIntro}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowWelcomeIntro(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.8)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}>
+          <View style={{ backgroundColor: '#ffffff', borderRadius: 28, padding: 24, width: '100%', maxWidth: 360, alignItems: 'center', elevation: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 10 }}>
+            
+            {/* Top Close Button */}
+            <TouchableOpacity 
+              onPress={() => setShowWelcomeIntro(false)}
+              style={{ position: 'absolute', top: 16, right: 16, width: 32, height: 32, borderRadius: 16, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={{ color: '#64748b', fontSize: 16, fontWeight: '700' }}>✕</Text>
+            </TouchableOpacity>
+
+            {/* Glowing Avatar Ring */}
+            <View style={{ marginTop: 8, marginBottom: 16, padding: 4, borderRadius: 9999, borderWidth: 3, borderColor: '#10b981', backgroundColor: '#ecfdf5' }}>
+              {driverData.avatarUrl ? (
+                <Image 
+                  source={{ uri: driverData.avatarUrl }} 
+                  style={{ width: 84, height: 84, borderRadius: 42 }} 
+                  resizeMode="cover" 
+                />
+              ) : (
+                <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ color: '#ffffff', fontSize: 32, fontWeight: '900' }}>
+                    {(driverData.name || 'DR').substring(0, 2).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Greeting Tag */}
+            <View style={{ backgroundColor: '#eff6ff', borderColor: '#bfdbfe', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, marginBottom: 10 }}>
+              <Text style={{ color: '#1d4ed8', fontSize: 11, fontWeight: '800', letterSpacing: 1 }}>
+                AYUBOWAN • CHAUFFEUR PORTAL
+              </Text>
+            </View>
+
+            {/* Welcome Heading */}
+            <Text style={{ fontSize: 22, fontWeight: '900', color: '#0f172a', textAlign: 'center', marginBottom: 4 }}>
+              Welcome, {driverData.name || 'Driver'}!
+            </Text>
+
+            <Text style={{ fontSize: 12, color: '#64748b', textAlign: 'center', marginBottom: 18, lineHeight: 18 }}>
+              {driverData.companyName || 'Tour Transport Company'} fleet radar is active and synchronized with office dispatch.
+            </Text>
+
+            {/* Quick Status / Tours Summary */}
+            <View style={{ width: '100%', backgroundColor: '#f8fafc', borderColor: '#e2e8f0', borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 20 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Text style={{ fontSize: 12, color: '#475569', fontWeight: '700' }}>Assigned Tours</Text>
+                <Text style={{ fontSize: 13, color: '#0f172a', fontWeight: '900' }}>
+                  {tours.length} Tour{tours.length === 1 ? '' : 's'}
+                </Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10b981', marginRight: 6 }} />
+                <Text style={{ fontSize: 11, color: '#10b981', fontWeight: '800' }}>
+                  GPS Tracking Ready
+                </Text>
+              </View>
+            </View>
+
+            {/* Start Shift / Dismiss Button */}
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => setShowWelcomeIntro(false)}
+              style={{ width: '100%', backgroundColor: '#2563eb', paddingVertical: 14, borderRadius: 16, alignItems: 'center', elevation: 4, shadowColor: '#2563eb', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 5 }}
+            >
+              <Text style={{ color: '#ffffff', fontSize: 15, fontWeight: '800' }}>
+                Let&apos;s Go / Start Shift 🚀
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

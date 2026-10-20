@@ -16,6 +16,7 @@ import AddExpenseScreen from './src/screens/AddExpenseScreen';
 import ActiveTourScreen from './src/screens/ActiveTourScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import LiveLocationNotificationBar from './src/components/LiveLocationNotificationBar';
+import ArcNavbar from './src/components/ArcNavbar';
 
 export { RootStackParamList } from './src/navigation/types';
 export { navigationRef } from './src/navigation/navigationRef';
@@ -37,6 +38,7 @@ export default function App() {
             <Stack.Screen name="Profile" component={ProfileScreen} />
           </Stack.Navigator>
           <LiveLocationNotificationBar />
+          <ArcNavbar />
         </NavigationContainer>
       </View>
     </SafeAreaProvider>

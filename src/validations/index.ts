@@ -18,7 +18,17 @@ export const DriverLoginInputSchema = z.object({
 export type DriverLoginInput = z.infer<typeof DriverLoginInputSchema>;
 
 // ==========================================
-// 2. Profile - Email Update Schema
+// 2. Profile - Details Update Schema (Name & Avatar)
+// ==========================================
+export const DriverProfileDetailsSchema = z.object({
+  name: z.string().trim().min(2, 'Driver name must be at least 2 characters long'),
+  avatarUrl: z.string().trim().optional().nullable(),
+});
+
+export type DriverProfileDetailsInput = z.infer<typeof DriverProfileDetailsSchema>;
+
+// ==========================================
+// 2b. Profile - Email Update Schema
 // ==========================================
 export const DriverEmailUpdateSchema = z.object({
   email: z
