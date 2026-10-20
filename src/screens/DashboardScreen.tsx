@@ -146,108 +146,290 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
     ]);
   };
 
-  const renderTour = ({ item }: { item: Tour }) => (
-    <View className={`bg-white p-4 rounded-xl mb-4 shadow-sm border ${item.needsTakeover ? 'border-amber-300 ring-1 ring-amber-300/50' : 'border-gray-100'}`}>
-      <View className="flex-row justify-between items-center mb-2">
-        <Text className="font-bold text-lg text-gray-800">{item.customerName}</Text>
-        <View className={`${item.needsTakeover ? 'bg-amber-100 border border-amber-300' : 'bg-blue-100'} px-2 py-1 rounded-md`}>
-          <Text className={`${item.needsTakeover ? 'text-amber-900 font-extrabold' : 'text-blue-800 font-bold'} text-xs`}>
-            {item.needsTakeover ? '⚡ TAKEOVER' : item.status}
-          </Text>
-        </View>
-      </View>
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
 
-      {/* Mid-Tour Handover Notification & Direct Navigation Card */}
-      {item.needsTakeover && item.handoverDetails && (
-        <View className="bg-amber-50 border border-amber-200 rounded-xl p-3 my-2 shadow-xs">
-          <View className="flex-row items-center justify-between mb-1.5">
-            <View className="flex-row items-center">
-              <View className="w-2 h-2 rounded-full bg-amber-500 mr-1.5" />
-              <Text className="text-amber-900 font-black text-xs uppercase tracking-wide">
-                Mid-Tour Handover Assigned
+  const renderTour = ({ item }: { item: Tour }) => {
+    const isOngoing = item.status === 'ONGOING';
+
+    if (isOngoing) {
+      // Signature Admin App Active Tour Card (Obsidian & Emerald Glow)
+      return (
+        <View
+          key={item.id}
+          style={{
+            backgroundColor: '#090d16',
+            borderRadius: 20,
+            borderWidth: 1.5,
+            borderColor: 'rgba(16, 185, 129, 0.45)',
+            padding: 16,
+            marginBottom: 16,
+            shadowColor: '#10b981',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.25,
+            shadowRadius: 10,
+            elevation: 8,
+          }}
+        >
+          {/* Header Row: Live Radar Badge & Vehicle Plate */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                borderWidth: 1,
+                borderColor: '#10b981',
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 20,
+              }}
+            >
+              <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#10b981', marginRight: 6 }} />
+              <Text style={{ color: '#34d399', fontSize: 11, fontWeight: '900', letterSpacing: 0.8 }}>
+                ACTIVE TOUR • LIVE RADAR
               </Text>
             </View>
-            <View className="bg-amber-200/80 px-2 py-0.5 rounded">
-              <Text className="text-amber-900 text-[10px] font-extrabold">ACTION REQUIRED</Text>
+
+            {/* Vehicle Number Plate */}
+            <View
+              style={{
+                backgroundColor: '#1e293b',
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.12)',
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                borderRadius: 6,
+              }}
+            >
+              <Text style={{ color: '#f8fafc', fontSize: 12, fontWeight: '800', fontFamily: 'monospace' }}>
+                {item.vehicleNo}
+              </Text>
             </View>
           </View>
 
-          <View className="flex-row items-start mb-1">
-            <Text className="text-amber-800 text-xs font-bold w-20">📍 Location:</Text>
-            <Text className="text-gray-900 text-xs font-semibold flex-1" numberOfLines={2}>
-              {item.handoverDetails.location || 'Vehicle Handover Point'}
+          {/* Customer Name */}
+          <Text style={{ color: '#ffffff', fontSize: 18, fontWeight: '900', marginBottom: 6 }}>
+            {item.customerName}
+          </Text>
+
+          {/* Destination */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+            <Text style={{ color: '#38bdf8', fontSize: 13, marginRight: 6 }}>📍</Text>
+            <Text style={{ color: '#cbd5e1', fontSize: 13, fontWeight: '600', flex: 1 }} numberOfLines={1}>
+              {item.destination || 'Destination not specified'}
             </Text>
           </View>
 
-          {item.handoverDetails.previousDriverName ? (
-            <View className="flex-row items-center mb-1">
-              <Text className="text-amber-800 text-xs font-bold w-20">👤 Driver:</Text>
-              <Text className="text-gray-700 text-xs font-medium flex-1">
-                From {item.handoverDetails.previousDriverName} {item.handoverDetails.reason ? `(${item.handoverDetails.reason})` : ''}
-              </Text>
-            </View>
-          ) : null}
+          {/* Dates */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+            <Text style={{ color: '#818cf8', fontSize: 13, marginRight: 6 }}>📅</Text>
+            <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '500' }}>
+              Started {new Date(item.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </Text>
+          </View>
 
-          {item.handoverDetails.meterReading ? (
-            <View className="flex-row items-center mb-1.5">
-              <Text className="text-amber-800 text-xs font-bold w-20">🚗 Odometer:</Text>
-              <Text className="text-gray-700 text-xs font-medium flex-1">
-                {item.handoverDetails.meterReading} km
-              </Text>
-            </View>
-          ) : null}
-
-          {item.handoverDetails.googleMapsUrl ? (
+          {/* Action Buttons */}
+          <View style={{ flexDirection: 'row', gap: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.08)' }}>
             <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => {
-                Linking.openURL(item.handoverDetails!.googleMapsUrl!);
+              activeOpacity={0.85}
+              style={{
+                flex: 1.4,
+                backgroundColor: '#10b981',
+                borderRadius: 12,
+                paddingVertical: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+                shadowColor: '#10b981',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.4,
+                shadowRadius: 6,
+                elevation: 4,
               }}
-              className="bg-amber-600 active:bg-amber-700 py-2.5 px-3 rounded-lg flex-row items-center justify-center gap-1.5 shadow-sm mt-1"
+              onPress={() => navigation.navigate('ActiveTour', { bookingId: item.id })}
             >
-              <Text className="text-white font-extrabold text-xs">
-                🗺️ Navigate to Handover (Google Maps)
+              <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '900' }}>
+                ⚡ View Live Tour & GPS
               </Text>
             </TouchableOpacity>
-          ) : null}
-        </View>
-      )}
-      
-      <View className="flex-row items-center mb-1">
-        <Text className="text-gray-500 text-sm w-24">Vehicle:</Text>
-        <Text className="text-gray-800 font-medium">{item.vehicleNo}</Text>
-      </View>
-      
-      <View className="flex-row items-center mb-1">
-        <Text className="text-gray-500 text-sm w-24">Destination:</Text>
-        <Text className="text-gray-800 font-medium">{item.destination || 'Not specified'}</Text>
-      </View>
 
-      <View className="flex-row items-center mb-1">
-        <Text className="text-gray-500 text-sm w-24">Date:</Text>
-        <Text className="text-gray-800 font-medium">
-          {new Date(item.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-        </Text>
-      </View>
-      
-      <View className="flex-row items-center mt-3 pt-3 border-t border-gray-100 gap-2">
-        <TouchableOpacity 
-          className={`${item.needsTakeover ? 'bg-amber-600' : 'bg-blue-600'} flex-1 py-3 rounded-lg items-center`}
-          onPress={() => navigation.navigate('ActiveTour', { bookingId: item.id })}
-        >
-          <Text className="text-white font-bold">
-            {item.needsTakeover ? '⚡ Take Over Tour' : 'Start / View Tour'}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={{
+                flex: 1,
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.15)',
+                borderRadius: 12,
+                paddingVertical: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              onPress={() => navigation.navigate('AddExpense', { bookingId: item.id, vehicleNo: item.vehicleNo })}
+            >
+              <Text style={{ color: '#f1f5f9', fontSize: 12, fontWeight: '700' }}>
+                + Add Expense
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+
+    // Standard Tour Card (Alabaster / Tactile Hardware Skeuomorphic)
+    return (
+      <View
+        key={item.id}
+        style={{
+          backgroundColor: '#ffffff',
+          borderRadius: 18,
+          borderWidth: item.needsTakeover ? 2 : 1,
+          borderColor: item.needsTakeover ? '#f59e0b' : '#e2e8f0',
+          padding: 16,
+          marginBottom: 14,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.05,
+          shadowRadius: 4,
+          elevation: 2,
+        }}
+      >
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <Text style={{ fontSize: 16, fontWeight: '800', color: '#0f172a' }}>{item.customerName}</Text>
+          <View
+            style={{
+              backgroundColor: item.needsTakeover ? '#fef3c7' : item.status === 'CONFIRMED' ? '#eff6ff' : '#f8fafc',
+              borderColor: item.needsTakeover ? '#fde68a' : item.status === 'CONFIRMED' ? '#bfdbfe' : '#e2e8f0',
+              borderWidth: 1,
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: 8,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: '800',
+                color: item.needsTakeover ? '#92400e' : item.status === 'CONFIRMED' ? '#1d4ed8' : '#475569',
+              }}
+            >
+              {item.needsTakeover ? '⚡ TAKEOVER' : item.status}
+            </Text>
+          </View>
+        </View>
+
+        {/* Mid-Tour Handover Notification & Direct Navigation Card */}
+        {item.needsTakeover && item.handoverDetails && (
+          <View style={{ backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: 12, padding: 12, marginVertical: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#f59e0b', marginRight: 6 }} />
+                <Text style={{ color: '#92400e', fontWeight: '900', fontSize: 11, textTransform: 'uppercase' }}>
+                  Mid-Tour Handover Assigned
+                </Text>
+              </View>
+              <View style={{ backgroundColor: '#fde68a', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                <Text style={{ color: '#78350f', fontSize: 9, fontWeight: '800' }}>ACTION REQUIRED</Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
+              <Text style={{ color: '#92400e', fontSize: 11, fontWeight: '700', width: 75 }}>📍 Location:</Text>
+              <Text style={{ color: '#0f172a', fontSize: 11, fontWeight: '600', flex: 1 }} numberOfLines={2}>
+                {item.handoverDetails.location || 'Vehicle Handover Point'}
+              </Text>
+            </View>
+
+            {item.handoverDetails.previousDriverName ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                <Text style={{ color: '#92400e', fontSize: 11, fontWeight: '700', width: 75 }}>👤 Driver:</Text>
+                <Text style={{ color: '#334155', fontSize: 11, fontWeight: '500', flex: 1 }}>
+                  From {item.handoverDetails.previousDriverName} {item.handoverDetails.reason ? `(${item.handoverDetails.reason})` : ''}
+                </Text>
+              </View>
+            ) : null}
+
+            {item.handoverDetails.meterReading ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                <Text style={{ color: '#92400e', fontSize: 11, fontWeight: '700', width: 75 }}>🚗 Odometer:</Text>
+                <Text style={{ color: '#334155', fontSize: 11, fontWeight: '600', flex: 1 }}>
+                  {item.handoverDetails.meterReading} km
+                </Text>
+              </View>
+            ) : null}
+
+            {item.handoverDetails.googleMapsUrl ? (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                  Linking.openURL(item.handoverDetails!.googleMapsUrl!);
+                }}
+                style={{ backgroundColor: '#d97706', paddingVertical: 9, paddingHorizontal: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4 }}
+              >
+                <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 11 }}>
+                  🗺️ Navigate to Handover (Google Maps)
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        )}
+        
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+          <Text style={{ color: '#64748b', fontSize: 12, width: 85 }}>Vehicle Plate:</Text>
+          <Text style={{ color: '#0f172a', fontSize: 12, fontWeight: '700', fontFamily: 'monospace' }}>{item.vehicleNo}</Text>
+        </View>
+        
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+          <Text style={{ color: '#64748b', fontSize: 12, width: 85 }}>Destination:</Text>
+          <Text style={{ color: '#0f172a', fontSize: 12, fontWeight: '600', flex: 1 }} numberOfLines={1}>
+            {item.destination || 'Not specified'}
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          className="bg-green-100 flex-1 py-3 rounded-lg items-center"
-          onPress={() => navigation.navigate('AddExpense', { bookingId: item.id, vehicleNo: item.vehicleNo })}
-        >
-          <Text className="text-green-800 font-bold">Add Expense</Text>
-        </TouchableOpacity>
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+          <Text style={{ color: '#64748b', fontSize: 12, width: 85 }}>Tour Date:</Text>
+          <Text style={{ color: '#0f172a', fontSize: 12, fontWeight: '600' }}>
+            {new Date(item.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </Text>
+        </View>
+        
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9', gap: 8 }}>
+          <TouchableOpacity 
+            style={{
+              backgroundColor: item.needsTakeover ? '#d97706' : '#2563eb',
+              flex: 1,
+              paddingVertical: 10,
+              borderRadius: 10,
+              alignItems: 'center',
+            }}
+            onPress={() => navigation.navigate('ActiveTour', { bookingId: item.id })}
+          >
+            <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 12 }}>
+              {item.needsTakeover ? '⚡ Take Over Tour' : 'Start / View Tour'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={{
+              backgroundColor: '#ecfdf5',
+              borderWidth: 1,
+              borderColor: '#a7f3d0',
+              flex: 1,
+              paddingVertical: 10,
+              borderRadius: 10,
+              alignItems: 'center',
+            }}
+            onPress={() => navigation.navigate('AddExpense', { bookingId: item.id, vehicleNo: item.vehicleNo })}
+          >
+            <Text style={{ color: '#065f46', fontWeight: '800', fontSize: 12 }}>+ Add Expense</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
@@ -331,15 +513,24 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
         </View>
       </View>
 
-      {/* Driver & Tour Operating Company Profile Card */}
+      {/* Driver & Tour Operating Company Profile Hero Card (Admin Platform Design) */}
       <TouchableOpacity 
         onPress={() => navigation.navigate('Profile')}
         activeOpacity={0.8}
-        className="px-5 py-3.5 bg-white border-b border-gray-200 flex-row items-center justify-between"
+        style={{
+          backgroundColor: '#ffffff',
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          borderBottomWidth: 1,
+          borderBottomColor: '#e2e8f0',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
       >
-        <View className="flex-row items-center flex-1 min-w-0 pr-2">
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, paddingRight: 10 }}>
           {driverData.avatarUrl ? (
-            <View className="w-12 h-12 rounded-full border-2 border-blue-500 p-0.5 mr-3.5 shadow-sm bg-blue-50 items-center justify-center">
+            <View style={{ width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: '#10b981', padding: 1.5, marginRight: 12, backgroundColor: '#ecfdf5', alignItems: 'center', justifyContent: 'center' }}>
               <Image 
                 source={{ uri: driverData.avatarUrl }} 
                 style={{ width: 42, height: 42, borderRadius: 21 }} 
@@ -347,16 +538,16 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
               />
             </View>
           ) : (
-            <View className="w-12 h-12 bg-blue-100 rounded-full items-center justify-center border border-blue-300 mr-3.5">
-              <Text className="text-blue-800 font-extrabold text-base">
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#bfdbfe', marginRight: 12 }}>
+              <Text style={{ color: '#1d4ed8', fontWeight: '900', fontSize: 16 }}>
                 {(driverData.name || 'DR').substring(0, 2).toUpperCase()}
               </Text>
             </View>
           )}
 
-          <View className="flex-1 min-w-0">
-            <View className="flex-row items-center gap-1.5">
-              <Text className="text-xs font-bold text-blue-700 tracking-wide uppercase" numberOfLines={1}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#6366f1', letterSpacing: 0.6, textTransform: 'uppercase' }} numberOfLines={1}>
                 {driverData.companyName || 'Tour Transport Company'}
               </Text>
               {driverData.companyLogoUrl ? (
@@ -367,37 +558,43 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
                 />
               ) : null}
             </View>
-            <Text className="text-lg font-bold text-gray-900" numberOfLines={1}>
-              {driverData.name ? `Welcome, ${driverData.name}` : 'Welcome, Driver'}
+            <Text style={{ fontSize: 17, fontWeight: '900', color: '#0f172a', marginTop: 1 }} numberOfLines={1}>
+              {getGreeting()}, {driverData.name || 'Driver'}! 👋
             </Text>
-            <View className="flex-row items-center mt-0.5">
-              <View className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5" />
-              <Text className="text-[11px] text-gray-500">Live GPS Radar Connected</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+              <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#10b981', marginRight: 6 }} />
+              <Text style={{ fontSize: 11, color: '#059669', fontWeight: '700' }}>Live GPS Radar Synchronized</Text>
             </View>
           </View>
         </View>
 
-        <View className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 flex-row items-center">
-          <Text className="text-xs font-bold text-slate-700 mr-1">Edit</Text>
-          <Text className="text-slate-400 text-xs">›</Text>
+        <View style={{ backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155', marginRight: 2 }}>Edit</Text>
+          <Text style={{ color: '#64748b', fontSize: 12, fontWeight: '900' }}>›</Text>
         </View>
       </TouchableOpacity>
 
       <View className="flex-1 px-4 pt-4">
-        <View className="flex-row justify-between items-center mb-4 px-2">
-          <Text className="text-lg font-bold text-gray-800">My Assigned Tours</Text>
-          <View className="flex-row gap-2">
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, paddingHorizontal: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ fontSize: 17, fontWeight: '900', color: '#0f172a' }}>My Assigned Tours</Text>
+            <View style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#475569' }}>{tours.length}</Text>
+            </View>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 8 }}>
             <TouchableOpacity 
-              className="bg-blue-100 px-3 py-1.5 rounded-md"
+              style={{ backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
               onPress={() => navigation.navigate('Calendar')}
             >
-              <Text className="text-blue-800 text-xs font-bold">📅 Calendar</Text>
+              <Text style={{ color: '#1d4ed8', fontSize: 11, fontWeight: '800' }}>📅 Calendar</Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              className="bg-green-600 px-3 py-1.5 rounded-md"
+              style={{ backgroundColor: '#10b981', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, shadowColor: '#10b981', shadowOpacity: 0.3, shadowRadius: 4, elevation: 2 }}
               onPress={() => navigation.navigate('AddExpense', {})}
             >
-              <Text className="text-white text-xs font-bold">+ Expense</Text>
+              <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '800' }}>+ Expense</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -434,12 +631,20 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
             data={tours}
             keyExtractor={(item) => item.id}
             renderItem={renderTour}
-            contentContainerStyle={{ paddingBottom: 20 }}
+            contentContainerStyle={{ paddingBottom: 30 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
             ListEmptyComponent={
-              <View className="items-center justify-center py-10">
-                <Text className="text-gray-400 text-base">
-                  {syncError ? 'Could not load assigned tours. Tap Retry to reconnect.' : 'No tours assigned right now.'}
+              <View style={{ borderWidth: 2, borderStyle: 'dashed', borderColor: '#cbd5e1', borderRadius: 20, padding: 32, alignItems: 'center', marginTop: 12, backgroundColor: '#f8fafc' }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                  <Text style={{ fontSize: 26 }}>🚗</Text>
+                </View>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#0f172a', marginBottom: 4 }}>
+                  No Active Tour
+                </Text>
+                <Text style={{ fontSize: 12, color: '#64748b', textAlign: 'center', lineHeight: 18, maxWidth: 260 }}>
+                  {syncError 
+                    ? 'Could not connect to tour server. Tap Retry above to reconnect.' 
+                    : "You don't have any active tours assigned right now. Your tour manager will dispatch tours here."}
                 </Text>
               </View>
             }

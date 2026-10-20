@@ -30,9 +30,9 @@ export default function CalendarScreen() {
           const d = new Date(tour.startDate);
           const dateString = d.toISOString().split('T')[0];
           
-          let color = '#3b82f6'; // blue (CONFIRMED)
-          if (tour.status === 'ONGOING') color = '#22c55e'; // green
-          else if (tour.status === 'PENDING') color = '#f59e0b'; // orange
+          let color = '#4f46e5'; // Indigo (CONFIRMED)
+          if (tour.status === 'ONGOING') color = '#10b981'; // Emerald (ONGOING)
+          else if (tour.status === 'PENDING') color = '#f59e0b'; // Amber (PENDING)
 
           marks[dateString] = {
             marked: true,
@@ -54,37 +54,42 @@ export default function CalendarScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <View className="px-5 py-3.5 bg-white border-b border-gray-200 flex-row items-center justify-between">
-        <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
-            <Text className="text-blue-600 text-base font-bold">← Back</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+      {/* Top Header matching Admin App */}
+      <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()} 
+            style={{ backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#cbd5e1', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, marginRight: 10 }}
+          >
+            <Text style={{ color: '#0f172a', fontSize: 13, fontWeight: '800' }}>← Back</Text>
           </TouchableOpacity>
-          <Text className="text-lg font-bold text-gray-800">Booking Calendar</Text>
+          <Text style={{ fontSize: 17, fontWeight: '900', color: '#0f172a' }}>Tour Calendar</Text>
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0' }}>
           <Image 
             source={require('../../assets/logo-icon.png')} 
-            style={{ width: 20, height: 20, marginRight: 6 }} 
+            style={{ width: 18, height: 18, marginRight: 6 }} 
             resizeMode="contain" 
           />
           <Text style={{ color: '#0f172a', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>VIGIL</Text>
         </View>
       </View>
 
-      <View className="flex-1 p-4">
+      <View style={{ flex: 1, padding: 16 }}>
         {loading ? (
-          <ActivityIndicator size="large" color="#2563eb" className="mt-10" />
+          <ActivityIndicator size="large" color="#4f46e5" style={{ marginTop: 40 }} />
         ) : (
-          <View className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <View style={{ backgroundColor: '#ffffff', borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 3 }}>
             <Calendar
               markedDates={markedDates}
               theme={{
-                todayTextColor: '#2563eb',
-                arrowColor: '#2563eb',
-                monthTextColor: '#1f2937',
-                textMonthFontWeight: 'bold',
+                todayTextColor: '#4f46e5',
+                arrowColor: '#4f46e5',
+                monthTextColor: '#0f172a',
+                textMonthFontWeight: '900',
+                textDayHeaderFontWeight: '700',
               }}
               onDayPress={(day: any) => {
                 const mark = markedDates[day.dateString];
@@ -95,18 +100,18 @@ export default function CalendarScreen() {
               }}
             />
             
-            <View className="p-4 border-t border-gray-100 bg-gray-50 flex-row justify-around">
-              <View className="flex-row items-center">
-                <View className="w-3 h-3 rounded-full bg-blue-500 mr-2" />
-                <Text className="text-xs text-gray-600">Confirmed</Text>
+            <View style={{ padding: 14, borderTopWidth: 1, borderTopColor: '#f1f5f9', backgroundColor: '#f8fafc', flexDirection: 'row', justifyContent: 'space-around' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#4f46e5', marginRight: 6 }} />
+                <Text style={{ fontSize: 11, color: '#334155', fontWeight: '700' }}>Confirmed</Text>
               </View>
-              <View className="flex-row items-center">
-                <View className="w-3 h-3 rounded-full bg-green-500 mr-2" />
-                <Text className="text-xs text-gray-600">Ongoing</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10b981', marginRight: 6 }} />
+                <Text style={{ fontSize: 11, color: '#334155', fontWeight: '700' }}>Ongoing</Text>
               </View>
-              <View className="flex-row items-center">
-                <View className="w-3 h-3 rounded-full bg-orange-500 mr-2" />
-                <Text className="text-xs text-gray-600">Pending</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#f59e0b', marginRight: 6 }} />
+                <Text style={{ fontSize: 11, color: '#334155', fontWeight: '700' }}>Pending</Text>
               </View>
             </View>
           </View>

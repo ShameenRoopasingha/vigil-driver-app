@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,21 +10,24 @@ import {
   Linking,
   Alert,
   Modal,
+  PanResponder,
+  Easing,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { navigationRef } from '../navigation/navigationRef';
 import { locationService } from '../services/locationService';
 
-interface NavArcItem {
+export interface ArcNavItem {
   id: string;
   name: string;
   screen?: string;
   icon: string;
   color: string;
   bgColor: string;
-  action?: () => void;
+  subtitle: string;
   badge?: string;
+  isAction?: boolean;
 }
 
 export default function ArcNavbar() {
@@ -35,11 +38,123 @@ export default function ArcNavbar() {
   const [showSosModal, setShowSosModal] = useState(false);
   const [companyPhone, setCompanyPhone] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string>('Tour Transport Office');
+  const [rotationOffset, setRotationOffset] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
 
-  // Animation values
-  const animValue = useRef(new Animated.Value(0)).current;
+  // Geometry Constants matching Admin App (ArcSpinnerNavbar)
+  const CONTAINER_SIZE = 320;
+  const ORIGIN_X = 320; // Top-right corner
+  const ORIGIN_Y = 0;   // Top-right corner
+  const RADIUS = 210;   // Radial distance of icons
+  const FOCAL_ANGLE = 135; // 135 degrees = 45 degrees down-left into phone thumb zone
 
-  // Listen to navigation state changes to know current route
+  // Navigation Items matching Driver App duties & Admin Platform styling
+  const items: ArcNavItem[] = [
+    {
+      id: 'dashboard',
+      name: 'Dashboard',
+      screen: 'Dashboard',
+      icon: '🏠',
+      color: '#38bdf8',
+      bgColor: 'rgba(56, 189, 248, 0.2)',
+      subtitle: 'Overview & Assigned Tours',
+    },
+    {
+      id: 'activeTour',
+      name: 'Active Tour',
+      screen: 'ActiveTour',
+      icon: '⚡',
+      color: '#10b981',
+      bgColor: 'rgba(16, 185, 129, 0.2)',
+      badge: locationService.isTripTrackingActive() ? 'LIVE' : undefined,
+      subtitle: 'Live Radar & Navigation',
+    },
+    {
+      id: 'calendar',
+      name: 'Calendar',
+      screen: 'Calendar',
+      icon: '📅',
+      color: '#818cf8',
+      bgColor: 'rgba(129, 140, 248, 0.2)',
+      subtitle: 'Scheduled Booking Dates',
+    },
+    {
+      id: 'expense',
+      name: 'Add Expense',
+      screen: 'AddExpense',
+      icon: '💸',
+      color: '#fbbf24',
+      bgColor: 'rgba(251, 191, 36, 0.2)',
+      subtitle: 'Fuel, Tolls & Vehicle Receipts',
+    },
+    {
+      id: 'profile',
+      name: 'Driver Profile',
+      screen: 'Profile',
+      icon: '👤',
+      color: '#2dd4bf',
+      bgColor: 'rgba(45, 212, 191, 0.2)',
+      subtitle: 'Name, Photo & Operating Fleet',
+    },
+    {
+      id: 'sos',
+      name: 'Emergency SOS',
+      icon: '🚨',
+      color: '#fb7185',
+      bgColor: 'rgba(251, 113, 133, 0.2)',
+      badge: 'SOS',
+      subtitle: 'Roadside & Hotline Dispatch',
+      isAction: true,
+    },
+    {
+      id: 'duty',
+      name: onDuty ? 'Status: ON DUTY' : 'Status: RESTING',
+      icon: onDuty ? '🟢' : '☕',
+      color: onDuty ? '#34d399' : '#f87171',
+      bgColor: onDuty ? 'rgba(52, 211, 153, 0.2)' : 'rgba(248, 113, 113, 0.2)',
+      badge: onDuty ? 'ONLINE' : 'REST',
+      subtitle: onDuty ? 'Available for Transfers' : 'Shift Resting / Break',
+      isAction: true,
+    },
+  ];
+
+  const TOTAL_ITEMS = items.length;
+  const ANGLE_STEP = 360 / TOTAL_ITEMS;
+
+  // Animation Refs
+  const animMenu = useRef(new Animated.Value(0)).current;
+  const animOffset = useRef(new Animated.Value(0)).current;
+  const lastStepRef = useRef(0);
+  const isDraggingRef = useRef(false);
+  const startTouchAngleRef = useRef(0);
+  const startOffsetRef = useRef(0);
+  const lastAngleRef = useRef(0);
+  const velocityRef = useRef(0);
+  const lastTimeRef = useRef(0);
+  const offsetValueRef = useRef(0);
+
+  // Haptic feedback & active step update
+  const updateActiveStep = useCallback((offset: number) => {
+    const currentStep = Math.round(-offset / ANGLE_STEP);
+    if (currentStep !== lastStepRef.current) {
+      lastStepRef.current = currentStep;
+      const wrappedIdx = ((currentStep % TOTAL_ITEMS) + TOTAL_ITEMS) % TOTAL_ITEMS;
+      setActiveIndex(wrappedIdx);
+      Vibration.vibrate(8);
+    }
+  }, [ANGLE_STEP, TOTAL_ITEMS]);
+
+  // Sync animOffset with state & step calculations
+  useEffect(() => {
+    const listenerId = animOffset.addListener(({ value }) => {
+      offsetValueRef.current = value;
+      setRotationOffset(value);
+      updateActiveStep(value);
+    });
+    return () => animOffset.removeListener(listenerId);
+  }, [updateActiveStep]);
+
+  // Listen to navigation state & driver data
   useEffect(() => {
     const checkRoute = () => {
       if (navigationRef.isReady()) {
@@ -53,7 +168,6 @@ export default function ArcNavbar() {
     const interval = setInterval(checkRoute, 600);
     checkRoute();
 
-    // Load driver company info & duty status
     AsyncStorage.getItem('driverData').then((val) => {
       if (val) {
         try {
@@ -73,44 +187,56 @@ export default function ArcNavbar() {
     return () => clearInterval(interval);
   }, []);
 
+  // Update active item to match current route on open
+  useEffect(() => {
+    if (isOpen) {
+      const currentIdx = items.findIndex((item) => item.screen === currentRoute);
+      if (currentIdx !== -1) {
+        const currentStep = Math.round(-offsetValueRef.current / ANGLE_STEP);
+        const currentWrapped = ((currentStep % TOTAL_ITEMS) + TOTAL_ITEMS) % TOTAL_ITEMS;
+        let diffSteps = currentIdx - currentWrapped;
+        if (diffSteps > TOTAL_ITEMS / 2) diffSteps -= TOTAL_ITEMS;
+        if (diffSteps < -TOTAL_ITEMS / 2) diffSteps += TOTAL_ITEMS;
+
+        const targetOffset = -(currentStep + diffSteps) * ANGLE_STEP;
+        lastStepRef.current = Math.round(-targetOffset / ANGLE_STEP);
+        animOffset.setValue(targetOffset);
+        setActiveIndex(currentIdx);
+      }
+    }
+  }, [isOpen, currentRoute]);
+
   const toggleDuty = async () => {
     try {
-      Vibration.vibrate(15);
+      Vibration.vibrate(12);
       const nextDuty = !onDuty;
       setOnDuty(nextDuty);
       await AsyncStorage.setItem('driver_duty_status', String(nextDuty));
       Alert.alert(
-        nextDuty ? '🟢 Status: On Duty' : '☕ Status: Resting / Off Duty',
+        nextDuty ? '🟢 Status: On Duty' : '☕ Status: Resting / Break',
         nextDuty
-          ? 'You are marked as available for scheduled tours & passenger transfers.'
-          : 'You are marked as resting. Enjoy your break!'
+          ? 'You are active and ready for passenger pickups & scheduled tours.'
+          : 'You are marked as resting. Take your break safely!'
       );
     } catch {}
   };
 
-  const toggleMenu = () => {
-    Vibration.vibrate(15);
-    if (isOpen) {
-      Animated.timing(animValue, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true,
-      }).start(() => setIsOpen(false));
-    } else {
-      setIsOpen(true);
-      Animated.spring(animValue, {
-        toValue: 1,
-        friction: 6,
-        tension: 50,
-        useNativeDriver: true,
-      }).start();
-    }
+  const openMenu = () => {
+    Vibration.vibrate(10);
+    setIsOpen(true);
+    Animated.spring(animMenu, {
+      toValue: 1,
+      friction: 7,
+      tension: 65,
+      useNativeDriver: true,
+    }).start();
   };
 
   const closeMenu = (callback?: () => void) => {
-    Animated.timing(animValue, {
+    Animated.timing(animMenu, {
       toValue: 0,
-      duration: 180,
+      duration: 200,
+      easing: Easing.in(Easing.cubic),
       useNativeDriver: true,
     }).start(() => {
       setIsOpen(false);
@@ -118,13 +244,18 @@ export default function ArcNavbar() {
     });
   };
 
-  const handleNavigate = (screen?: string, action?: () => void) => {
-    Vibration.vibrate(12);
-    closeMenu(() => {
-      if (action) {
-        action();
-      } else if (screen && navigationRef.isReady()) {
-        if (screen === 'ActiveTour') {
+  const executeItemAction = (item: ArcNavItem) => {
+    if (item.id === 'sos') {
+      closeMenu(() => setShowSosModal(true));
+      return;
+    }
+    if (item.id === 'duty') {
+      toggleDuty();
+      return;
+    }
+    if (item.screen && navigationRef.isReady()) {
+      closeMenu(() => {
+        if (item.screen === 'ActiveTour') {
           const activeBookingId = locationService.getActiveBookingId();
           if (activeBookingId) {
             navigationRef.navigate('ActiveTour', { bookingId: activeBookingId });
@@ -133,17 +264,106 @@ export default function ArcNavbar() {
             Alert.alert('No Active Tour', 'Please select a tour from your dashboard to view its live route.');
           }
         } else {
-          // Normal screen navigation
-          navigationRef.navigate(screen as any);
+          navigationRef.navigate(item.screen as any);
         }
-      }
+      });
+    }
+  };
+
+  // Direct snap to item on click
+  const handleItemClick = (idx: number, item: ArcNavItem) => {
+    Vibration.vibrate(10);
+    let diff = (idx * ANGLE_STEP + offsetValueRef.current) % 360;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+
+    const targetOffset = offsetValueRef.current - diff;
+
+    Animated.timing(animOffset, {
+      toValue: targetOffset,
+      duration: 240,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start(() => {
+      executeItemAction(item);
     });
   };
 
-  const handleEmergencySOS = () => {
-    setShowSosModal(true);
+  // Helper: compute angle relative to top-right corner of screen
+  const getAngleFromTouch = (pageX: number, pageY: number) => {
+    const screenWidth = Dimensions.get('window').width;
+    const cornerX = screenWidth;
+    const cornerY = insets.top;
+
+    const dx = pageX - cornerX;
+    const dy = pageY - cornerY;
+    let deg = Math.atan2(dy, dx) * (180 / Math.PI);
+    if (deg < 0) deg += 360;
+    return deg;
   };
 
+  // PanResponder for smooth rotary dragging & low-friction inertia glide
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        isDraggingRef.current = true;
+        const currentAngle = getAngleFromTouch(evt.nativeEvent.pageX, evt.nativeEvent.pageY);
+        startTouchAngleRef.current = currentAngle;
+        startOffsetRef.current = offsetValueRef.current;
+        lastAngleRef.current = currentAngle;
+        lastTimeRef.current = Date.now();
+        velocityRef.current = 0;
+        lastStepRef.current = Math.round(-offsetValueRef.current / ANGLE_STEP);
+        animOffset.stopAnimation();
+      },
+      onPanResponderMove: (evt) => {
+        if (!isDraggingRef.current) return;
+        const currentAngle = getAngleFromTouch(evt.nativeEvent.pageX, evt.nativeEvent.pageY);
+        const now = Date.now();
+        const dt = Math.max(now - lastTimeRef.current, 1);
+
+        let delta = currentAngle - lastAngleRef.current;
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+
+        const currentVelocity = delta / dt;
+        velocityRef.current = velocityRef.current * 0.25 + currentVelocity * 0.75;
+        lastTimeRef.current = now;
+        lastAngleRef.current = currentAngle;
+
+        const totalAngleDiff = currentAngle - startTouchAngleRef.current;
+        const newOffset = startOffsetRef.current + totalAngleDiff;
+
+        animOffset.setValue(newOffset);
+      },
+      onPanResponderRelease: () => {
+        if (!isDraggingRef.current) return;
+        isDraggingRef.current = false;
+
+        // Inertia glide calculation
+        const inertiaDistance = velocityRef.current * 260;
+        const projectedOffset = offsetValueRef.current + inertiaDistance;
+
+        const currentStep = Math.round(-offsetValueRef.current / ANGLE_STEP);
+        const targetStep = Math.round(-projectedOffset / ANGLE_STEP);
+        const finalTargetOffset = -targetStep * ANGLE_STEP;
+
+        const stepsToTravel = Math.abs(targetStep - currentStep);
+        const duration = Math.min(950, Math.max(450, 350 + stepsToTravel * 80));
+
+        Animated.timing(animOffset, {
+          toValue: finalTargetOffset,
+          duration,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }).start();
+      },
+    })
+  ).current;
+
+  // Emergency SOS dispatch actions
   const triggerCallOffice = () => {
     setShowSosModal(false);
     if (companyPhone) {
@@ -185,255 +405,221 @@ export default function ArcNavbar() {
     }
   };
 
-  // Do not show on Splash or Login screens
+  // Hide on Splash or Login screens
   if (currentRoute === 'Splash' || currentRoute === 'Login') {
     return null;
   }
 
-  // Arc Navigation Items
-  const items: NavArcItem[] = [
-    {
-      id: 'dashboard',
-      name: 'Dashboard',
-      screen: 'Dashboard',
-      icon: '🏠',
-      color: '#2563eb',
-      bgColor: '#eff6ff',
-    },
-    {
-      id: 'activeTour',
-      name: 'Active Tour',
-      screen: 'ActiveTour',
-      icon: '⚡',
-      color: '#059669',
-      bgColor: '#ecfdf5',
-      badge: locationService.isTripTrackingActive() ? 'LIVE' : undefined,
-    },
-    {
-      id: 'calendar',
-      name: 'Calendar',
-      screen: 'Calendar',
-      icon: '📅',
-      color: '#7c3aed',
-      bgColor: '#f5f3ff',
-    },
-    {
-      id: 'expense',
-      name: 'Add Expense',
-      screen: 'AddExpense',
-      icon: '💸',
-      color: '#d97706',
-      bgColor: '#fffbeb',
-    },
-    {
-      id: 'profile',
-      name: 'Profile',
-      screen: 'Profile',
-      icon: '👤',
-      color: '#0284c7',
-      bgColor: '#f0f9ff',
-    },
-    {
-      id: 'sos',
-      name: 'Emergency SOS',
-      icon: '🚨',
-      color: '#dc2626',
-      bgColor: '#fef2f2',
-      action: handleEmergencySOS,
-    },
-  ];
-
-  // Arc Geometry parameters (items fan out up & left from bottom-right corner)
-  const RADIUS = 148;
-  const START_ANGLE = 95 * (Math.PI / 180); // ~95 degrees (almost straight up)
-  const END_ANGLE = 175 * (Math.PI / 180);  // ~175 degrees (almost straight left)
-  const ANGLE_STEP = (END_ANGLE - START_ANGLE) / (items.length - 1);
-
   const bottomOffset = Math.max(insets.bottom, 16) + 16;
   const rightOffset = 20;
 
+  // Focal point coordinates (135° = 45° down-left from top-right corner)
+  const focalRad = (FOCAL_ANGLE * Math.PI) / 180;
+  const focalX = ORIGIN_X + RADIUS * Math.cos(focalRad); // ~ 171.5
+  const focalY = ORIGIN_Y + RADIUS * Math.sin(focalRad); // ~ 148.5
+
   return (
     <>
-      {/* Fullscreen Backdrop when Arc is Open */}
-      {isOpen && (
-        <Animated.View
-          style={[
-            styles.backdrop,
-            {
-              opacity: animValue.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 1],
-              }),
-            },
-          ]}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => closeMenu()}
-          />
-        </Animated.View>
-      )}
-
-      {/* Duty Status Pill (Visible when Arc is Open) */}
-      {isOpen && (
-        <Animated.View
-          style={[
-            styles.dutyPillContainer,
-            {
-              bottom: bottomOffset + 220,
-              right: rightOffset,
-              opacity: animValue,
-              transform: [
-                {
-                  scale: animValue.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.7, 1],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
+      {/* Sleek Floating Trigger Button (Signature Admin App Dial with glowing dot) */}
+      {!isOpen && (
+        <View style={[styles.triggerWrapper, { bottom: bottomOffset, right: rightOffset }]}>
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={toggleDuty}
-            style={[
-              styles.dutyPill,
-              { backgroundColor: onDuty ? '#ecfdf5' : '#fef2f2', borderColor: onDuty ? '#a7f3d0' : '#fecaca' },
-            ]}
+            onPress={openMenu}
+            style={styles.triggerButton}
+            aria-label="Open Navigation Dial"
           >
-            <View style={[styles.statusDot, { backgroundColor: onDuty ? '#10b981' : '#ef4444' }]} />
-            <Text style={[styles.dutyText, { color: onDuty ? '#065f46' : '#991b1b' }]}>
-              {onDuty ? 'Status: ON DUTY' : 'Status: RESTING'}
-            </Text>
-            <Text style={styles.dutySubtext}>Tap to toggle</Text>
+            {/* Dial Rotary Icon */}
+            <View style={styles.triggerDialIcon}>
+              <View style={[styles.dialBar, { width: 14, height: 2.5, backgroundColor: '#10b981' }]} />
+              <View style={[styles.dialBar, { width: 18, height: 2.5, backgroundColor: '#38bdf8', marginTop: 3 }]} />
+              <View style={[styles.dialBar, { width: 12, height: 2.5, backgroundColor: '#10b981', marginTop: 3 }]} />
+            </View>
+
+            {/* Glowing Emerald Pulse Dot */}
+            <View style={styles.pulseDot} />
           </TouchableOpacity>
-        </Animated.View>
+
+          {/* Live Radar Pulsing Ring if GPS tracking active */}
+          {locationService.isTripTrackingActive() && (
+            <View pointerEvents="none" style={styles.liveRing} />
+          )}
+        </View>
       )}
 
-      {/* Arc Radial Items */}
-      {items.map((item, index) => {
-        const angle = START_ANGLE + index * ANGLE_STEP;
-        const targetX = -RADIUS * Math.cos(angle - Math.PI / 2);
-        const targetY = -RADIUS * Math.sin(angle - Math.PI / 2);
-
-        const translateX = animValue.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, targetX],
-        });
-
-        const translateY = animValue.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, targetY],
-        });
-
-        const scale = animValue.interpolate({
-          inputRange: [0, 0.4, 1],
-          outputRange: [0, 0.5, 1],
-        });
-
-        const opacity = animValue.interpolate({
-          inputRange: [0, 0.2, 1],
-          outputRange: [0, 0.8, 1],
-        });
-
-        const isActive = item.screen === currentRoute;
-
-        return (
+      {/* Fullscreen Modal Overlay for the Arc Dial */}
+      {isOpen && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          {/* Frosted Dark Backdrop */}
           <Animated.View
-            key={item.id}
-            pointerEvents={isOpen ? 'auto' : 'none'}
             style={[
-              styles.arcItemWrapper,
+              StyleSheet.absoluteFill,
+              styles.backdrop,
               {
-                bottom: bottomOffset + 6,
-                right: rightOffset + 6,
-                transform: [{ translateX }, { translateY }, { scale }],
-                opacity,
+                opacity: animMenu.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 1],
+                }),
               },
             ]}
           >
             <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => handleNavigate(item.screen, item.action)}
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => closeMenu()}
+            />
+          </Animated.View>
+
+          {/* 320x320 Quarter-Circle Arc Container (Top-Right Corner) */}
+          <Animated.View
+            {...panResponder.panHandlers}
+            style={[
+              styles.arcContainer,
+              {
+                top: insets.top,
+                right: 0,
+                opacity: animMenu,
+                transform: [
+                  {
+                    translateX: animMenu.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [CONTAINER_SIZE * 0.4, 0],
+                    }),
+                  },
+                  {
+                    translateY: animMenu.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-CONTAINER_SIZE * 0.4, 0],
+                    }),
+                  },
+                  {
+                    scale: animMenu.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.6, 1],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            {/* Concentric Guide Arcs (Radius 210 and 150) */}
+            <View pointerEvents="none" style={styles.concentricOuter} />
+            <View pointerEvents="none" style={styles.concentricInner} />
+
+            {/* Top-Right Corner Hub: Brand & Close Button */}
+            <View style={styles.cornerHub}>
+              <View style={styles.hubBrand}>
+                <Text style={styles.hubBrandTitle}>VIGIL DIAL</Text>
+                <Text style={styles.hubBrandSubtitle}>Infinite 360° • Rotary</Text>
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => closeMenu()}
+                style={styles.hubCloseButton}
+              >
+                <Text style={styles.hubCloseIcon}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Focal Point Indicator (Glowing Emerald Lens at 135°) */}
+            <View
+              pointerEvents="none"
               style={[
-                styles.arcItemButton,
+                styles.focalIndicator,
                 {
-                  backgroundColor: item.bgColor,
-                  borderColor: isActive ? item.color : '#e2e8f0',
-                  borderWidth: isActive ? 2.5 : 1.5,
+                  left: focalX - 22,
+                  top: focalY - 22,
                 },
               ]}
-            >
-              <Text style={styles.arcItemIcon}>{item.icon}</Text>
-              {item.badge && (
-                <View style={styles.itemBadge}>
-                  <Text style={styles.itemBadgeText}>{item.badge}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+            />
 
-            {/* Label Underneath Item */}
-            <View style={styles.itemLabelBox}>
-              <Text
-                style={[
-                  styles.itemLabelText,
-                  { color: isActive ? item.color : '#334155', fontWeight: isActive ? '900' : '700' },
-                ]}
-                numberOfLines={1}
+            {/* Rotary Spinnable Items along the 360° Arc */}
+            {items.map((item, idx) => {
+              let diff = (idx * ANGLE_STEP + rotationOffset) % 360;
+              if (diff > 180) diff -= 360;
+              if (diff < -180) diff += 360;
+
+              const angleDeg = FOCAL_ANGLE + diff;
+              const angleRad = (angleDeg * Math.PI) / 180;
+
+              const x = ORIGIN_X + RADIUS * Math.cos(angleRad) - 24;
+              const y = ORIGIN_Y + RADIUS * Math.sin(angleRad) - 24;
+
+              const isFocused = idx === activeIndex;
+              const isVisible = angleDeg >= 65 && angleDeg <= 205;
+              const distFromCenter = Math.abs(diff);
+              const scale = isFocused ? 1.25 : Math.max(0.78, 1 - distFromCenter / 140);
+              const opacity = isVisible ? Math.max(0, 1 - Math.max(0, distFromCenter - 25) / 50) : 0;
+              const isActiveRoute = item.screen === currentRoute;
+
+              if (!isVisible || opacity <= 0.05) return null;
+
+              return (
+                <View
+                  key={item.id}
+                  style={[
+                    styles.itemWrapper,
+                    {
+                      left: x,
+                      top: y,
+                      opacity,
+                      transform: [{ scale }],
+                      zIndex: isFocused ? 25 : 15,
+                    },
+                  ]}
+                >
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => handleItemClick(idx, item)}
+                    style={[
+                      styles.itemSquircle,
+                      isFocused && styles.itemSquircleFocused,
+                      isActiveRoute && !isFocused && styles.itemSquircleActiveRoute,
+                    ]}
+                  >
+                    <Text style={styles.itemIconText}>{item.icon}</Text>
+                    {item.badge && (
+                      <View style={styles.itemBadge}>
+                        <Text style={styles.itemBadgeText}>{item.badge}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+
+            {/* Active Item Floating Detail Card (Bottom-Left of Arc) */}
+            {items[activeIndex] && (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => executeItemAction(items[activeIndex])}
+                style={styles.detailCard}
               >
-                {item.name}
-              </Text>
-            </View>
-          </Animated.View>
-        );
-      })}
-
-      {/* Main Floating Arc Trigger Button */}
-      <View style={[styles.triggerWrapper, { bottom: bottomOffset, right: rightOffset }]}>
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={toggleMenu}
-          style={[
-            styles.triggerButton,
-            { backgroundColor: isOpen ? '#0f172a' : '#1e3a8a' },
-          ]}
-        >
-          <Animated.View
-            style={{
-              transform: [
-                {
-                  rotate: animValue.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0deg', '135deg'],
-                  }),
-                },
-              ],
-            }}
-          >
-            {isOpen ? (
-              <Text style={styles.triggerIconClose}>✕</Text>
-            ) : (
-              <View style={styles.triggerIconGrid}>
-                <View style={styles.gridRow}>
-                  <View style={[styles.gridDot, { backgroundColor: '#38bdf8' }]} />
-                  <View style={[styles.gridDot, { backgroundColor: '#34d399' }]} />
+                <View
+                  style={[
+                    styles.detailIconSquircle,
+                    { backgroundColor: items[activeIndex].bgColor },
+                  ]}
+                >
+                  <Text style={styles.detailIconText}>{items[activeIndex].icon}</Text>
                 </View>
-                <View style={styles.gridRow}>
-                  <View style={[styles.gridDot, { backgroundColor: '#fbbf24' }]} />
-                  <View style={[styles.gridDot, { backgroundColor: '#f472b6' }]} />
+                <View style={styles.detailTextWrapper}>
+                  <View style={styles.detailTitleRow}>
+                    <Text style={styles.detailTitleText} numberOfLines={1}>
+                      {items[activeIndex].name}
+                    </Text>
+                    <Text style={styles.detailChevronText}>›</Text>
+                  </View>
+                  <Text style={styles.detailSubtitleText} numberOfLines={1}>
+                    {items[activeIndex].subtitle}
+                  </Text>
+                  <Text style={styles.detailActionText}>TAP TO OPEN</Text>
                 </View>
-              </View>
+              </TouchableOpacity>
             )}
           </Animated.View>
-        </TouchableOpacity>
-
-        {/* Pulse ring when trip tracking is active */}
-        {locationService.isTripTrackingActive() && !isOpen && (
-          <View pointerEvents="none" style={styles.liveRing} />
-        )}
-      </View>
+        </View>
+      )}
 
       {/* Emergency SOS Quick Action Modal */}
       <Modal
@@ -447,7 +633,7 @@ export default function ArcNavbar() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalHeaderIcon}>🚨</Text>
               <Text style={styles.modalTitle}>Emergency Assistance</Text>
-              <Text style={styles.modalSubtitle}>Quick 1-tap roadside & fleet support</Text>
+              <Text style={styles.modalSubtitle}>Roadside safety & fleet management hotline</Text>
             </View>
 
             <TouchableOpacity
@@ -459,7 +645,7 @@ export default function ArcNavbar() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.sosActionTitle}>Call Fleet Office Hotline</Text>
                 <Text style={styles.sosActionDesc}>
-                  {companyPhone ? `Direct call to ${companyName} (${companyPhone})` : 'Company phone not configured'}
+                  {companyPhone ? `Direct dispatch to ${companyName} (${companyPhone})` : 'Office phone not configured'}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -473,7 +659,7 @@ export default function ArcNavbar() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.sosActionTitle}>Report Vehicle Breakdown</Text>
                 <Text style={styles.sosActionDesc}>
-                  Dispatches emergency vehicle swap & notifies fleet manager
+                  Dispatches emergency vehicle swap & notifies office manager
                 </Text>
               </View>
             </TouchableOpacity>
@@ -495,7 +681,7 @@ export default function ArcNavbar() {
               onPress={() => setShowSosModal(false)}
               style={styles.modalCloseButton}
             >
-              <Text style={styles.modalCloseText}>Close</Text>
+              <Text style={styles.modalCloseText}>Dismiss</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -506,244 +692,378 @@ export default function ArcNavbar() {
 
 const styles = StyleSheet.create({
   backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
-    zIndex: 9000,
+    backgroundColor: 'rgba(2, 6, 23, 0.75)',
   },
+  // Sleek Trigger Button matching Admin App
   triggerWrapper: {
     position: 'absolute',
-    zIndex: 9999,
+    zIndex: 99,
   },
   triggerButton: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#090d16',
+    borderWidth: 1.5,
+    borderColor: 'rgba(16, 185, 129, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#38bdf8',
-    elevation: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 5,
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  triggerIconClose: {
-    color: '#ffffff',
-    fontSize: 22,
-    fontWeight: '900',
+  triggerDialIcon: {
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
-  triggerIconGrid: {
-    width: 22,
-    height: 22,
-    justifyContent: 'space-between',
+  dialBar: {
+    borderRadius: 2,
   },
-  gridRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  gridDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  pulseDot: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#10b981',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 4,
+    elevation: 2,
   },
   liveRing: {
     position: 'absolute',
-    top: -4,
-    left: -4,
-    right: -4,
-    bottom: -4,
-    borderRadius: 33,
-    borderWidth: 2.5,
+    top: -5,
+    left: -5,
+    right: -5,
+    bottom: -5,
+    borderRadius: 30,
+    borderWidth: 1.5,
     borderColor: '#10b981',
-    opacity: 0.8,
+    opacity: 0.6,
   },
-  arcItemWrapper: {
+
+  // 320x320 Quarter-Circle Arc Container
+  arcContainer: {
     position: 'absolute',
-    zIndex: 9500,
-    alignItems: 'center',
-    width: 60,
+    width: 320,
+    height: 320,
+    borderBottomLeftRadius: 320,
+    backgroundColor: '#090d16',
+    borderLeftWidth: 1.5,
+    borderBottomWidth: 1.5,
+    borderLeftColor: 'rgba(16, 185, 129, 0.35)',
+    borderBottomColor: 'rgba(16, 185, 129, 0.35)',
+    shadowColor: '#000',
+    shadowOffset: { width: -4, height: 8 },
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
+    elevation: 16,
+    overflow: 'hidden',
   },
-  arcItemButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  concentricOuter: {
+    position: 'absolute',
+    top: -210,
+    right: -210,
+    width: 420,
+    height: 420,
+    borderRadius: 210,
+    borderWidth: 1.5,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderStyle: 'dashed',
+  },
+  concentricInner: {
+    position: 'absolute',
+    top: -150,
+    right: -150,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+
+  // Top-Right Corner Hub
+  cornerHub: {
+    position: 'absolute',
+    top: 10,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    zIndex: 35,
+  },
+  hubBrand: {
+    alignItems: 'flex-end',
+  },
+  hubBrandTitle: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#10b981',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  hubBrandSubtitle: {
+    fontSize: 8.5,
+    fontWeight: '700',
+    color: '#94a3b8',
+    letterSpacing: 0.4,
+  },
+  hubCloseButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(30, 41, 59, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  hubCloseIcon: {
+    fontSize: 13,
+    color: '#34d399',
+    fontWeight: '900',
+  },
+
+  // Focal Point Indicator (Center of Thumb Arc at 135°)
+  focalIndicator: {
+    position: 'absolute',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: 'rgba(16, 185, 129, 0.85)',
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 10,
     elevation: 6,
+    zIndex: 10,
+  },
+
+  // Spinnable Arc Items
+  itemWrapper: {
+    position: 'absolute',
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  itemSquircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  arcItemIcon: {
-    fontSize: 22,
+  itemSquircleFocused: {
+    backgroundColor: '#10b981',
+    borderColor: '#6ee7b7',
+    borderWidth: 1.5,
+    shadowColor: '#10b981',
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  itemSquircleActiveRoute: {
+    backgroundColor: 'rgba(30, 41, 59, 0.98)',
+    borderColor: 'rgba(16, 185, 129, 0.6)',
+    borderWidth: 1.5,
+  },
+  itemIconText: {
+    fontSize: 21,
   },
   itemBadge: {
     position: 'absolute',
     top: -4,
     right: -4,
     backgroundColor: '#10b981',
-    borderRadius: 6,
+    borderRadius: 8,
     paddingHorizontal: 4,
     paddingVertical: 1,
-    borderWidth: 1,
-    borderColor: '#ffffff',
   },
   itemBadgeText: {
     color: '#ffffff',
-    fontSize: 9,
+    fontSize: 7.5,
     fontWeight: '900',
-    letterSpacing: 0.5,
   },
-  itemLabelBox: {
-    marginTop: 3,
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
-  },
-  itemLabelText: {
-    fontSize: 10,
-    textAlign: 'center',
-  },
-  dutyPillContainer: {
+
+  // Active Item Floating Detail Card (Bottom-Left of Arc)
+  detailCard: {
     position: 'absolute',
-    zIndex: 9500,
-  },
-  dutyPill: {
+    left: 14,
+    bottom: 14,
+    width: 175,
+    backgroundColor: 'rgba(15, 23, 42, 0.96)',
+    borderRadius: 16,
+    borderWidth: 1.2,
+    borderColor: 'rgba(16, 185, 129, 0.45)',
+    padding: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-  },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 8,
-  },
-  dutyText: {
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-    marginRight: 6,
-  },
-  dutySubtext: {
-    fontSize: 10,
-    color: '#64748b',
-    fontWeight: '600',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.75)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  modalContent: {
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
-    padding: 24,
-    width: '100%',
-    maxWidth: 380,
-    elevation: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.4,
     shadowRadius: 8,
+    elevation: 8,
+    zIndex: 30,
+  },
+  detailIconSquircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  detailIconText: {
+    fontSize: 18,
+  },
+  detailTextWrapper: {
+    flex: 1,
+    minWidth: 0,
+  },
+  detailTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  detailTitleText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+    flex: 1,
+    marginRight: 2,
+  },
+  detailChevronText: {
+    color: '#10b981',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  detailSubtitleText: {
+    color: '#94a3b8',
+    fontSize: 8.5,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  detailActionText: {
+    color: '#34d399',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    marginTop: 2,
+  },
+
+  // Emergency SOS Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#090d16',
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: 'rgba(239, 68, 68, 0.45)',
+    width: '100%',
+    maxWidth: 380,
+    padding: 20,
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 12,
   },
   modalHeader: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
   },
   modalHeaderIcon: {
-    fontSize: 36,
-    marginBottom: 6,
+    fontSize: 34,
+    marginBottom: 4,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '900',
-    color: '#0f172a',
+    color: '#ffffff',
+    letterSpacing: 0.5,
   },
   modalSubtitle: {
     fontSize: 12,
-    color: '#64748b',
-    fontWeight: '600',
+    color: '#94a3b8',
     marginTop: 2,
+    textAlign: 'center',
   },
   sosActionButtonPrimary: {
-    backgroundColor: '#eff6ff',
-    borderWidth: 1.5,
-    borderColor: '#bfdbfe',
-    borderRadius: 16,
-    padding: 14,
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
+    borderWidth: 1.2,
+    borderColor: '#3b82f6',
+    borderRadius: 14,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   sosActionButtonSecondary: {
-    backgroundColor: '#fef3c7',
-    borderWidth: 1.5,
-    borderColor: '#fde68a',
-    borderRadius: 16,
-    padding: 14,
+    backgroundColor: 'rgba(234, 88, 12, 0.15)',
+    borderWidth: 1.2,
+    borderColor: '#f97316',
+    borderRadius: 14,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   sosActionButtonTertiary: {
-    backgroundColor: '#f1f5f9',
-    borderWidth: 1.5,
-    borderColor: '#cbd5e1',
-    borderRadius: 16,
-    padding: 14,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderWidth: 1.2,
+    borderColor: '#10b981',
+    borderRadius: 14,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
   },
   sosActionIcon: {
-    fontSize: 26,
-    marginRight: 14,
+    fontSize: 22,
+    marginRight: 12,
   },
   sosActionTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
-    color: '#0f172a',
+    color: '#ffffff',
   },
   sosActionDesc: {
-    fontSize: 11,
-    color: '#64748b',
-    marginTop: 2,
-    fontWeight: '500',
+    fontSize: 10.5,
+    color: '#94a3b8',
+    marginTop: 1,
   },
   modalCloseButton: {
-    backgroundColor: '#f1f5f9',
-    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 12,
+    paddingVertical: 11,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   modalCloseText: {
-    color: '#475569',
-    fontWeight: '800',
-    fontSize: 14,
+    color: '#cbd5e1',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

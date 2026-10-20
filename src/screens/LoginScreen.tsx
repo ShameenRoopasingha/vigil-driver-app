@@ -46,51 +46,59 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 justify-center px-6">
-      <View className="items-center mb-8">
-        <View className="bg-white p-3.5 rounded-2xl shadow-md border border-gray-100 mb-3 items-center justify-center">
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc', justifyContent: 'center', paddingHorizontal: 24 }}>
+      <View style={{ alignItems: 'center', marginBottom: 28 }}>
+        <View style={{ backgroundColor: '#ffffff', padding: 14, borderRadius: 24, borderWidth: 1.5, borderColor: '#e2e8f0', marginBottom: 12, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4 }}>
           <Image 
             source={require('../../assets/logo-icon.png')} 
-            style={{ width: 68, height: 68 }} 
+            style={{ width: 64, height: 64 }} 
             resizeMode="contain" 
           />
         </View>
-        <Text className="text-3xl font-extrabold text-slate-900 tracking-tight">VIGIL</Text>
-        <Text className="text-blue-600 uppercase tracking-widest text-xs font-bold mt-1">Driver Portal</Text>
-        <Text className="text-gray-400 text-xs mt-1 text-center">Fleet & Travel Management</Text>
+        <Text style={{ fontSize: 32, fontWeight: '900', color: '#0f172a', letterSpacing: 1.5 }}>VIGIL</Text>
+        <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.12)', borderWidth: 1, borderColor: '#10b981', paddingHorizontal: 12, paddingVertical: 3, borderRadius: 20, marginTop: 6 }}>
+          <Text style={{ color: '#047857', fontSize: 10, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' }}>
+            Chauffeur & Fleet Portal
+          </Text>
+        </View>
+        <Text style={{ color: '#64748b', fontSize: 12, fontWeight: '600', marginTop: 4 }}>Fleet & Travel Management</Text>
       </View>
 
-      <View className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-        <Text className="text-xl font-bold text-gray-800 mb-6 text-center">Welcome Back</Text>
+      <View style={{ backgroundColor: '#ffffff', padding: 22, borderRadius: 24, borderWidth: 1, borderColor: '#e2e8f0', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 4 }}>
+        <Text style={{ fontSize: 20, fontWeight: '900', color: '#0f172a', marginBottom: 4, textAlign: 'center' }}>Driver Sign In</Text>
+        <Text style={{ fontSize: 12, color: '#64748b', marginBottom: 20, textAlign: 'center' }}>Access your assigned tours & GPS radar</Text>
         
-        <Text className="text-gray-600 mb-2 text-sm font-medium">Email Address</Text>
+        <Text style={{ color: '#334155', marginBottom: 6, fontSize: 13, fontWeight: '800' }}>Email Address</Text>
         <TextInput 
-          className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4 text-gray-800"
-          placeholder="Enter your email"
+          style={{ backgroundColor: '#f8fafc', borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 16, fontSize: 14, color: '#0f172a' }}
+          placeholder="Enter your driver email"
+          placeholderTextColor="#94a3b8"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
         />
 
-        <Text className="text-gray-600 mb-2 text-sm font-medium">Password</Text>
+        <Text style={{ color: '#334155', marginBottom: 6, fontSize: 13, fontWeight: '800' }}>Password</Text>
         <TextInput 
-          className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-6 text-gray-800"
+          style={{ backgroundColor: '#f8fafc', borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 22, fontSize: 14, color: '#0f172a' }}
           placeholder="Enter your password"
+          placeholderTextColor="#94a3b8"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
         />
 
         <TouchableOpacity 
-          className="bg-blue-600 rounded-lg py-4 flex-row justify-center items-center"
+          style={{ backgroundColor: '#10b981', borderRadius: 14, paddingVertical: 15, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', shadowColor: '#10b981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 4 }}
           onPress={handleLogin}
           disabled={loading}
+          activeOpacity={0.85}
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text className="text-white font-bold text-lg">Sign In</Text>
+            <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 16, letterSpacing: 0.5 }}>Sign In</Text>
           )}
         </TouchableOpacity>
       </View>

@@ -258,20 +258,27 @@ export default function ProfileScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
       >
-        {/* Top Header */}
-        <View className="bg-white px-4 py-3.5 border-b border-slate-200 flex-row items-center justify-between shadow-sm">
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            className="flex-row items-center py-1 pr-3"
-            activeOpacity={0.7}
-          >
-            <Text className="text-blue-600 font-bold text-base mr-1">‹</Text>
-            <Text className="text-blue-600 font-bold text-base">Dashboard</Text>
-          </TouchableOpacity>
+        {/* Top Header matching Admin App */}
+        <View style={{ backgroundColor: '#ffffff', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={{ backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#cbd5e1', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, marginRight: 10 }}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: '#0f172a', fontSize: 13, fontWeight: '800' }}>← Back</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: 17, fontWeight: '900', color: '#0f172a' }}>Driver Profile</Text>
+          </View>
 
-          <Text className="text-base font-extrabold text-slate-800">Driver Profile</Text>
-
-          <View style={{ width: 60 }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0' }}>
+            <Image 
+              source={require('../../assets/logo-icon.png')} 
+              style={{ width: 18, height: 18, marginRight: 6 }} 
+              resizeMode="contain" 
+            />
+            <Text style={{ color: '#0f172a', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>VIGIL</Text>
+          </View>
         </View>
 
         {loading ? (
