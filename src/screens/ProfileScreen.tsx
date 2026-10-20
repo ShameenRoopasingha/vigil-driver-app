@@ -10,7 +10,6 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  Linking,
   Vibration,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,13 +27,16 @@ import {
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 
+const makeSvgAvatar = (emoji: string, bg: string) =>
+  `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><rect width="160" height="160" rx="80" fill="${encodeURIComponent(bg)}"/><text x="50%" y="54%" font-size="76" text-anchor="middle" dominant-baseline="middle">${emoji}</text></svg>`;
+
 const AVATAR_PRESETS = [
-  { id: 'suit', label: 'Chauffeur', uri: 'https://api.dicebear.com/7.x/personas/png?seed=Lucas&backgroundColor=ffd5dc' },
-  { id: 'sunglasses', label: 'Executive', uri: 'https://api.dicebear.com/7.x/personas/png?seed=Captain&backgroundColor=c0aede' },
-  { id: 'safari', label: 'Safari Guide', uri: 'https://api.dicebear.com/7.x/personas/png?seed=Safari&backgroundColor=d1d4f9' },
-  { id: 'friendly', label: 'Friendly', uri: 'https://api.dicebear.com/7.x/personas/png?seed=Alex&backgroundColor=ffdfbf' },
-  { id: 'cap', label: 'Driver Pro', uri: 'https://api.dicebear.com/7.x/personas/png?seed=Oliver&backgroundColor=b6e3f4' },
-  { id: 'guide', label: 'Tour Guide', uri: 'https://api.dicebear.com/7.x/adventurer/png?seed=Guide&backgroundColor=ffd5dc' },
+  { id: 'chauffeur', label: 'Chauffeur', emoji: '🤵‍♂️', bg: '#fef3c7', uri: makeSvgAvatar('🤵‍♂️', '#fef3c7') },
+  { id: 'executive', label: 'Executive', emoji: '🕶️', bg: '#ede9fe', uri: makeSvgAvatar('🕶️', '#ede9fe') },
+  { id: 'safari', label: 'Safari', emoji: '🦁', bg: '#ffedd5', uri: makeSvgAvatar('🦁', '#ffedd5') },
+  { id: 'pro', label: 'Pro Pilot', emoji: '🧢', bg: '#e0f2fe', uri: makeSvgAvatar('🧢', '#e0f2fe') },
+  { id: 'guide', label: 'Tour Guide', emoji: '🧭', bg: '#dcfce7', uri: makeSvgAvatar('🧭', '#dcfce7') },
+  { id: 'friendly', label: 'Friendly', emoji: '😊', bg: '#fae8ff', uri: makeSvgAvatar('😊', '#fae8ff') },
 ];
 
 export default function ProfileScreen() {
@@ -110,25 +112,29 @@ export default function ProfileScreen() {
         setCompanyName(d.companyName || '');
         setCompanyLogoUrl(d.companyLogoUrl || null);
 
-        // Update local storage
+        // Keep local cache up to date
         await AsyncStorage.setItem('driverData', JSON.stringify(d));
       }
-    } catch (error: any) {
-      console.error('Error fetching driver profile:', error);
+    } catch (err) {
+      console.warn('[ProfileScreen] Could not refresh profile from API:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleUpdateDetails = async () => {
-    const trimmedName = editName.trim();
-    const validation = DriverProfileDetailsSchema.safeParse({
-      name: trimmedName,
-      avatarUrl: avatarUrl,
-    });
-
+    const validation = DriverProfileDetailsSchema.safeParse({ name: editName });
     if (!validation.success) {
-      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please check your name');
+      Alert.alert('Validation Error', validation.error.issues[0]?.message || 'Please check your name input.');
+      return;
+    }
+
+    const trimmedName = validation.data.name;
+    const isNameChanged = trimmedName !== initialDriverName;
+    const isAvatarChanged = avatarUrl !== initialAvatarUrl;
+
+    if (!isNameChanged && !isAvatarChanged) {
+      Alert.alert('No Changes', 'Your profile details are already up to date.');
       return;
     }
 
@@ -148,7 +154,8 @@ export default function ProfileScreen() {
           await AsyncStorage.setItem('driverData', JSON.stringify(res.data.data.driver));
         }
 
-        Alert.alert('Success', 'Your driver name and profile photo have been updated successfully!');
+        Vibration.vibrate(12);
+        Alert.alert('Profile Updated', 'Your chauffeur name and profile photo have been updated successfully!');
       } else {
         Alert.alert('Update Failed', res.data?.error || 'Could not update profile');
       }
@@ -186,7 +193,7 @@ export default function ProfileScreen() {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.7,
+        quality: 0.75,
         base64: true,
       });
 
@@ -221,7 +228,7 @@ export default function ProfileScreen() {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.7,
+        quality: 0.75,
         base64: true,
       });
 
@@ -265,6 +272,7 @@ export default function ProfileScreen() {
         if (res.data.data?.driver) {
           await AsyncStorage.setItem('driverData', JSON.stringify(res.data.data.driver));
         }
+        Vibration.vibrate(12);
         Alert.alert('Success', 'Your email address has been updated successfully!');
       } else {
         Alert.alert('Update Failed', res.data?.error || 'Could not update email');
@@ -300,20 +308,21 @@ export default function ProfileScreen() {
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
-        Alert.alert('Success', 'Your password has been changed successfully!');
+        Vibration.vibrate(12);
+        Alert.alert('Password Updated', 'Your security password has been changed successfully!');
       } else {
-        Alert.alert('Update Failed', res.data?.error || 'Could not update password');
+        Alert.alert('Update Failed', res.data?.error || 'Could not change password');
       }
     } catch (error: any) {
-      const msg = error.response?.data?.error || error.message || 'Network error while updating password';
-      Alert.alert('Password Error', msg);
+      const msg = error.response?.data?.error || error.message || 'Network error while changing password';
+      Alert.alert('Update Failed', msg);
     } finally {
       setPasswordSaving(false);
     }
   };
 
   const handleLogout = async () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+    Alert.alert('Sign Out', 'Are you sure you want to sign out of this device?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Sign Out',
@@ -330,97 +339,206 @@ export default function ProfileScreen() {
   };
 
   const isDetailsDirty = editName.trim() !== initialDriverName || avatarUrl !== initialAvatarUrl;
+  const isEmailDirty = newEmail.trim().toLowerCase() !== currentEmail.toLowerCase() && newEmail.trim().length > 0;
+  const isPasswordReady = currentPassword.length > 0 && newPassword.length >= 6 && confirmPassword.length >= 6;
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1"
+        style={{ flex: 1 }}
       >
-        {/* Top Header matching Admin App */}
-        <View style={{ backgroundColor: '#ffffff', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        {/* Sleek Top Header */}
+        <View
+          style={{
+            backgroundColor: '#ffffff',
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            borderBottomWidth: 1,
+            borderBottomColor: '#e2e8f0',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity
               onPress={() => navigation.goBack()}
-              style={{ backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#cbd5e1', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, marginRight: 10 }}
+              style={{
+                backgroundColor: '#f1f5f9',
+                borderWidth: 1,
+                borderColor: '#cbd5e1',
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 12,
+                marginRight: 12,
+              }}
               activeOpacity={0.7}
             >
-              <Text style={{ color: '#0f172a', fontSize: 13, fontWeight: '800' }}>← Back</Text>
+              <Text style={{ color: '#334155', fontSize: 13, fontWeight: '800' }}>‹ Back</Text>
             </TouchableOpacity>
-            <Text style={{ fontSize: 17, fontWeight: '900', color: '#0f172a' }}>Settings & Profile</Text>
+            <Text style={{ fontSize: 18, fontWeight: '900', color: '#0f172a' }}>Settings & Profile</Text>
           </View>
 
-          {/* Space reserved for Top-Right Arc Nav Button */}
+          {/* Reserved space for top-right Arc Nav button */}
           <View style={{ width: 44, height: 40 }} />
         </View>
 
         {loading ? (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#2563eb" />
-            <Text className="text-slate-500 text-xs mt-3 font-medium">Loading profile...</Text>
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator size="large" color="#10b981" />
+            <Text style={{ color: '#64748b', fontSize: 12, marginTop: 12, fontWeight: '600' }}>
+              Loading profile settings...
+            </Text>
           </View>
         ) : (
           <ScrollView
-            className="flex-1 px-4 py-4"
-            contentContainerStyle={{ paddingBottom: 60 }}
+            style={{ flex: 1, paddingHorizontal: 16, paddingTop: 14 }}
+            contentContainerStyle={{ paddingBottom: 50 }}
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            {/* Identity Card */}
-            <View className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-4">
-              <View className="flex-row items-center">
+            {/* 1. Identity Hero Card (Fixed Badge Layout) */}
+            <View
+              style={{
+                backgroundColor: '#ffffff',
+                padding: 16,
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: '#e2e8f0',
+                marginBottom: 14,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.04,
+                shadowRadius: 5,
+                elevation: 2,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 {avatarUrl ? (
-                  <View className="w-16 h-16 rounded-full border-2 border-blue-500 p-0.5 mr-4 shadow-sm bg-blue-50 items-center justify-center">
+                  <View
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: 32,
+                      borderWidth: 2.5,
+                      borderColor: '#10b981',
+                      padding: 2,
+                      marginRight: 14,
+                      backgroundColor: '#ecfdf5',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
                     <Image
                       source={{ uri: avatarUrl }}
-                      style={{ width: 58, height: 58, borderRadius: 29 }}
+                      style={{ width: 56, height: 56, borderRadius: 28 }}
                       resizeMode="cover"
                     />
                   </View>
                 ) : (
-                  <View className="w-16 h-16 bg-blue-100 rounded-full items-center justify-center border-2 border-blue-300 mr-4">
-                    <Text className="text-blue-800 font-black text-2xl">
+                  <View
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: 32,
+                      backgroundColor: '#eff6ff',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: 2,
+                      borderColor: '#bfdbfe',
+                      marginRight: 14,
+                    }}
+                  >
+                    <Text style={{ color: '#1d4ed8', fontWeight: '900', fontSize: 22 }}>
                       {(driverName || 'DR').substring(0, 2).toUpperCase()}
                     </Text>
                   </View>
                 )}
 
-                <View className="flex-1">
-                  <View className="flex-row items-center gap-2 mb-1">
-                    <Text className="text-lg font-black text-slate-900" numberOfLines={1}>
-                      {driverName || 'Driver'}
+                <View style={{ flex: 1 }}>
+                  {/* Name & Badge Row - Guaranteed No Overflow */}
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: 3,
+                    }}
+                  >
+                    <Text
+                      style={{ fontSize: 17, fontWeight: '900', color: '#0f172a', flex: 1, marginRight: 8 }}
+                      numberOfLines={1}
+                    >
+                      {driverName || 'Chauffeur'}
                     </Text>
-                    <View className="bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      <Text className="text-[10px] font-bold text-emerald-700 tracking-wider">CHAUFFEUR</Text>
+                    <View
+                      style={{
+                        backgroundColor: '#ecfdf5',
+                        paddingHorizontal: 8,
+                        paddingVertical: 2.5,
+                        borderRadius: 6,
+                        borderWidth: 1,
+                        borderColor: '#a7f3d0',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#065f46', letterSpacing: 0.5 }}>
+                        CHAUFFEUR
+                      </Text>
                     </View>
                   </View>
-                  <Text className="text-xs font-semibold text-slate-500" numberOfLines={1}>
-                    {companyName || 'Tour Transport Company'}
+
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748b' }} numberOfLines={1}>
+                    🏢 {companyName || 'Tour Transport Company'}
                   </Text>
-                  <Text className="text-[11px] text-slate-400 mt-0.5" numberOfLines={1}>
-                    Login: {currentEmail || 'Not configured'}
+                  <Text style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }} numberOfLines={1}>
+                    ✉️ {currentEmail || 'Not configured'}
                   </Text>
                 </View>
               </View>
             </View>
 
-            {/* Edit Name & Profile Photo Section */}
-            <View className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-4">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-base font-extrabold text-slate-900">Driver Name & Photo</Text>
-                <Text className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  Public Profile
-                </Text>
+            {/* 2. Driver Name & Photo Card */}
+            <View
+              style={{
+                backgroundColor: '#ffffff',
+                padding: 18,
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: '#e2e8f0',
+                marginBottom: 14,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.04,
+                shadowRadius: 5,
+                elevation: 2,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                <Text style={{ fontSize: 15, fontWeight: '900', color: '#0f172a' }}>Driver Name & Photo</Text>
+                <View
+                  style={{
+                    backgroundColor: '#eff6ff',
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                    borderRadius: 6,
+                    borderWidth: 1,
+                    borderColor: '#bfdbfe',
+                  }}
+                >
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#1d4ed8' }}>Public Profile</Text>
+                </View>
               </View>
-              <Text className="text-xs text-slate-500 mb-4 leading-4">
+              <Text style={{ fontSize: 11, color: '#64748b', marginBottom: 14, lineHeight: 16 }}>
                 This name and profile picture appear on passenger itineraries and welcome greeting.
               </Text>
 
-              {/* Avatar Selector Gallery */}
-              <Text className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">
+              {/* Action Buttons: Browse Files & Take Photo */}
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
                 Profile Photo & Avatar
               </Text>
 
-              {/* 2 In-App Native Device Action Cards */}
               <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
                 <TouchableOpacity
                   activeOpacity={0.8}
@@ -435,17 +553,10 @@ export default function ProfileScreen() {
                     paddingHorizontal: 8,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    shadowColor: '#3b82f6',
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 3,
-                    elevation: 1,
                   }}
                 >
-                  <Text style={{ fontSize: 22, marginBottom: 3 }}>📁</Text>
-                  <Text style={{ color: '#1d4ed8', fontWeight: '800', fontSize: 13 }}>
-                    Browse Files
-                  </Text>
+                  <Text style={{ fontSize: 22, marginBottom: 2 }}>📁</Text>
+                  <Text style={{ color: '#1d4ed8', fontWeight: '800', fontSize: 13 }}>Browse Files</Text>
                   <Text style={{ color: '#64748b', fontSize: 10, fontWeight: '600', marginTop: 1 }}>
                     Gallery & Device
                   </Text>
@@ -464,17 +575,10 @@ export default function ProfileScreen() {
                     paddingHorizontal: 8,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    shadowColor: '#10b981',
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 3,
-                    elevation: 1,
                   }}
                 >
-                  <Text style={{ fontSize: 22, marginBottom: 3 }}>📷</Text>
-                  <Text style={{ color: '#065f46', fontWeight: '800', fontSize: 13 }}>
-                    Take Photo
-                  </Text>
+                  <Text style={{ fontSize: 22, marginBottom: 2 }}>📷</Text>
+                  <Text style={{ color: '#065f46', fontWeight: '800', fontSize: 13 }}>Take Photo</Text>
                   <Text style={{ color: '#64748b', fontSize: 10, fontWeight: '600', marginTop: 1 }}>
                     Use Camera
                   </Text>
@@ -489,27 +593,46 @@ export default function ProfileScreen() {
                 </Text>
                 <View style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
               </View>
+
+              {/* Avatar Selector Row - Perfectly Sized & Always Visible */}
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                className="mb-4"
+                style={{ marginBottom: 14 }}
                 contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
               >
-                {/* Reset to Initials Monogram */}
+                {/* Monogram Initials Option */}
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => setAvatarUrl(null)}
-                  className={`w-14 h-14 rounded-2xl items-center justify-center border-2 ${
-                    avatarUrl === null ? 'border-blue-600 bg-blue-100' : 'border-slate-200 bg-slate-100'
-                  }`}
+                  style={{
+                    width: 62,
+                    alignItems: 'center',
+                  }}
                 >
-                  <Text className="text-slate-800 font-extrabold text-xs">
-                    {(driverName || 'DR').substring(0, 2).toUpperCase()}
+                  <View
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 24,
+                      backgroundColor: avatarUrl === null ? '#dbeafe' : '#f1f5f9',
+                      borderWidth: 2,
+                      borderColor: avatarUrl === null ? '#2563eb' : '#cbd5e1',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: 4,
+                    }}
+                  >
+                    <Text style={{ color: '#1e293b', fontWeight: '900', fontSize: 14 }}>
+                      {(driverName || 'DR').substring(0, 2).toUpperCase()}
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: avatarUrl === null ? '#2563eb' : '#64748b' }}>
+                    Initials
                   </Text>
-                  <Text className="text-[9px] text-slate-500 font-semibold mt-0.5">Initials</Text>
                 </TouchableOpacity>
 
-                {/* Preset Avatars */}
+                {/* Preset Persona Avatars */}
                 {AVATAR_PRESETS.map((preset) => {
                   const isSelected = avatarUrl === preset.uri;
                   return (
@@ -517,19 +640,38 @@ export default function ProfileScreen() {
                       key={preset.id}
                       activeOpacity={0.8}
                       onPress={() => setAvatarUrl(preset.uri)}
-                      className={`w-14 h-14 rounded-2xl items-center justify-center border-2 p-1 ${
-                        isSelected ? 'border-blue-600 bg-blue-50' : 'border-slate-200 bg-white'
-                      }`}
+                      style={{
+                        width: 62,
+                        alignItems: 'center',
+                      }}
                     >
-                      <Image
-                        source={{ uri: preset.uri }}
-                        style={{ width: 38, height: 38, borderRadius: 19 }}
-                        resizeMode="cover"
-                      />
+                      <View
+                        style={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: 24,
+                          backgroundColor: preset.bg,
+                          borderWidth: isSelected ? 2.5 : 1,
+                          borderColor: isSelected ? '#2563eb' : '#cbd5e1',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginBottom: 4,
+                          shadowColor: isSelected ? '#2563eb' : 'transparent',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.2,
+                          shadowRadius: 3,
+                          elevation: isSelected ? 2 : 0,
+                        }}
+                      >
+                        <Text style={{ fontSize: 24 }}>{preset.emoji}</Text>
+                      </View>
                       <Text
-                        className={`text-[9px] font-bold mt-0.5 ${
-                          isSelected ? 'text-blue-700' : 'text-slate-500'
-                        }`}
+                        style={{
+                          fontSize: 10,
+                          fontWeight: '700',
+                          color: isSelected ? '#2563eb' : '#64748b',
+                          textAlign: 'center',
+                        }}
                         numberOfLines={1}
                       >
                         {preset.label}
@@ -538,103 +680,188 @@ export default function ProfileScreen() {
                   );
                 })}
 
-                {/* Custom Photo URL trigger */}
+                {/* Custom Photo URL Drawer */}
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => setShowCustomUrlInput(!showCustomUrlInput)}
-                  className="w-14 h-14 rounded-2xl items-center justify-center border-2 border-dashed border-slate-300 bg-slate-50"
+                  style={{
+                    width: 62,
+                    alignItems: 'center',
+                  }}
                 >
-                  <Text className="text-base">🔗</Text>
-                  <Text className="text-[9px] text-slate-500 font-bold mt-0.5">Link</Text>
+                  <View
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 24,
+                      backgroundColor: '#f8fafc',
+                      borderWidth: 1.5,
+                      borderStyle: 'dashed',
+                      borderColor: '#94a3b8',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: 4,
+                    }}
+                  >
+                    <Text style={{ fontSize: 18 }}>🔗</Text>
+                  </View>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#64748b' }}>Web Link</Text>
                 </TouchableOpacity>
               </ScrollView>
 
-              {/* Custom Image URL Drawer */}
+              {/* Web Image Link Input Drawer */}
               {showCustomUrlInput && (
-                <View className="bg-slate-50 p-3 rounded-xl border border-slate-200 mb-4">
-                  <Text className="text-xs font-bold text-slate-700 mb-1.5">Paste Web Image Link</Text>
+                <View style={{ backgroundColor: '#f8fafc', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 14 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#475569', marginBottom: 6 }}>Paste Image URL</Text>
                   <TextInput
-                    className="bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 mb-2"
-                    placeholder="https://example.com/driver-photo.jpg"
+                    style={{
+                      backgroundColor: '#ffffff',
+                      borderWidth: 1,
+                      borderColor: '#cbd5e1',
+                      borderRadius: 10,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      fontSize: 12,
+                      color: '#0f172a',
+                      marginBottom: 8,
+                    }}
+                    placeholder="https://example.com/photo.jpg"
+                    placeholderTextColor="#94a3b8"
                     value={customUrlInput}
                     onChangeText={setCustomUrlInput}
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
-                  <View className="flex-row justify-end gap-2">
+                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
                     <TouchableOpacity
                       onPress={() => setShowCustomUrlInput(false)}
-                      className="px-3 py-1.5 rounded-lg bg-slate-200"
+                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#e2e8f0' }}
                     >
-                      <Text className="text-xs font-bold text-slate-700">Cancel</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569' }}>Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={handleApplyCustomUrl}
-                      className="px-3 py-1.5 rounded-lg bg-blue-600"
+                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#2563eb' }}
                     >
-                      <Text className="text-xs font-bold text-white">Apply Photo</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#ffffff' }}>Apply Photo</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               )}
 
-              {/* Name Input */}
-              <Text className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              {/* Chauffeur Name Input */}
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
                 Chauffeur Full Name
               </Text>
               <TextInput
-                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-medium text-sm mb-4"
-                placeholder="Enter your full name"
+                style={{
+                  backgroundColor: '#f8fafc',
+                  borderWidth: 1.5,
+                  borderColor: isDetailsDirty ? '#3b82f6' : '#e2e8f0',
+                  borderRadius: 14,
+                  paddingHorizontal: 14,
+                  paddingVertical: 11,
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: '#0f172a',
+                  marginBottom: isDetailsDirty ? 12 : 6,
+                }}
+                placeholder="Enter full name"
+                placeholderTextColor="#94a3b8"
                 value={editName}
                 onChangeText={setEditName}
                 autoCorrect={false}
               />
 
-              <TouchableOpacity
-                onPress={handleUpdateDetails}
-                disabled={detailsSaving || !isDetailsDirty}
-                activeOpacity={0.8}
-                className={`py-3 rounded-xl items-center flex-row justify-center ${
-                  !isDetailsDirty
-                    ? 'bg-slate-100 border border-slate-200'
-                    : 'bg-emerald-600 shadow-sm'
-                }`}
-              >
-                {detailsSaving ? (
-                  <>
-                    <ActivityIndicator size="small" color="#ffffff" className="mr-2" />
-                    <Text className="text-white font-bold text-sm">Saving Changes...</Text>
-                  </>
-                ) : (
-                  <Text
-                    className={`font-bold text-sm ${
-                      !isDetailsDirty ? 'text-slate-400' : 'text-white'
-                    }`}
-                  >
-                    {!isDetailsDirty ? 'Profile Up to Date' : 'Save Name & Photo'}
-                  </Text>
-                )}
-              </TouchableOpacity>
+              {/* Reactive Action / Status */}
+              {isDetailsDirty ? (
+                <TouchableOpacity
+                  onPress={handleUpdateDetails}
+                  disabled={detailsSaving}
+                  activeOpacity={0.8}
+                  style={{
+                    backgroundColor: '#10b981',
+                    paddingVertical: 12,
+                    borderRadius: 14,
+                    alignItems: 'center',
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                    shadowColor: '#10b981',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 4,
+                    elevation: 3,
+                  }}
+                >
+                  {detailsSaving ? (
+                    <>
+                      <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 8 }} />
+                      <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 13 }}>Saving Changes...</Text>
+                    </>
+                  ) : (
+                    <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 13 }}>💾 Save Name & Photo</Text>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 4 }}>
+                  <Text style={{ color: '#16a34a', fontSize: 12, fontWeight: '700' }}>✓ Profile is up to date</Text>
+                </View>
+              )}
             </View>
 
-            {/* Email Address Section */}
-            <View className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-4">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-base font-extrabold text-slate-900">Email Address</Text>
-                <Text className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
-                  Account Login
-                </Text>
+            {/* 3. Email Address Card */}
+            <View
+              style={{
+                backgroundColor: '#ffffff',
+                padding: 18,
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: '#e2e8f0',
+                marginBottom: 14,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.04,
+                shadowRadius: 5,
+                elevation: 2,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                <Text style={{ fontSize: 15, fontWeight: '900', color: '#0f172a' }}>Email Address</Text>
+                <View
+                  style={{
+                    backgroundColor: '#f0fdf4',
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                    borderRadius: 6,
+                    borderWidth: 1,
+                    borderColor: '#bbf7d0',
+                  }}
+                >
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#16a34a' }}>Account Login</Text>
+                </View>
               </View>
-              <Text className="text-xs text-slate-500 mb-4 leading-4">
+              <Text style={{ fontSize: 11, color: '#64748b', marginBottom: 12, lineHeight: 16 }}>
                 Used to log into the driver mobile application and receive booking schedules.
               </Text>
 
-              <Text className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
                 Driver Email
               </Text>
               <TextInput
-                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-medium text-sm mb-3"
+                style={{
+                  backgroundColor: '#f8fafc',
+                  borderWidth: 1.5,
+                  borderColor: isEmailDirty ? '#3b82f6' : '#e2e8f0',
+                  borderRadius: 14,
+                  paddingHorizontal: 14,
+                  paddingVertical: 11,
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: '#0f172a',
+                  marginBottom: isEmailDirty ? 12 : 6,
+                }}
                 placeholder="driver@example.com"
+                placeholderTextColor="#94a3b8"
                 value={newEmail}
                 onChangeText={setNewEmail}
                 autoCapitalize="none"
@@ -642,57 +869,96 @@ export default function ProfileScreen() {
                 autoCorrect={false}
               />
 
-              <TouchableOpacity
-                onPress={handleUpdateEmail}
-                disabled={emailSaving || newEmail.trim().toLowerCase() === currentEmail.toLowerCase()}
-                activeOpacity={0.8}
-                className={`py-3 rounded-xl items-center flex-row justify-center ${
-                  newEmail.trim().toLowerCase() === currentEmail.toLowerCase()
-                    ? 'bg-slate-100 border border-slate-200'
-                    : 'bg-blue-600 shadow-sm'
-                }`}
-              >
-                {emailSaving ? (
-                  <>
-                    <ActivityIndicator size="small" color="#ffffff" className="mr-2" />
-                    <Text className="text-white font-bold text-sm">Saving Email...</Text>
-                  </>
-                ) : (
-                  <Text
-                    className={`font-bold text-sm ${
-                      newEmail.trim().toLowerCase() === currentEmail.toLowerCase()
-                        ? 'text-slate-400'
-                        : 'text-white'
-                    }`}
-                  >
-                    {newEmail.trim().toLowerCase() === currentEmail.toLowerCase()
-                      ? 'Email Up to Date'
-                      : 'Save Email Address'}
-                  </Text>
-                )}
-              </TouchableOpacity>
+              {isEmailDirty ? (
+                <TouchableOpacity
+                  onPress={handleUpdateEmail}
+                  disabled={emailSaving}
+                  activeOpacity={0.8}
+                  style={{
+                    backgroundColor: '#2563eb',
+                    paddingVertical: 12,
+                    borderRadius: 14,
+                    alignItems: 'center',
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                    shadowColor: '#2563eb',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 4,
+                    elevation: 3,
+                  }}
+                >
+                  {emailSaving ? (
+                    <>
+                      <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 8 }} />
+                      <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 13 }}>Saving Email...</Text>
+                    </>
+                  ) : (
+                    <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 13 }}>💾 Save Email Address</Text>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 4 }}>
+                  <Text style={{ color: '#16a34a', fontSize: 12, fontWeight: '700' }}>✓ Email is verified and active</Text>
+                </View>
+              )}
             </View>
 
-            {/* Change Password Section */}
-            <View className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-4">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-base font-extrabold text-slate-900">Change Password</Text>
-                <Text className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                  Security
-                </Text>
+            {/* 4. Change Password Card */}
+            <View
+              style={{
+                backgroundColor: '#ffffff',
+                padding: 18,
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: '#e2e8f0',
+                marginBottom: 14,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.04,
+                shadowRadius: 5,
+                elevation: 2,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                <Text style={{ fontSize: 15, fontWeight: '900', color: '#0f172a' }}>Change Password</Text>
+                <View
+                  style={{
+                    backgroundColor: '#fffbeb',
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                    borderRadius: 6,
+                    borderWidth: 1,
+                    borderColor: '#fde68a',
+                  }}
+                >
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#b45309' }}>Security</Text>
+                </View>
               </View>
-              <Text className="text-xs text-slate-500 mb-4 leading-4">
+              <Text style={{ fontSize: 11, color: '#64748b', marginBottom: 14, lineHeight: 16 }}>
                 Enter your current password to authorize, then set your new password (minimum 6 characters).
               </Text>
 
               {/* Current Password */}
-              <Text className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }}>
                 Current Password
               </Text>
-              <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-4 py-1 mb-3">
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: '#f8fafc',
+                  borderWidth: 1.5,
+                  borderColor: '#e2e8f0',
+                  borderRadius: 14,
+                  paddingHorizontal: 12,
+                  marginBottom: 10,
+                }}
+              >
                 <TextInput
-                  className="flex-1 py-2.5 text-slate-900 font-medium text-sm"
+                  style={{ flex: 1, paddingVertical: 10, fontSize: 13, fontWeight: '600', color: '#0f172a' }}
                   placeholder="Enter current password"
+                  placeholderTextColor="#94a3b8"
                   value={currentPassword}
                   onChangeText={setCurrentPassword}
                   secureTextEntry={!showCurrentPass}
@@ -700,22 +966,32 @@ export default function ProfileScreen() {
                 />
                 <TouchableOpacity
                   onPress={() => setShowCurrentPass(!showCurrentPass)}
-                  className="p-1.5"
+                  style={{ padding: 8 }}
                 >
-                  <Text className="text-xs font-bold text-slate-500">
-                    {showCurrentPass ? 'HIDE' : 'SHOW'}
-                  </Text>
+                  <Text style={{ fontSize: 14 }}>{showCurrentPass ? '🙈' : '👁️'}</Text>
                 </TouchableOpacity>
               </View>
 
               {/* New Password */}
-              <Text className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }}>
                 New Password
               </Text>
-              <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-4 py-1 mb-3">
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: '#f8fafc',
+                  borderWidth: 1.5,
+                  borderColor: '#e2e8f0',
+                  borderRadius: 14,
+                  paddingHorizontal: 12,
+                  marginBottom: 10,
+                }}
+              >
                 <TextInput
-                  className="flex-1 py-2.5 text-slate-900 font-medium text-sm"
+                  style={{ flex: 1, paddingVertical: 10, fontSize: 13, fontWeight: '600', color: '#0f172a' }}
                   placeholder="Minimum 6 characters"
+                  placeholderTextColor="#94a3b8"
                   value={newPassword}
                   onChangeText={setNewPassword}
                   secureTextEntry={!showNewPass}
@@ -723,22 +999,32 @@ export default function ProfileScreen() {
                 />
                 <TouchableOpacity
                   onPress={() => setShowNewPass(!showNewPass)}
-                  className="p-1.5"
+                  style={{ padding: 8 }}
                 >
-                  <Text className="text-xs font-bold text-slate-500">
-                    {showNewPass ? 'HIDE' : 'SHOW'}
-                  </Text>
+                  <Text style={{ fontSize: 14 }}>{showNewPass ? '🙈' : '👁️'}</Text>
                 </TouchableOpacity>
               </View>
 
               {/* Confirm New Password */}
-              <Text className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }}>
                 Confirm New Password
               </Text>
-              <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-4 py-1 mb-4">
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: '#f8fafc',
+                  borderWidth: 1.5,
+                  borderColor: '#e2e8f0',
+                  borderRadius: 14,
+                  paddingHorizontal: 12,
+                  marginBottom: 14,
+                }}
+              >
                 <TextInput
-                  className="flex-1 py-2.5 text-slate-900 font-medium text-sm"
+                  style={{ flex: 1, paddingVertical: 10, fontSize: 13, fontWeight: '600', color: '#0f172a' }}
                   placeholder="Re-enter new password"
+                  placeholderTextColor="#94a3b8"
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry={!showConfirmPass}
@@ -746,36 +1032,39 @@ export default function ProfileScreen() {
                 />
                 <TouchableOpacity
                   onPress={() => setShowConfirmPass(!showConfirmPass)}
-                  className="p-1.5"
+                  style={{ padding: 8 }}
                 >
-                  <Text className="text-xs font-bold text-slate-500">
-                    {showConfirmPass ? 'HIDE' : 'SHOW'}
-                  </Text>
+                  <Text style={{ fontSize: 14 }}>{showConfirmPass ? '🙈' : '👁️'}</Text>
                 </TouchableOpacity>
               </View>
 
               <TouchableOpacity
                 onPress={handleChangePassword}
-                disabled={passwordSaving || !currentPassword || !newPassword || !confirmPassword}
+                disabled={passwordSaving || !isPasswordReady}
                 activeOpacity={0.8}
-                className={`py-3 rounded-xl items-center flex-row justify-center ${
-                  !currentPassword || !newPassword || !confirmPassword
-                    ? 'bg-slate-100 border border-slate-200'
-                    : 'bg-emerald-600 shadow-sm'
-                }`}
+                style={{
+                  backgroundColor: isPasswordReady ? '#10b981' : '#f1f5f9',
+                  borderWidth: 1,
+                  borderColor: isPasswordReady ? '#059669' : '#e2e8f0',
+                  paddingVertical: 12,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                }}
               >
                 {passwordSaving ? (
                   <>
-                    <ActivityIndicator size="small" color="#ffffff" className="mr-2" />
-                    <Text className="text-white font-bold text-sm">Updating Password...</Text>
+                    <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 8 }} />
+                    <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 13 }}>Updating Password...</Text>
                   </>
                 ) : (
                   <Text
-                    className={`font-bold text-sm ${
-                      !currentPassword || !newPassword || !confirmPassword
-                        ? 'text-slate-400'
-                        : 'text-white'
-                    }`}
+                    style={{
+                      fontWeight: '800',
+                      fontSize: 13,
+                      color: isPasswordReady ? '#ffffff' : '#94a3b8',
+                    }}
                   >
                     Update Password
                   </Text>
@@ -783,12 +1072,28 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Sign Out Card (Settings) */}
-            <View style={{ backgroundColor: '#ffffff', borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', padding: 18, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}>
-              <Text style={{ fontSize: 14, fontWeight: '900', color: '#0f172a', marginBottom: 4 }}>Account Session</Text>
-              <Text style={{ fontSize: 12, color: '#64748b', marginBottom: 14, lineHeight: 18 }}>
+            {/* 5. Account Session Card */}
+            <View
+              style={{
+                backgroundColor: '#ffffff',
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: '#e2e8f0',
+                padding: 18,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.04,
+                shadowRadius: 5,
+                elevation: 2,
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '900', color: '#0f172a', marginBottom: 4 }}>
+                Account Session
+              </Text>
+              <Text style={{ fontSize: 11, color: '#64748b', marginBottom: 14, lineHeight: 16 }}>
                 Sign out of this chauffeur account on this mobile device. You will need your login credentials to sign back in.
               </Text>
+
               <TouchableOpacity
                 onPress={handleLogout}
                 activeOpacity={0.8}
@@ -796,7 +1101,7 @@ export default function ProfileScreen() {
                   backgroundColor: '#fef2f2',
                   borderWidth: 1.5,
                   borderColor: '#fecaca',
-                  paddingVertical: 13,
+                  paddingVertical: 12,
                   borderRadius: 14,
                   alignItems: 'center',
                   flexDirection: 'row',
@@ -804,7 +1109,7 @@ export default function ProfileScreen() {
                   gap: 8,
                 }}
               >
-                <Text style={{ fontSize: 16 }}>🚪</Text>
+                <Text style={{ fontSize: 15 }}>🔴</Text>
                 <Text style={{ color: '#dc2626', fontWeight: '900', fontSize: 13 }}>
                   Sign Out from this Device
                 </Text>
