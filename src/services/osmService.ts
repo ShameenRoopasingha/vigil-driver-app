@@ -970,7 +970,7 @@ export async function calculateMultiStopRouteOSRM(
 
   const headers = { 'User-Agent': 'VigilDriverApp/1.0.4 (support@vigil.app)' };
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 2800); // 2.8s fast timeout
+  const timeout = setTimeout(() => controller.abort(), 6500); // 6.5s generous timeout for mobile 4G/3G networks
 
   try {
     const coordsParam = allPoints.map((p) => `${p.lon},${p.lat}`).join(';');
@@ -1060,15 +1060,33 @@ export async function calculateMultiStopRouteOSRM(
     ? Math.round(calculateDirectDistanceKm(originPoint.lat, originPoint.lon, destPoint.lat, destPoint.lon) * 1.35 * 10) / 10
     : totalKm;
 
+  // Build fallback GeoJSON LineStrings so maps can ALWAYS render the full route polyline
+  const fallbackGeoJson = {
+    type: 'LineString' as const,
+    coordinates: allPoints.map((p) => [p.lon, p.lat]),
+  };
+
+  const directGeoJsonFallback = destPoint
+    ? {
+        type: 'LineString' as const,
+        coordinates: [
+          [originPoint.lon, originPoint.lat],
+          [destPoint.lon, destPoint.lat],
+        ],
+      }
+    : undefined;
+
   const fallbackResult: MultiStopRouteResult = {
     success: true,
     directDistanceKm: directKm,
     totalDistanceKm: Math.round(totalKm * 10) / 10,
     relativeExtraKm: Math.max(0, Math.round((totalKm - directKm) * 10) / 10),
     totalDurationMinutes: Math.round((totalKm / 40) * 60),
-    totalDurationText: `~${Math.round((totalKm / 40) * 60)} mins`,
+    totalDurationText: `${Math.round((totalKm / 40) * 60)} mins`,
     legs,
     allPoints,
+    directGeoJson: directGeoJsonFallback,
+    routeGeoJson: fallbackGeoJson,
   };
   osrmRouteCache.set(multiKey, fallbackResult);
   return fallbackResult;

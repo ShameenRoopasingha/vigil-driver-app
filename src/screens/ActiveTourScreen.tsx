@@ -61,6 +61,7 @@ export default function ActiveTourScreen() {
   const [routeChangeSubmitting, setRouteChangeSubmitting] = useState(false);
   const [driverCurrentCoords, setDriverCurrentCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lon: number; name?: string } | null>(null);
+  const [calculatedRoutePolyline, setCalculatedRoutePolyline] = useState<any>(null);
 
   // Auto-resolve driver's current GPS location & destination coords whenever Route Alteration opens
   useEffect(() => {
@@ -234,6 +235,7 @@ export default function ActiveTourScreen() {
       dropLocation: updatedDropoff || tour?.dropLocation || tour?.destination || undefined,
       destination: updatedDropoff || tour?.destination || tour?.dropLocation || undefined,
       stops: intermediateStops.map((s) => ({ id: s.id, name: s.name, lat: s.lat, lon: s.lon })),
+      routePolyline: calculatedRoutePolyline || undefined,
     };
 
     const validation = DriverRouteChangeSchema.safeParse(payload);
@@ -1303,6 +1305,9 @@ export default function ActiveTourScreen() {
                   setUpdatedPickup(payload.pickupLocation.name);
                   setUpdatedDropoff(payload.dropLocation.name);
                   setExtraKmInput(String(Math.round(payload.extraKm)));
+                  if (payload.routeResult?.routeGeoJson?.coordinates) {
+                    setCalculatedRoutePolyline(payload.routeResult.routeGeoJson.coordinates);
+                  }
                 }}
               />
 

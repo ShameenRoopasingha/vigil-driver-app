@@ -172,6 +172,7 @@ export const DriverRouteChangeSchema = z.object({
   dropLocation: z.string().trim().optional(),
   destination: z.string().trim().optional(),
   stops: z.array(z.any()).optional(),
+  routePolyline: z.any().optional(),
 });
 
 export type DriverRouteChangeInput = z.infer<typeof DriverRouteChangeSchema>;

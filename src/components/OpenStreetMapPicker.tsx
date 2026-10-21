@@ -146,6 +146,7 @@ export default function OpenStreetMapPicker({
   const [isDetectingGps, setIsDetectingGps] = useState(false);
 
   const webViewRef = useRef<WebView>(null);
+  const lastInjectedPayloadRef = useRef<any>(null);
   const pickupDebounceRef = useRef<any>(null);
   const dropoffDebounceRef = useRef<any>(null);
   const stopDebounceRef = useRef<any>(null);
@@ -220,14 +221,15 @@ export default function OpenStreetMapPicker({
           });
 
           // Inject into Leaflet WebView
+          const payload = {
+            origin: currentPickup,
+            destination: currentDropoff,
+            stops: currentStops,
+            directGeoJson: result.directGeoJson,
+            routeGeoJson: result.routeGeoJson,
+          };
+          lastInjectedPayloadRef.current = payload;
           if (webViewRef.current) {
-            const payload = {
-              origin: currentPickup,
-              destination: currentDropoff,
-              stops: currentStops,
-              directGeoJson: result.directGeoJson,
-              routeGeoJson: result.routeGeoJson,
-            };
             webViewRef.current.injectJavaScript(
               `if (window.renderMultiRoutes) { window.renderMultiRoutes(${JSON.stringify(JSON.stringify(payload))}); } true;`
             );
@@ -375,11 +377,17 @@ export default function OpenStreetMapPicker({
     }
   };
 
-  // Map Message Handler (Tap on map to add waypoint)
+  // Map Message Handler (Tap on map to add waypoint, handshake when map is ready)
   const onWebViewMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      if (data.type === 'map_clicked' && data.lat && data.lon) {
+      if (data.type === 'map_ready') {
+        if (lastInjectedPayloadRef.current && webViewRef.current) {
+          webViewRef.current.injectJavaScript(
+            `if (window.renderMultiRoutes) { window.renderMultiRoutes(${JSON.stringify(JSON.stringify(lastInjectedPayloadRef.current))}); } true;`
+          );
+        }
+      } else if (data.type === 'map_clicked' && data.lat && data.lon) {
         const stopName = `Pinned Waypoint (${data.lat.toFixed(4)}, ${data.lon.toFixed(4)})`;
         handleAddStop({ name: stopName, lat: data.lat, lon: data.lon });
       }
@@ -464,6 +472,11 @@ export default function OpenStreetMapPicker({
       maxZoom: 19
     }).addTo(map);
 
+    // Handshake: notify React Native that Leaflet map instance is fully ready
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'map_ready' }));
+    }
+
     var directRouteLayer = null;
     var multiRouteLayers = [];
     var originMarker = null;
@@ -514,6 +527,8 @@ export default function OpenStreetMapPicker({
     window.renderMultiRoutes = function(dataStr) {
       try {
         var data = (typeof dataStr === 'string') ? JSON.parse(dataStr) : dataStr;
+        if (!data) return;
+
         if (directRouteLayer) { map.removeLayer(directRouteLayer); directRouteLayer = null; }
         if (multiRouteLayers && multiRouteLayers.length > 0) {
           multiRouteLayers.forEach(function(l) { map.removeLayer(l); });
@@ -571,18 +586,16 @@ export default function OpenStreetMapPicker({
         }
 
         // 5. Active Tour Route - Dual Color Split (Quotation & Live Radar style)
-        if (data.routeGeoJson) {
-          var coords = [];
-          if (data.routeGeoJson.coordinates && Array.isArray(data.routeGeoJson.coordinates)) {
-            // Convert GeoJSON [lon, lat] to Leaflet [lat, lon]
-            coords = data.routeGeoJson.coordinates.map(function(c) { return [c[1], c[0]]; });
-          }
+        var coords = [];
+        if (data.routeGeoJson && data.routeGeoJson.coordinates && Array.isArray(data.routeGeoJson.coordinates) && data.routeGeoJson.coordinates.length > 0) {
+          // Convert GeoJSON [lon, lat] to Leaflet [lat, lon]
+          coords = data.routeGeoJson.coordinates.map(function(c) { return [c[1], c[0]]; });
+        } else if (points.length >= 2) {
+          // Guaranteed fallback: connect all waypoints directly
+          coords = points.slice();
+        }
 
-          var allPts = [];
-          if (data.origin) allPts.push(data.origin);
-          if (Array.isArray(data.stops)) allPts = allPts.concat(data.stops);
-          if (data.destination) allPts.push(data.destination);
-
+        if (coords.length > 1) {
           var splitIndex = -1;
 
           // A. If intermediate stops exist, split at the last intermediate stop
@@ -613,76 +626,69 @@ export default function OpenStreetMapPicker({
           }
 
           // C. If direct A-to-B route with no intermediate stops, split at midpoint so it ALWAYS displays in Dual Colors (Forward Blue & Approach Orange)
-          if (splitIndex <= 1 || splitIndex >= coords.length - 2) {
-            splitIndex = Math.floor(coords.length / 2);
+          if (splitIndex <= 0 || splitIndex >= coords.length - 1) {
+            splitIndex = Math.max(1, Math.floor(coords.length / 2));
           }
 
           // Ensure valid split bounds
           if (splitIndex < 1) splitIndex = 1;
-          if (splitIndex >= coords.length - 1) splitIndex = coords.length - 2;
+          if (splitIndex >= coords.length) splitIndex = Math.max(1, coords.length - 1);
 
           var legendEl = document.getElementById('route-legend');
           var legendLabel1 = document.getElementById('legend-label-1');
           var legendLabel2 = document.getElementById('legend-label-2');
           var legendItem2 = document.getElementById('legend-item-2');
 
-          if (coords.length > 1) {
-            // 🔵 Forward / Outbound Polyline: Royal Blue (#2563eb)
-            var outboundCoords = coords.slice(0, splitIndex + 1);
-            var outboundPolyline = L.polyline(outboundCoords, {
-              color: '#2563eb', // Blue-600
-              weight: 5,
-              opacity: 0.92,
-              lineJoin: 'round'
-            }).addTo(map);
+          // 🔵 Forward / Outbound Polyline: Royal Blue (#2563eb)
+          var outboundCoords = coords.slice(0, splitIndex + 1);
+          var outboundPolyline = L.polyline(outboundCoords, {
+            color: '#2563eb', // Blue-600
+            weight: 5,
+            opacity: 0.92,
+            lineJoin: 'round'
+          }).addTo(map);
 
-            // 🟠 Return / Final Leg / Approach: Vibrant Amber Orange (#ea580c)
-            var returnCoords = coords.slice(splitIndex);
-            var returnPolyline = L.polyline(returnCoords, {
-              color: '#ea580c', // Orange-600
-              weight: 5,
-              opacity: 0.95,
-              dashArray: isRoundTrip ? '8, 4' : undefined,
-              lineJoin: 'round'
-            }).addTo(map);
+          // 🟠 Return / Final Leg / Approach: Vibrant Amber Orange (#ea580c)
+          var returnCoords = coords.slice(splitIndex);
+          var returnPolyline = L.polyline(returnCoords, {
+            color: '#ea580c', // Orange-600
+            weight: 5,
+            opacity: 0.95,
+            dashArray: isRoundTrip ? '8, 4' : undefined,
+            lineJoin: 'round'
+          }).addTo(map);
 
-            multiRouteLayers.push(outboundPolyline, returnPolyline);
+          multiRouteLayers.push(outboundPolyline, returnPolyline);
 
-            if (legendEl) {
-              legendEl.style.display = 'flex';
-              if (isRoundTrip) {
-                legendLabel1.innerText = 'Outbound';
-                legendLabel2.innerText = 'Return';
-              } else if (Array.isArray(data.stops) && data.stops.length > 0) {
-                legendLabel1.innerText = 'Forward Route';
-                legendLabel2.innerText = 'Final Leg';
-              } else {
-                legendLabel1.innerText = 'Departure Leg';
-                legendLabel2.innerText = 'Arrival Leg';
-              }
-              legendItem2.style.display = 'flex';
+          if (legendEl) {
+            legendEl.style.display = 'flex';
+            if (isRoundTrip) {
+              legendLabel1.innerText = 'Outbound';
+              legendLabel2.innerText = 'Return';
+            } else if (Array.isArray(data.stops) && data.stops.length > 0) {
+              legendLabel1.innerText = 'Forward Route';
+              legendLabel2.innerText = 'Final Leg';
+            } else {
+              legendLabel1.innerText = 'Departure Leg';
+              legendLabel2.innerText = 'Arrival Leg';
             }
+            legendItem2.style.display = 'flex';
           }
         }
 
-        if (points.length > 1) {
+        // Auto-fit to view with padding
+        if (coords.length > 1) {
+          var bounds = L.latLngBounds(coords);
+          map.fitBounds(bounds, { padding: [35, 35], maxZoom: 14 });
+        } else if (points.length > 1) {
           map.fitBounds(points, { padding: [35, 35], maxZoom: 14 });
         } else if (points.length === 1) {
           map.setView(points[0], 12);
         }
-      } catch (err) {
-        console.error('renderMultiRoutes error:', err);
-      }
-    };
-  </script>
-</body>
-</html>
 
-        if (points.length > 1) {
-          map.fitBounds(points, { padding: [35, 35], maxZoom: 14 });
-        } else if (points.length === 1) {
-          map.setView(points[0], 12);
-        }
+        // Invalidate size on mobile WebViews
+        setTimeout(function() { map.invalidateSize(); }, 150);
+        setTimeout(function() { map.invalidateSize(); }, 450);
       } catch (err) {
         console.error('renderMultiRoutes error:', err);
       }
@@ -1105,15 +1111,15 @@ export default function OpenStreetMapPicker({
           domStorageEnabled={true}
           androidLayerType="hardware"
           onLoadEnd={() => {
-            if (routeResult) {
-              const payload = {
-                origin: pickup,
-                destination: dropoff,
-                stops,
-                directGeoJson: routeResult.directGeoJson,
-                routeGeoJson: routeResult.routeGeoJson,
-              };
-              webViewRef.current?.injectJavaScript(
+            const payload = lastInjectedPayloadRef.current || (routeResult ? {
+              origin: pickup,
+              destination: dropoff,
+              stops,
+              directGeoJson: routeResult.directGeoJson,
+              routeGeoJson: routeResult.routeGeoJson,
+            } : null);
+            if (payload && webViewRef.current) {
+              webViewRef.current.injectJavaScript(
                 `if (window.renderMultiRoutes) { window.renderMultiRoutes(${JSON.stringify(JSON.stringify(payload))}); } true;`
               );
             }
