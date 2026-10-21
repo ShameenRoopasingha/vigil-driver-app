@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Linking,
   StyleSheet,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
@@ -14,9 +13,7 @@ import {
   searchLandmarksOffline,
   searchNominatimOnline,
   mergeSearchResults,
-  calculateDirectRouteOSRM,
   calculateMultiStopRouteOSRM,
-  geocodePlace,
   type PlaceSuggestion,
   type IntermediateStop,
   type MultiStopRouteResult,
@@ -50,17 +47,35 @@ export interface OpenStreetMapPickerProps {
   placeholder?: string;
 }
 
+// Curated Quick Chips
+const POPULAR_PICKUPS = [
+  { label: '✈️ BIA Airport', name: 'Bandaranaike International Airport (BIA), Katunayake', lat: 7.1804, lon: 79.8841 },
+  { label: '🏙️ Colombo Fort', name: 'Colombo Fort Station, Colombo', lat: 6.9344, lon: 79.8504 },
+  { label: '🏖️ Negombo Beach', name: 'Negombo Beach, Negombo', lat: 7.2285, lon: 79.8415 },
+  { label: '🏯 Kandy City', name: 'Kandy Lake, Kandy', lat: 7.2906, lon: 80.6337 },
+  { label: '🏰 Galle Fort', name: 'Galle Fort Main Gate, Galle', lat: 6.0354, lon: 80.2173 },
+];
+
+const POPULAR_DROPOFFS = [
+  { label: '🏯 Kandy', name: 'Temple of the Tooth, Kandy', lat: 7.2936, lon: 80.6413 },
+  { label: '⛰️ Nuwara Eliya', name: 'Grand Hotel, Nuwara Eliya', lat: 6.9686, lon: 80.7672 },
+  { label: '🌿 Ella', name: 'Nine Arches Bridge, Ella', lat: 6.8768, lon: 81.0608 },
+  { label: '🦁 Sigiriya', name: 'Sigiriya Rock Fortress, Sigiriya', lat: 7.9541, lon: 80.7553 },
+  { label: '🏖️ Mirissa Beach', name: 'Mirissa Beach, Mirissa', lat: 5.9482, lon: 80.4578 },
+  { label: '✈️ BIA Airport', name: 'Bandaranaike International Airport (BIA), Katunayake', lat: 7.1804, lon: 79.8841 },
+];
+
 const QUICK_DETOURS = [
   { label: '🐘 Pinnawala', name: 'Pinnawala Elephant Orphanage', lat: 7.3013, lon: 80.3871 },
-  { label: '🗼 Ambuluwawa', name: 'Ambuluwawa Biodiversity Complex, Gampola', lat: 7.1742, lon: 80.5286 },
-  { label: '🦁 Sigiriya', name: 'Sigiriya Rock Fortress, Sigiriya', lat: 7.9541, lon: 80.7553 },
-  { label: '🪨 Dambulla', name: 'Dambulla Cave Temple, Dambulla', lat: 7.8569, lon: 80.6485 },
+  { label: '🗼 Ambuluwawa', name: 'Ambuluwawa Tower, Gampola', lat: 7.1742, lon: 80.5286 },
+  { label: '🦁 Sigiriya', name: 'Sigiriya Lion Rock', lat: 7.9541, lon: 80.7553 },
+  { label: '🪨 Dambulla', name: 'Dambulla Cave Temple', lat: 7.8569, lon: 80.6485 },
   { label: '🏯 Dalada Maligawa', name: 'Temple of the Tooth, Kandy', lat: 7.2936, lon: 80.6413 },
   { label: '🌿 Nine Arch Bridge', name: 'Nine Arches Bridge, Ella', lat: 6.8768, lon: 81.0608 },
-  { label: '🌊 Mirissa Beach', name: 'Mirissa Beach, Mirissa', lat: 5.9482, lon: 80.4578 },
-  { label: '🏰 Galle Fort', name: 'Galle Fort Main Gate, Galle', lat: 6.0354, lon: 80.2173 },
-  { label: '🐆 Yala Safari', name: 'Yala National Park (Palatupana Gate)', lat: 6.2738, lon: 81.4288 },
-  { label: '🌁 Horton Plains', name: 'Horton Plains National Park, Ohiya', lat: 6.8096, lon: 80.8144 },
+  { label: '🌊 Mirissa Beach', name: 'Mirissa Beach & Harbor', lat: 5.9482, lon: 80.4578 },
+  { label: '🏰 Galle Fort', name: 'Galle Fort Main Gate', lat: 6.0354, lon: 80.2173 },
+  { label: '🐆 Yala Safari', name: 'Yala National Park Gate', lat: 6.2738, lon: 81.4288 },
+  { label: '🌁 Horton Plains', name: 'Horton Plains (World\'s End)', lat: 6.8096, lon: 80.8144 },
 ];
 
 export default function OpenStreetMapPicker({
@@ -69,13 +84,12 @@ export default function OpenStreetMapPicker({
   pickupLocationName = '',
   dropLocationName = '',
   initialStops = [],
-  routeType = 'DETOUR',
   onItineraryChanged,
   onSelectPlace,
   onRouteCalculated,
   placeholder = 'Search attraction, hotel or city to add stop...',
 }: OpenStreetMapPickerProps) {
-  // 1. Pickup (From) State
+  // 1. Pickup State
   const [pickup, setPickup] = useState<{ name: string; lat: number; lon: number }>(
     currentLocation
       ? {
@@ -84,16 +98,17 @@ export default function OpenStreetMapPicker({
           lon: currentLocation.lon,
         }
       : {
-          name: pickupLocationName || 'Colombo Fort',
-          lat: 6.9271,
-          lon: 79.8612,
+          name: pickupLocationName || 'Colombo Fort Station',
+          lat: 6.9344,
+          lon: 79.8504,
         }
   );
   const [isEditingPickup, setIsEditingPickup] = useState(false);
-  const [pickupSearchText, setPickupSearchText] = useState('');
+  const [pickupQuery, setPickupQuery] = useState('');
   const [pickupSuggestions, setPickupSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [isSearchingPickup, setIsSearchingPickup] = useState(false);
 
-  // 2. Drop-off (To) State
+  // 2. Drop-off State
   const [dropoff, setDropoff] = useState<{ name: string; lat: number; lon: number }>(
     destinationLocation
       ? {
@@ -108,10 +123,11 @@ export default function OpenStreetMapPicker({
         }
   );
   const [isEditingDropoff, setIsEditingDropoff] = useState(false);
-  const [dropoffSearchText, setDropoffSearchText] = useState('');
+  const [dropoffQuery, setDropoffQuery] = useState('');
   const [dropoffSuggestions, setDropoffSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [isSearchingDropoff, setIsSearchingDropoff] = useState(false);
 
-  // 3. Intermediate Stops (Waypoints) List
+  // 3. Intermediate Stops List
   const [stops, setStops] = useState<IntermediateStop[]>(initialStops);
 
   // 4. Add Stop Search State
@@ -120,7 +136,7 @@ export default function OpenStreetMapPicker({
   const [showStopDropdown, setShowStopDropdown] = useState(false);
   const [isSearchingStop, setIsSearchingStop] = useState(false);
 
-  // 5. Multi-Stop Route Result & Recalculation State
+  // 5. Route Result
   const [routeResult, setRouteResult] = useState<MultiStopRouteResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
 
@@ -129,127 +145,187 @@ export default function OpenStreetMapPicker({
   const [isDetectingGps, setIsDetectingGps] = useState(false);
 
   const webViewRef = useRef<WebView>(null);
+  const pickupDebounceRef = useRef<any>(null);
+  const dropoffDebounceRef = useRef<any>(null);
   const stopDebounceRef = useRef<any>(null);
+  const recalcDebounceRef = useRef<any>(null);
   const searchCacheRef = useRef<Map<string, PlaceSuggestion[]>>(new Map());
 
-  // Sync incoming props
-  useEffect(() => {
-    if (currentLocation && (currentLocation.lat !== pickup.lat || currentLocation.lon !== pickup.lon)) {
-      setPickup({
-        name: pickupLocationName || currentLocation.name || pickup.name,
-        lat: currentLocation.lat,
-        lon: currentLocation.lon,
-      });
-    }
-  }, [currentLocation?.lat, currentLocation?.lon, pickupLocationName]);
+  // Fast Recalculate Multi-Stop Route (Debounced by 120ms to prevent duplicate calls)
+  const triggerRecalculate = useCallback(
+    (currentPickup = pickup, currentStops = stops, currentDropoff = dropoff) => {
+      if (recalcDebounceRef.current) clearTimeout(recalcDebounceRef.current);
 
-  useEffect(() => {
-    if (destinationLocation && (destinationLocation.lat !== dropoff.lat || destinationLocation.lon !== dropoff.lon)) {
-      setDropoff({
-        name: dropLocationName || destinationLocation.name || dropoff.name,
-        lat: destinationLocation.lat,
-        lon: destinationLocation.lon,
-      });
-    }
-  }, [destinationLocation?.lat, destinationLocation?.lon, dropLocationName]);
-
-  // Recalculate Route whenever Pickup, Dropoff, or Stops change
-  const recalculateMultiStopRoute = useCallback(
-    async (
-      currentPickup = pickup,
-      currentStops = stops,
-      currentDropoff = dropoff
-    ) => {
       setIsCalculating(true);
-      try {
-        const result = await calculateMultiStopRouteOSRM(
-          currentPickup,
-          currentStops,
-          currentDropoff
-        );
-        setRouteResult(result);
-
-        // Update each stop's distanceFromPrevKm from legs
-        if (result.legs && result.legs.length > 0 && currentStops.length > 0) {
-          const updatedStops = currentStops.map((stop, idx) => {
-            const leg = result.legs[idx];
-            return {
-              ...stop,
-              distanceFromPrevKm: leg ? leg.distanceKm : undefined,
-              durationFromPrevText: leg ? leg.durationText : undefined,
-            };
-          });
-          setStops(updatedStops);
-        }
-
-        // Notify parent component
-        onItineraryChanged?.({
-          pickupLocation: currentPickup,
-          dropLocation: currentDropoff,
-          stops: currentStops,
-          extraKm: result.relativeExtraKm,
-          totalKm: result.totalDistanceKm,
-          directKm: result.directDistanceKm,
-          routeResult: result,
-        });
-
-        // Backward compatibility callback
-        if (currentStops.length > 0) {
-          const lastStop = currentStops[currentStops.length - 1];
-          onSelectPlace?.({
-            name: currentStops.map((s) => s.name).join(' ➔ '),
-            displayName: currentStops.map((s) => s.name).join(' ➔ '),
-            shortName: lastStop.name,
-            lat: lastStop.lat,
-            lon: lastStop.lon,
-            roadDistanceKm: result.relativeExtraKm,
-            relativeExtraKm: result.relativeExtraKm,
-            directDistanceKm: result.directDistanceKm,
-            detourTotalKm: result.totalDistanceKm,
-            distanceToDetourKm: result.legs?.[0]?.distanceKm || result.totalDistanceKm,
-            durationText: result.totalDurationText,
-          });
-        }
-
-        onRouteCalculated?.({
-          directDistanceKm: result.directDistanceKm,
-          detourDistanceKm: result.totalDistanceKm,
-          relativeExtraKm: result.relativeExtraKm,
-          distanceToDetourKm: result.legs?.[0]?.distanceKm || 0,
-          durationToDetourText: result.legs?.[0]?.durationText || '',
-          detourDurationText: result.totalDurationText,
-          directGeoJson: result.directGeoJson,
-          detourGeoJson: result.routeGeoJson,
-        });
-
-        // Inject new routes into Leaflet WebView
-        if (webViewRef.current) {
-          const payload = {
-            origin: currentPickup,
-            destination: currentDropoff,
-            stops: currentStops,
-            directGeoJson: result.directGeoJson,
-            routeGeoJson: result.routeGeoJson,
-          };
-          webViewRef.current.injectJavaScript(
-            `if (window.renderMultiRoutes) { window.renderMultiRoutes(${JSON.stringify(JSON.stringify(payload))}); } true;`
+      recalcDebounceRef.current = setTimeout(async () => {
+        try {
+          const result = await calculateMultiStopRouteOSRM(
+            currentPickup,
+            currentStops,
+            currentDropoff
           );
+          setRouteResult(result);
+
+          // Update each stop's distanceFromPrevKm from legs
+          if (result.legs && result.legs.length > 0 && currentStops.length > 0) {
+            const updatedStops = currentStops.map((stop, idx) => {
+              const leg = result.legs[idx];
+              return {
+                ...stop,
+                distanceFromPrevKm: leg ? leg.distanceKm : undefined,
+                durationFromPrevText: leg ? leg.durationText : undefined,
+              };
+            });
+            setStops(updatedStops);
+          }
+
+          onItineraryChanged?.({
+            pickupLocation: currentPickup,
+            dropLocation: currentDropoff,
+            stops: currentStops,
+            extraKm: result.relativeExtraKm,
+            totalKm: result.totalDistanceKm,
+            directKm: result.directDistanceKm,
+            routeResult: result,
+          });
+
+          // Backward compatibility callbacks
+          if (currentStops.length > 0) {
+            const lastStop = currentStops[currentStops.length - 1];
+            onSelectPlace?.({
+              name: currentStops.map((s) => s.name).join(' ➔ '),
+              displayName: currentStops.map((s) => s.name).join(' ➔ '),
+              shortName: lastStop.name,
+              lat: lastStop.lat,
+              lon: lastStop.lon,
+              roadDistanceKm: result.relativeExtraKm,
+              relativeExtraKm: result.relativeExtraKm,
+              directDistanceKm: result.directDistanceKm,
+              detourTotalKm: result.totalDistanceKm,
+              distanceToDetourKm: result.legs?.[0]?.distanceKm || result.totalDistanceKm,
+              durationText: result.totalDurationText,
+            });
+          }
+
+          onRouteCalculated?.({
+            directDistanceKm: result.directDistanceKm,
+            detourDistanceKm: result.totalDistanceKm,
+            relativeExtraKm: result.relativeExtraKm,
+            distanceToDetourKm: result.legs?.[0]?.distanceKm || 0,
+            durationToDetourText: result.legs?.[0]?.durationText || '',
+            detourDurationText: result.totalDurationText,
+            directGeoJson: result.directGeoJson,
+            detourGeoJson: result.routeGeoJson,
+          });
+
+          // Inject into Leaflet WebView
+          if (webViewRef.current) {
+            const payload = {
+              origin: currentPickup,
+              destination: currentDropoff,
+              stops: currentStops,
+              directGeoJson: result.directGeoJson,
+              routeGeoJson: result.routeGeoJson,
+            };
+            webViewRef.current.injectJavaScript(
+              `if (window.renderMultiRoutes) { window.renderMultiRoutes(${JSON.stringify(JSON.stringify(payload))}); } true;`
+            );
+          }
+        } catch (err) {
+          console.warn('Error recalculating multi-stop route:', err);
+        } finally {
+          setIsCalculating(false);
         }
-      } catch (err) {
-        console.warn('Error recalculating multi-stop route:', err);
-      } finally {
-        setIsCalculating(false);
-      }
+      }, 120);
     },
     [pickup, stops, dropoff, onItineraryChanged, onSelectPlace, onRouteCalculated]
   );
 
-  // Trigger recalculation when endpoints or stops change
+  // Initial Route Load
   useEffect(() => {
-    recalculateMultiStopRoute(pickup, stops, dropoff);
-  }, [pickup.lat, pickup.lon, dropoff.lat, dropoff.lon, stops.length]);
+    triggerRecalculate(pickup, stops, dropoff);
+  }, []);
 
-  // Handle Add Stop from suggestion or chip
+  // ----------------------------------------------------
+  // TWO-PHASE SEARCH LOGIC (0ms Instant Curated + 250ms Debounced Online)
+  // ----------------------------------------------------
+  const performSearch = useCallback(
+    (
+      query: string,
+      referenceCoords: { lat: number; lon: number },
+      setResults: (res: PlaceSuggestion[]) => void,
+      setLoading: (l: boolean) => void,
+      debounceRef: React.MutableRefObject<any>
+    ) => {
+      const trimmed = query.trim();
+      if (!trimmed || trimmed.length < 2) {
+        setResults([]);
+        setLoading(false);
+        return;
+      }
+
+      const clean = trimmed.toLowerCase();
+
+      // 1. Instant Curated Matches (0ms)
+      const instantCurated = searchLandmarksOffline(trimmed, referenceCoords);
+      if (instantCurated.length > 0) {
+        setResults(instantCurated);
+      }
+
+      // 2. Debounced Online Nominatim Query (250ms)
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      setLoading(true);
+      debounceRef.current = setTimeout(async () => {
+        try {
+          if (searchCacheRef.current.has(clean)) {
+            const cached = searchCacheRef.current.get(clean)!;
+            setResults(cached);
+            setLoading(false);
+            return;
+          }
+          const onlineResults = await searchNominatimOnline(trimmed, referenceCoords);
+          const merged = mergeSearchResults(instantCurated, onlineResults);
+          searchCacheRef.current.set(clean, merged);
+          setResults(merged);
+        } catch (err) {
+          console.warn('Search error:', err);
+        } finally {
+          setLoading(false);
+        }
+      }, 250);
+    },
+    []
+  );
+
+  // Listen for Pickup search text changes
+  useEffect(() => {
+    if (isEditingPickup) {
+      performSearch(pickupQuery, pickup, setPickupSuggestions, setIsSearchingPickup, pickupDebounceRef);
+    }
+  }, [pickupQuery, isEditingPickup, pickup, performSearch]);
+
+  // Listen for Drop-off search text changes
+  useEffect(() => {
+    if (isEditingDropoff) {
+      performSearch(dropoffQuery, dropoff, setDropoffSuggestions, setIsSearchingDropoff, dropoffDebounceRef);
+    }
+  }, [dropoffQuery, isEditingDropoff, dropoff, performSearch]);
+
+  // Listen for Add Stop search text changes
+  useEffect(() => {
+    performSearch(
+      stopQuery,
+      pickup,
+      (res) => {
+        setStopSuggestions(res);
+        setShowStopDropdown(res.length > 0);
+      },
+      setIsSearchingStop,
+      stopDebounceRef
+    );
+  }, [stopQuery, pickup, performSearch]);
+
+  // Handle Add Stop
   const handleAddStop = (place: { name: string; lat: number; lon: number }) => {
     const newStop: IntermediateStop = {
       id: `stop-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -262,17 +338,17 @@ export default function OpenStreetMapPicker({
     setStopQuery('');
     setStopSuggestions([]);
     setShowStopDropdown(false);
-    recalculateMultiStopRoute(pickup, nextStops, dropoff);
+    triggerRecalculate(pickup, nextStops, dropoff);
   };
 
   // Handle Remove Stop
   const handleRemoveStop = (id: string) => {
     const nextStops = stops.filter((s) => s.id !== id);
     setStops(nextStops);
-    recalculateMultiStopRoute(pickup, nextStops, dropoff);
+    triggerRecalculate(pickup, nextStops, dropoff);
   };
 
-  // Handle Live GPS Detection for Pickup
+  // Handle Live GPS Detection
   const handleUseCurrentGps = async () => {
     setIsDetectingGps(true);
     try {
@@ -285,60 +361,16 @@ export default function OpenStreetMapPicker({
         };
         setPickup(nextPickup);
         setIsEditingPickup(false);
-        recalculateMultiStopRoute(nextPickup, stops, dropoff);
+        triggerRecalculate(nextPickup, stops, dropoff);
       }
     } catch (err) {
-      console.warn('Could not get GPS:', err);
+      console.warn('GPS detection error:', err);
     } finally {
       setIsDetectingGps(false);
     }
   };
 
-  // Debounced search for Add Stop input
-  useEffect(() => {
-    const trimmed = stopQuery.trim();
-    if (!trimmed || trimmed.length < 2) {
-      setStopSuggestions([]);
-      setShowStopDropdown(false);
-      setIsSearchingStop(false);
-      return;
-    }
-
-    const clean = trimmed.toLowerCase();
-    if (searchCacheRef.current.has(clean)) {
-      setStopSuggestions(searchCacheRef.current.get(clean)!);
-      setShowStopDropdown(true);
-      return;
-    }
-
-    const instantCurated = searchLandmarksOffline(trimmed, pickup);
-    if (instantCurated.length > 0) {
-      setStopSuggestions(instantCurated);
-      setShowStopDropdown(true);
-    }
-
-    if (stopDebounceRef.current) clearTimeout(stopDebounceRef.current);
-    setIsSearchingStop(true);
-    stopDebounceRef.current = setTimeout(async () => {
-      try {
-        const onlineResults = await searchNominatimOnline(trimmed, pickup);
-        const merged = mergeSearchResults(instantCurated, onlineResults);
-        searchCacheRef.current.set(clean, merged);
-        setStopSuggestions(merged);
-        setShowStopDropdown(merged.length > 0);
-      } catch (err) {
-        console.warn('Search error:', err);
-      } finally {
-        setIsSearchingStop(false);
-      }
-    }, 250);
-
-    return () => {
-      if (stopDebounceRef.current) clearTimeout(stopDebounceRef.current);
-    };
-  }, [stopQuery, pickup]);
-
-  // Leaflet Map Message Handler (clicks on map add stop)
+  // Map Message Handler (Tap on map to add waypoint)
   const onWebViewMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
@@ -351,7 +383,7 @@ export default function OpenStreetMapPicker({
     }
   };
 
-  // Real Leaflet HTML Template with Multi-Stop Pinning & Sequential Routes
+  // Leaflet HTML
   const generateLeafletHtml = (lat: number, lon: number) => `
 <!DOCTYPE html>
 <html>
@@ -495,7 +527,7 @@ export default function OpenStreetMapPicker({
         <View style={styles.brandTag}>
           <Text style={styles.brandTagText}>🗺️ TOUR ITINERARY PLANNER</Text>
         </View>
-        <Text style={styles.brandSub}>OSRM Multi-Stop Road Routing</Text>
+        <Text style={styles.brandSub}>OSRM Fast Road Engine</Text>
       </View>
 
       {/* 🟢 SECTION 1: Pickup Location (From) */}
@@ -518,46 +550,83 @@ export default function OpenStreetMapPicker({
               )}
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => setIsEditingPickup(!isEditingPickup)}
+              onPress={() => {
+                if (!isEditingPickup) {
+                  setPickupQuery('');
+                  setPickupSuggestions([]);
+                }
+                setIsEditingPickup(!isEditingPickup);
+              }}
               style={styles.editBtn}
             >
-              <Text style={styles.editBtnText}>{isEditingPickup ? 'Done' : '✏️ Edit'}</Text>
+              <Text style={styles.editBtnText}>{isEditingPickup ? '✕ Close' : '✏️ Edit'}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {isEditingPickup ? (
-          <View>
-            <TextInput
-              style={styles.editInput}
-              value={pickupSearchText}
-              onChangeText={async (txt) => {
-                setPickupSearchText(txt);
-                if (txt.trim().length >= 2) {
-                  const res = await searchNominatimOnline(txt, pickup);
-                  setPickupSuggestions(res);
-                } else {
-                  setPickupSuggestions([]);
-                }
-              }}
-              placeholder="Search new pickup location..."
-              placeholderTextColor="#94a3b8"
-            />
+          <View style={styles.editBox}>
+            <View style={styles.searchRow}>
+              <Text style={styles.searchIcon}>🔍</Text>
+              <TextInput
+                style={styles.searchInput}
+                value={pickupQuery}
+                onChangeText={setPickupQuery}
+                placeholder="Search airport, hotel or city..."
+                placeholderTextColor="#94a3b8"
+                autoFocus
+              />
+              {isSearchingPickup && (
+                <ActivityIndicator size="small" color="#10b981" style={{ marginRight: 6 }} />
+              )}
+              {pickupQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setPickupQuery('')} style={styles.clearBtn}>
+                  <Text style={styles.clearBtnText}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Quick Pickup Chips */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.miniChipsScroll}>
+              {POPULAR_PICKUPS.map((item, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.miniChip}
+                  onPress={() => {
+                    const nextPickup = { name: item.name, lat: item.lat, lon: item.lon };
+                    setPickup(nextPickup);
+                    setIsEditingPickup(false);
+                    triggerRecalculate(nextPickup, stops, dropoff);
+                  }}
+                >
+                  <Text style={styles.miniChipText}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Search Suggestions Dropdown */}
             {pickupSuggestions.length > 0 && (
-              <View style={styles.subDropdown}>
-                {pickupSuggestions.slice(0, 4).map((item, idx) => (
+              <View style={styles.searchDropdown}>
+                {pickupSuggestions.map((item, idx) => (
                   <TouchableOpacity
                     key={idx}
-                    style={styles.subDropdownItem}
+                    style={styles.searchDropdownItem}
                     onPress={() => {
-                      setPickup({ name: item.shortName || item.displayName, lat: item.lat, lon: item.lon });
+                      const nextPickup = {
+                        name: item.shortName || item.displayName,
+                        lat: item.lat,
+                        lon: item.lon,
+                      };
+                      setPickup(nextPickup);
                       setIsEditingPickup(false);
-                      setPickupSuggestions([]);
-                      setPickupSearchText('');
+                      triggerRecalculate(nextPickup, stops, dropoff);
                     }}
                   >
-                    <Text style={styles.subDropdownTitle} numberOfLines={1}>{item.shortName}</Text>
-                    <Text style={styles.subDropdownSub} numberOfLines={1}>{item.displayName}</Text>
+                    <Text style={styles.searchItemPin}>📍</Text>
+                    <View style={styles.searchItemTextCol}>
+                      <Text style={styles.searchItemTitle} numberOfLines={1}>{item.shortName}</Text>
+                      <Text style={styles.searchItemSub} numberOfLines={1}>{item.displayName}</Text>
+                    </View>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -584,7 +653,7 @@ export default function OpenStreetMapPicker({
           )}
         </View>
 
-        {/* Stops List */}
+        {/* Render Each Stop */}
         {stops.map((stop, idx) => (
           <View key={stop.id} style={styles.stopCard}>
             <View style={styles.stopBadge}>
@@ -633,14 +702,14 @@ export default function OpenStreetMapPicker({
           )}
         </View>
 
-        {/* Suggestions Dropdown */}
+        {/* Suggestions Dropdown for Stops */}
         {showStopDropdown && stopSuggestions.length > 0 && (
-          <View style={styles.dropdownContainer}>
-            <ScrollView style={styles.dropdownScroll} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+          <View style={styles.searchDropdown}>
+            <ScrollView style={{ maxHeight: 180 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
               {stopSuggestions.map((item, idx) => (
                 <TouchableOpacity
                   key={`${item.displayName}-${idx}`}
-                  style={styles.dropdownItem}
+                  style={styles.searchDropdownItem}
                   onPress={() =>
                     handleAddStop({
                       name: item.shortName || item.displayName,
@@ -649,10 +718,10 @@ export default function OpenStreetMapPicker({
                     })
                   }
                 >
-                  <Text style={styles.dropdownPin}>📍</Text>
-                  <View style={styles.dropdownTextCol}>
-                    <Text style={styles.dropdownTitle} numberOfLines={1}>{item.shortName}</Text>
-                    <Text style={styles.dropdownSub} numberOfLines={1}>{item.displayName}</Text>
+                  <Text style={styles.searchItemPin}>📍</Text>
+                  <View style={styles.searchItemTextCol}>
+                    <Text style={styles.searchItemTitle} numberOfLines={1}>{item.shortName}</Text>
+                    <Text style={styles.searchItemSub} numberOfLines={1}>{item.displayName}</Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -690,45 +759,82 @@ export default function OpenStreetMapPicker({
             <Text style={styles.endpointLabel}>Drop-off / Final Destination (To)</Text>
           </View>
           <TouchableOpacity
-            onPress={() => setIsEditingDropoff(!isEditingDropoff)}
+            onPress={() => {
+              if (!isEditingDropoff) {
+                setDropoffQuery('');
+                setDropoffSuggestions([]);
+              }
+              setIsEditingDropoff(!isEditingDropoff);
+            }}
             style={styles.editBtn}
           >
-            <Text style={styles.editBtnText}>{isEditingDropoff ? 'Done' : '✏️ Edit'}</Text>
+            <Text style={styles.editBtnText}>{isEditingDropoff ? '✕ Close' : '✏️ Edit'}</Text>
           </TouchableOpacity>
         </View>
 
         {isEditingDropoff ? (
-          <View>
-            <TextInput
-              style={styles.editInput}
-              value={dropoffSearchText}
-              onChangeText={async (txt) => {
-                setDropoffSearchText(txt);
-                if (txt.trim().length >= 2) {
-                  const res = await searchNominatimOnline(txt, dropoff);
-                  setDropoffSuggestions(res);
-                } else {
-                  setDropoffSuggestions([]);
-                }
-              }}
-              placeholder="Search new final destination..."
-              placeholderTextColor="#94a3b8"
-            />
+          <View style={styles.editBox}>
+            <View style={styles.searchRow}>
+              <Text style={styles.searchIcon}>🔍</Text>
+              <TextInput
+                style={styles.searchInput}
+                value={dropoffQuery}
+                onChangeText={setDropoffQuery}
+                placeholder="Search final destination, hotel or city..."
+                placeholderTextColor="#94a3b8"
+                autoFocus
+              />
+              {isSearchingDropoff && (
+                <ActivityIndicator size="small" color="#dc2626" style={{ marginRight: 6 }} />
+              )}
+              {dropoffQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setDropoffQuery('')} style={styles.clearBtn}>
+                  <Text style={styles.clearBtnText}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Quick Drop-off Chips */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.miniChipsScroll}>
+              {POPULAR_DROPOFFS.map((item, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.miniChip}
+                  onPress={() => {
+                    const nextDropoff = { name: item.name, lat: item.lat, lon: item.lon };
+                    setDropoff(nextDropoff);
+                    setIsEditingDropoff(false);
+                    triggerRecalculate(pickup, stops, nextDropoff);
+                  }}
+                >
+                  <Text style={styles.miniChipText}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Search Suggestions Dropdown */}
             {dropoffSuggestions.length > 0 && (
-              <View style={styles.subDropdown}>
-                {dropoffSuggestions.slice(0, 4).map((item, idx) => (
+              <View style={styles.searchDropdown}>
+                {dropoffSuggestions.map((item, idx) => (
                   <TouchableOpacity
                     key={idx}
-                    style={styles.subDropdownItem}
+                    style={styles.searchDropdownItem}
                     onPress={() => {
-                      setDropoff({ name: item.shortName || item.displayName, lat: item.lat, lon: item.lon });
+                      const nextDropoff = {
+                        name: item.shortName || item.displayName,
+                        lat: item.lat,
+                        lon: item.lon,
+                      };
+                      setDropoff(nextDropoff);
                       setIsEditingDropoff(false);
-                      setDropoffSuggestions([]);
-                      setDropoffSearchText('');
+                      triggerRecalculate(pickup, stops, nextDropoff);
                     }}
                   >
-                    <Text style={styles.subDropdownTitle} numberOfLines={1}>{item.shortName}</Text>
-                    <Text style={styles.subDropdownSub} numberOfLines={1}>{item.displayName}</Text>
+                    <Text style={styles.searchItemPin}>📍</Text>
+                    <View style={styles.searchItemTextCol}>
+                      <Text style={styles.searchItemTitle} numberOfLines={1}>{item.shortName}</Text>
+                      <Text style={styles.searchItemSub} numberOfLines={1}>{item.displayName}</Text>
+                    </View>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -929,8 +1035,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f5f9',
     borderWidth: 1,
     borderColor: '#cbd5e1',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 6,
   },
   editBtnText: {
@@ -942,38 +1048,84 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#0f172a',
+    marginTop: 2,
   },
-  editInput: {
+  editBox: {
+    marginTop: 6,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#f8fafc',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#cbd5e1',
     borderRadius: 8,
     paddingHorizontal: 8,
-    paddingVertical: 5,
+    height: 38,
+  },
+  searchIcon: {
+    fontSize: 13,
+    marginRight: 6,
+  },
+  searchInput: {
+    flex: 1,
     fontSize: 12,
     color: '#0f172a',
-    marginTop: 4,
+    fontWeight: '600',
+    paddingVertical: 0,
   },
-  subDropdown: {
-    backgroundColor: '#ffffff',
+  miniChipsScroll: {
+    flexDirection: 'row',
+    marginTop: 6,
+  },
+  miniChip: {
+    backgroundColor: '#f1f5f9',
     borderWidth: 1,
     borderColor: '#cbd5e1',
-    borderRadius: 8,
-    marginTop: 4,
-    maxHeight: 140,
-    overflow: 'hidden',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginRight: 6,
   },
-  subDropdownItem: {
+  miniChipText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  searchDropdown: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#4f46e5',
+    borderRadius: 8,
+    marginTop: 6,
+    maxHeight: 180,
+    overflow: 'hidden',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  searchDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 8,
     borderBottomWidth: 0.5,
     borderBottomColor: '#f1f5f9',
   },
-  subDropdownTitle: {
+  searchItemPin: {
+    fontSize: 13,
+    marginRight: 8,
+  },
+  searchItemTextCol: {
+    flex: 1,
+  },
+  searchItemTitle: {
     fontSize: 12,
     fontWeight: '700',
     color: '#0f172a',
   },
-  subDropdownSub: {
+  searchItemSub: {
     fontSize: 10,
     color: '#64748b',
   },
@@ -1082,41 +1234,6 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     fontSize: 12,
     fontWeight: 'bold',
-  },
-  dropdownContainer: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#4f46e5',
-    borderRadius: 8,
-    marginTop: 4,
-    maxHeight: 180,
-    overflow: 'hidden',
-  },
-  dropdownScroll: {
-    maxHeight: 180,
-  },
-  dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#f1f5f9',
-  },
-  dropdownPin: {
-    fontSize: 14,
-    marginRight: 8,
-  },
-  dropdownTextCol: {
-    flex: 1,
-  },
-  dropdownTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  dropdownSub: {
-    fontSize: 10,
-    color: '#64748b',
   },
   chipsWrapper: {
     marginTop: 8,

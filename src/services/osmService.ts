@@ -438,7 +438,7 @@ export async function searchNominatimOnline(
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000); // 4s hard timeout
+    const timeout = setTimeout(() => controller.abort(), 2500); // 4s hard timeout
 
     const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
       query.trim()
@@ -573,14 +573,25 @@ export async function geocodePlace(
   return null;
 }
 
+// In-memory cache for OSRM routes to make recalculations and baseline comparisons 0ms instantaneous
+const osrmRouteCache = new Map<string, any>();
 export async function calculateDirectRouteOSRM(
   origin: { lat: number; lon: number },
   destination: { lat: number; lon: number }
 ): Promise<{ distanceKm: number; durationText: string; geometry?: any } | null> {
+  const cacheKey = `${origin.lat.toFixed(4)},${origin.lon.toFixed(4)}->${destination.lat.toFixed(4)},${destination.lon.toFixed(4)}`;
+  if (osrmRouteCache.has(cacheKey)) {
+    return osrmRouteCache.get(cacheKey);
+  }
+
   const headers = { 'User-Agent': 'VigilDriverApp/1.0.4 (support@vigil.app)' };
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2800); // 2.8s fast timeout
     const url = `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}?overview=simplified&geometries=geojson`;
-    const res = await fetch(url, { headers });
+    const res = await fetch(url, { headers, signal: controller.signal });
+    clearTimeout(timeout);
+
     if (res.ok) {
       const data = await res.json();
       if (data.code === 'Ok' && data.routes?.[0]) {
@@ -590,21 +601,30 @@ export async function calculateDirectRouteOSRM(
         const hours = Math.floor(durationMins / 60);
         const mins = durationMins % 60;
         const durationText = hours > 0 ? `${hours}h ${mins}m` : `${mins} mins`;
-        return {
+        const result = {
           distanceKm,
           durationText,
           geometry: route.geometry,
         };
+        osrmRouteCache.set(cacheKey, result);
+        return result;
       }
     }
   } catch (err) {
-    console.warn('Direct route calculation error:', err);
+    // Timeout or network error - use immediate fallback
   }
+
   const directKm = Math.round(calculateDirectDistanceKm(origin.lat, origin.lon, destination.lat, destination.lon) * 1.35 * 10) / 10;
-  return {
+  const mins = Math.round((directKm / 40) * 60);
+  const hours = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  const durationText = hours > 0 ? `~${hours}h ${remMins}m` : `~${remMins} mins`;
+  const fallback = {
     distanceKm: directKm,
-    durationText: `~${Math.round((directKm / 40) * 60)} mins`,
+    durationText,
   };
+  osrmRouteCache.set(cacheKey, fallback);
+  return fallback;
 }
 
 export async function calculateRelativeDetourOSRM(
@@ -732,7 +752,6 @@ export async function calculateMultiStopRouteOSRM(
   stops: IntermediateStop[],
   destination?: { lat: number; lon: number; name?: string } | null
 ): Promise<MultiStopRouteResult> {
-  const headers = { 'User-Agent': 'VigilDriverApp/1.0.4 (support@vigil.app)' };
   const originPoint = {
     name: origin.name || 'Current Location',
     lat: origin.lat,
@@ -795,74 +814,82 @@ export async function calculateMultiStopRouteOSRM(
     allPoints.push(destPoint);
   }
 
-  try {
-    let directDistanceKm = 0;
-    let directGeoJson: any = null;
-
-    if (destPoint) {
-      const directUrl = `https://router.project-osrm.org/route/v1/driving/${originPoint.lon},${originPoint.lat};${destPoint.lon},${destPoint.lat}?overview=simplified&geometries=geojson`;
-      const directRes = await fetch(directUrl, { headers });
-      if (directRes.ok) {
-        const directJson = await directRes.json();
-        if (directJson.code === 'Ok' && directJson.routes?.[0]) {
-          directDistanceKm = Math.round((directJson.routes[0].distance / 1000) * 10) / 10;
-          directGeoJson = directJson.routes[0].geometry;
-        }
-      }
-    }
-
-    const coordsParam = allPoints.map((p) => `${p.lon},${p.lat}`).join(';');
-    const multiUrl = `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=simplified&geometries=geojson`;
-    const multiRes = await fetch(multiUrl, { headers });
-
-    if (multiRes.ok) {
-      const multiJson = await multiRes.json();
-      if (multiJson.code === 'Ok' && multiJson.routes?.[0]) {
-        const route = multiJson.routes[0];
-        const totalDistanceKm = Math.round((route.distance / 1000) * 10) / 10;
-        const totalDurationMinutes = Math.round(route.duration / 60);
-        const hours = Math.floor(totalDurationMinutes / 60);
-        const mins = totalDurationMinutes % 60;
-        const totalDurationText = hours > 0 ? `${hours}h ${mins}m` : `${mins} mins`;
-
-        const relativeExtraKm = destPoint
-          ? Math.max(0, Math.round((totalDistanceKm - directDistanceKm) * 10) / 10)
-          : totalDistanceKm;
-
-        const legs: RouteLeg[] = (route.legs || []).map((leg: any, idx: number) => {
-          const distKm = Math.round((leg.distance / 1000) * 10) / 10;
-          const legMins = Math.round(leg.duration / 60);
-          const legH = Math.floor(legMins / 60);
-          const legM = legMins % 60;
-          const durationText = legH > 0 ? `${legH}h ${legM}m` : `${legM} mins`;
-          return {
-            distanceKm: distKm,
-            durationMinutes: legMins,
-            durationText,
-            fromName: allPoints[idx]?.name || `Stop ${idx}`,
-            toName: allPoints[idx + 1]?.name || `Stop ${idx + 1}`,
-          };
-        });
-
-        return {
-          success: true,
-          directDistanceKm: directDistanceKm || totalDistanceKm,
-          totalDistanceKm,
-          relativeExtraKm,
-          totalDurationMinutes,
-          totalDurationText,
-          legs,
-          allPoints,
-          directGeoJson,
-          routeGeoJson: route.geometry,
-        };
-      }
-    }
-  } catch (err) {
-    console.warn('OSRM multi-stop calculation error:', err);
+  const multiKey = allPoints.map((p) => `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`).join(';');
+  if (osrmRouteCache.has(multiKey)) {
+    return osrmRouteCache.get(multiKey);
   }
 
-  // Fallback Haversine sequential
+  const headers = { 'User-Agent': 'VigilDriverApp/1.0.4 (support@vigil.app)' };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2800); // 2.8s fast timeout
+
+  try {
+    const coordsParam = allPoints.map((p) => `${p.lon},${p.lat}`).join(';');
+    const multiUrl = `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=simplified&geometries=geojson`;
+
+    // Direct route (A -> B) check cache or fetch in parallel
+    const directPromise = destPoint
+      ? calculateDirectRouteOSRM(originPoint, destPoint)
+      : Promise.resolve(null);
+
+    const multiPromise = fetch(multiUrl, { headers, signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .catch(() => null);
+
+    const [directResult, multiJson] = await Promise.all([directPromise, multiPromise]);
+    clearTimeout(timeout);
+
+    const directDistanceKm = directResult?.distanceKm || 0;
+    const directGeoJson = directResult?.geometry;
+
+    if (multiJson && multiJson.code === 'Ok' && multiJson.routes?.[0]) {
+      const route = multiJson.routes[0];
+      const totalDistanceKm = Math.round((route.distance / 1000) * 10) / 10;
+      const totalDurationMinutes = Math.round(route.duration / 60);
+      const hours = Math.floor(totalDurationMinutes / 60);
+      const mins = totalDurationMinutes % 60;
+      const totalDurationText = hours > 0 ? `${hours}h ${mins}m` : `${mins} mins`;
+
+      const relativeExtraKm = destPoint
+        ? Math.max(0, Math.round((totalDistanceKm - directDistanceKm) * 10) / 10)
+        : totalDistanceKm;
+
+      const legs: RouteLeg[] = (route.legs || []).map((leg: any, idx: number) => {
+        const distKm = Math.round((leg.distance / 1000) * 10) / 10;
+        const legMins = Math.round(leg.duration / 60);
+        const legH = Math.floor(legMins / 60);
+        const legM = legMins % 60;
+        const durationText = legH > 0 ? `${legH}h ${legM}m` : `${legM} mins`;
+        return {
+          distanceKm: distKm,
+          durationMinutes: legMins,
+          durationText,
+          fromName: allPoints[idx]?.name || `Stop ${idx}`,
+          toName: allPoints[idx + 1]?.name || `Stop ${idx + 1}`,
+        };
+      });
+
+      const finalResult: MultiStopRouteResult = {
+        success: true,
+        directDistanceKm: directDistanceKm || totalDistanceKm,
+        totalDistanceKm,
+        relativeExtraKm,
+        totalDurationMinutes,
+        totalDurationText,
+        legs,
+        allPoints,
+        directGeoJson,
+        routeGeoJson: route.geometry,
+      };
+
+      osrmRouteCache.set(multiKey, finalResult);
+      return finalResult;
+    }
+  } catch (err) {
+    clearTimeout(timeout);
+  }
+
+  // Instant Fallback Haversine sequential (0.1ms)
   let totalKm = 0;
   const legs: RouteLeg[] = [];
   for (let i = 0; i < allPoints.length - 1; i++) {
@@ -884,7 +911,7 @@ export async function calculateMultiStopRouteOSRM(
     ? Math.round(calculateDirectDistanceKm(originPoint.lat, originPoint.lon, destPoint.lat, destPoint.lon) * 1.35 * 10) / 10
     : totalKm;
 
-  return {
+  const fallbackResult: MultiStopRouteResult = {
     success: true,
     directDistanceKm: directKm,
     totalDistanceKm: Math.round(totalKm * 10) / 10,
@@ -894,6 +921,8 @@ export async function calculateMultiStopRouteOSRM(
     legs,
     allPoints,
   };
+  osrmRouteCache.set(multiKey, fallbackResult);
+  return fallbackResult;
 }
 
 export async function calculateRoadDistanceOSRM(
