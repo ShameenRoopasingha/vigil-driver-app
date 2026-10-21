@@ -388,7 +388,7 @@ export default function OpenStreetMapPicker({
     }
   };
 
-  // Leaflet HTML
+  // Leaflet HTML with Dual-Color Route Rendering (matching Admin Quotation & Live Radar)
   const generateLeafletHtml = (lat: number, lon: number) => `
 <!DOCTYPE html>
 <html>
@@ -409,7 +409,7 @@ export default function OpenStreetMapPicker({
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 3px 7px;
+      padding: 3px 8px;
       border-radius: 12px;
       color: #ffffff;
       font-size: 11px;
@@ -418,10 +418,56 @@ export default function OpenStreetMapPicker({
       box-shadow: 0 2px 6px rgba(0,0,0,0.3);
       border: 1.5px solid #ffffff;
     }
+    .route-legend {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(4px);
+      padding: 5px 9px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 10.5px;
+      font-weight: 700;
+      border: 1px solid #cbd5e1;
+      pointer-events: none;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .legend-bar {
+      display: inline-block;
+      width: 15px;
+      height: 4px;
+      border-radius: 2px;
+    }
+    .legend-bar.dashed {
+      border-bottom: 2px dashed #ea580c;
+      background: transparent;
+      height: 2px;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
+  <div id="route-legend" class="route-legend" style="display: none;">
+    <div class="legend-item">
+      <span class="legend-bar" style="background: #2563eb;"></span>
+      <span id="legend-label-1" style="color: #1d4ed8;">Forward</span>
+    </div>
+    <div class="legend-item" id="legend-item-2">
+      <span class="legend-bar dashed"></span>
+      <span id="legend-label-2" style="color: #c2410c;">Return</span>
+    </div>
+  </div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
   <script>
     var map = L.map('map', {
@@ -434,7 +480,7 @@ export default function OpenStreetMapPicker({
     }).addTo(map);
 
     var directRouteLayer = null;
-    var multiRouteLayer = null;
+    var multiRouteLayers = [];
     var originMarker = null;
     var destMarker = null;
     var stopMarkers = [];
@@ -467,7 +513,10 @@ export default function OpenStreetMapPicker({
       try {
         var data = (typeof dataStr === 'string') ? JSON.parse(dataStr) : dataStr;
         if (directRouteLayer) { map.removeLayer(directRouteLayer); directRouteLayer = null; }
-        if (multiRouteLayer) { map.removeLayer(multiRouteLayer); multiRouteLayer = null; }
+        if (multiRouteLayers && multiRouteLayers.length > 0) {
+          multiRouteLayers.forEach(function(l) { map.removeLayer(l); });
+          multiRouteLayers = [];
+        }
         if (originMarker) { map.removeLayer(originMarker); originMarker = null; }
         if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
         stopMarkers.forEach(function(m) { map.removeLayer(m); });
@@ -485,8 +534,8 @@ export default function OpenStreetMapPicker({
             var stopIcon = L.divIcon({
               className: 'custom-pin',
               html: '<div class="custom-badge" style="background:#4f46e5;">📍 ' + (idx + 1) + '. ' + (s.name ? s.name.substring(0, 16) : 'Stop') + '</div>',
-              iconSize: [85, 22],
-              iconAnchor: [42, 11]
+              iconSize: [88, 22],
+              iconAnchor: [44, 11]
             });
             var sm = L.marker([s.lat, s.lon], { icon: stopIcon }).addTo(map);
             stopMarkers.push(sm);
@@ -499,16 +548,126 @@ export default function OpenStreetMapPicker({
           points.push([data.destination.lat, data.destination.lon]);
         }
 
+        // 1. Direct Baseline Route (Sky Blue Dashed Line)
         if (data.directGeoJson && data.stops && data.stops.length > 0) {
           directRouteLayer = L.geoJSON(data.directGeoJson, {
-            style: { color: '#64748b', weight: 3, dashArray: '6, 8', opacity: 0.75 }
+            style: { color: '#0ea5e9', weight: 3.5, dashArray: '6, 6', opacity: 0.8 }
           }).addTo(map);
         }
 
+        // 2. Active Tour Route - Dual Color Split (Quotation & Live Radar style)
         if (data.routeGeoJson) {
-          multiRouteLayer = L.geoJSON(data.routeGeoJson, {
-            style: { color: '#10b981', weight: 5, opacity: 0.95 }
-          }).addTo(map);
+          var coords = [];
+          if (data.routeGeoJson.coordinates && Array.isArray(data.routeGeoJson.coordinates)) {
+            // Convert GeoJSON [lon, lat] to Leaflet [lat, lon]
+            coords = data.routeGeoJson.coordinates.map(function(c) { return [c[1], c[0]]; });
+          }
+
+          var allPts = [];
+          if (data.origin) allPts.push(data.origin);
+          if (Array.isArray(data.stops)) allPts = allPts.concat(data.stops);
+          if (data.destination) allPts.push(data.destination);
+
+          var splitIndex = -1;
+          var isCircuit = false;
+
+          if (coords.length > 4 && allPts.length >= 3) {
+            var orig = allPts[0];
+            var dest = allPts[allPts.length - 1];
+            var dOrigDest = Math.hypot(orig.lat - dest.lat, orig.lon - dest.lon);
+            var nameOrig = (orig.name || '').toLowerCase().split(',')[0].trim();
+            var nameDest = (dest.name || '').toLowerCase().split(',')[0].trim();
+
+            if (dOrigDest < 0.05 || nameOrig === nameDest || (nameOrig && nameDest && (nameOrig.includes(nameDest) || nameDest.includes(nameOrigin)))) {
+              isCircuit = true;
+              // Farthest waypoint is turnaround point
+              var maxD = -1;
+              var turnaroundPt = allPts[1];
+              for (var w = 1; w < allPts.length - 1; w++) {
+                var d = Math.hypot(allPts[w].lat - orig.lat, allPts[w].lon - orig.lon);
+                if (d > maxD) {
+                  maxD = d;
+                  turnaroundPt = allPts[w];
+                }
+              }
+              // Find coordinate closest to turnaround point
+              var minDist = Infinity;
+              for (var i = 1; i < coords.length - 1; i++) {
+                var cDist = Math.hypot(coords[i][0] - turnaroundPt.lat, coords[i][1] - turnaroundPt.lon);
+                if (cDist < minDist) {
+                  minDist = cDist;
+                  splitIndex = i;
+                }
+              }
+            } else {
+              // Intermediate stops exist on one-way tour: split at last intermediate stop before final leg
+              var lastStop = allPts[allPts.length - 2];
+              var minDist = Infinity;
+              for (var i = 1; i < coords.length - 1; i++) {
+                var cDist = Math.hypot(coords[i][0] - lastStop.lat, coords[i][1] - lastStop.lon);
+                if (cDist < minDist) {
+                  minDist = cDist;
+                  splitIndex = i;
+                }
+              }
+            }
+          }
+
+          var legendEl = document.getElementById('route-legend');
+          var legendLabel1 = document.getElementById('legend-label-1');
+          var legendLabel2 = document.getElementById('legend-label-2');
+          var legendItem2 = document.getElementById('legend-item-2');
+
+          if (coords.length > 1 && splitIndex > 3 && splitIndex < coords.length - 3) {
+            // 🔵 Forward / Outbound: Royal Blue (#2563eb)
+            var outboundCoords = coords.slice(0, splitIndex + 1);
+            var outboundPolyline = L.polyline(outboundCoords, {
+              color: '#2563eb', // Blue-600
+              weight: 5,
+              opacity: 0.92,
+              lineJoin: 'round'
+            }).addTo(map);
+
+            // 🟠 Return / Final Leg: Vibrant Amber Orange (#ea580c)
+            var returnCoords = coords.slice(splitIndex);
+            var returnPolyline = L.polyline(returnCoords, {
+              color: '#ea580c', // Orange-600
+              weight: 5,
+              opacity: 0.95,
+              dashArray: isCircuit ? '8, 4' : undefined,
+              lineJoin: 'round'
+            }).addTo(map);
+
+            multiRouteLayers.push(outboundPolyline, returnPolyline);
+
+            if (legendEl) {
+              legendEl.style.display = 'flex';
+              legendLabel1.innerText = isCircuit ? 'Outbound' : 'Forward Leg';
+              legendLabel2.innerText = isCircuit ? 'Return' : 'Final Leg';
+              legendItem2.style.display = 'flex';
+            }
+          } else if (coords.length > 1) {
+            // Standard single route - Royal Blue
+            var polyline = L.polyline(coords, {
+              color: '#2563eb',
+              weight: 5,
+              opacity: 0.9,
+              lineJoin: 'round'
+            }).addTo(map);
+            multiRouteLayers.push(polyline);
+
+            if (legendEl) {
+              legendEl.style.display = 'flex';
+              legendLabel1.innerText = 'Tour Route';
+              legendItem2.style.display = 'none';
+            }
+          } else {
+            // Fallback GeoJSON
+            var geoLayer = L.geoJSON(data.routeGeoJson, {
+              style: { color: '#2563eb', weight: 5, opacity: 0.9 }
+            }).addTo(map);
+            multiRouteLayers.push(geoLayer);
+          }
         }
 
         if (points.length > 1) {
