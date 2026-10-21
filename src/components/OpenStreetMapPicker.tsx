@@ -15,6 +15,7 @@ import {
   searchPlacesOnlineUnified,
   mergeSearchResults,
   calculateMultiStopRouteOSRM,
+  geocodePlace,
   type PlaceSuggestion,
   type IntermediateStop,
   type MultiStopRouteResult,
@@ -94,14 +95,14 @@ export default function OpenStreetMapPicker({
   const [pickup, setPickup] = useState<{ name: string; lat: number; lon: number }>(
     currentLocation
       ? {
-          name: pickupLocationName || currentLocation.name || 'Current Location',
+          name: pickupLocationName || currentLocation.name || 'Pickup Location',
           lat: currentLocation.lat,
           lon: currentLocation.lon,
         }
       : {
-          name: pickupLocationName || 'Colombo Fort Station',
-          lat: 6.9344,
-          lon: 79.8504,
+          name: pickupLocationName || 'Meegoda',
+          lat: 6.8406,
+          lon: 80.0573,
         }
   );
   const [isEditingPickup, setIsEditingPickup] = useState(false);
@@ -118,9 +119,9 @@ export default function OpenStreetMapPicker({
           lon: destinationLocation.lon,
         }
       : {
-          name: dropLocationName || 'Kandy City Center',
-          lat: 7.2906,
-          lon: 80.6337,
+          name: dropLocationName || 'Colombo Fort Station',
+          lat: 6.9344,
+          lon: 79.8504,
         }
   );
   const [isEditingDropoff, setIsEditingDropoff] = useState(false);
@@ -248,6 +249,55 @@ export default function OpenStreetMapPicker({
   useEffect(() => {
     triggerRecalculate(pickup, stops, dropoff);
   }, []);
+
+  // Synchronize when destinationLocation prop resolves or changes
+  useEffect(() => {
+    if (destinationLocation && (Math.abs(destinationLocation.lat - dropoff.lat) > 0.001 || Math.abs(destinationLocation.lon - dropoff.lon) > 0.001)) {
+      const nextDropoff = {
+        name: dropLocationName || destinationLocation.name || dropoff.name,
+        lat: destinationLocation.lat,
+        lon: destinationLocation.lon,
+      };
+      setDropoff(nextDropoff);
+      triggerRecalculate(pickup, stops, nextDropoff);
+    }
+  }, [destinationLocation?.lat, destinationLocation?.lon]);
+
+  // Synchronize when currentLocation prop resolves or changes
+  useEffect(() => {
+    if (currentLocation && (Math.abs(currentLocation.lat - pickup.lat) > 0.001 || Math.abs(currentLocation.lon - pickup.lon) > 0.001)) {
+      const nextPickup = {
+        name: pickupLocationName || currentLocation.name || pickup.name,
+        lat: currentLocation.lat,
+        lon: currentLocation.lon,
+      };
+      setPickup(nextPickup);
+      triggerRecalculate(nextPickup, stops, dropoff);
+    }
+  }, [currentLocation?.lat, currentLocation?.lon]);
+
+  // Geocode pickupLocationName and dropLocationName directly to ensure exact coordinates
+  useEffect(() => {
+    if (pickupLocationName && (!currentLocation || !currentLocation.lat)) {
+      geocodePlace(pickupLocationName).then((geo) => {
+        if (geo && (Math.abs(geo.lat - pickup.lat) > 0.01 || Math.abs(geo.lon - pickup.lon) > 0.01)) {
+          const next = { name: pickupLocationName, lat: geo.lat, lon: geo.lon };
+          setPickup(next);
+          triggerRecalculate(next, stops, dropoff);
+        }
+      });
+    }
+
+    if (dropLocationName && (!destinationLocation || !destinationLocation.lat)) {
+      geocodePlace(dropLocationName).then((geo) => {
+        if (geo && (Math.abs(geo.lat - dropoff.lat) > 0.01 || Math.abs(geo.lon - dropoff.lon) > 0.01)) {
+          const next = { name: dropLocationName, lat: geo.lat, lon: geo.lon };
+          setDropoff(next);
+          triggerRecalculate(pickup, stops, next);
+        }
+      });
+    }
+  }, [pickupLocationName, dropLocationName]);
 
   // ----------------------------------------------------
   // TWO-PHASE SEARCH LOGIC (0ms Instant Curated + 200ms Debounced Online Photon + Nominatim)

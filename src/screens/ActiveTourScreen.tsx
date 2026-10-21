@@ -60,17 +60,27 @@ export default function ActiveTourScreen() {
   const [customerAgreed, setCustomerAgreed] = useState(true);
   const [routeChangeSubmitting, setRouteChangeSubmitting] = useState(false);
   const [driverCurrentCoords, setDriverCurrentCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [pickupCoords, setPickupCoords] = useState<{ lat: number; lon: number; name?: string } | null>(null);
   const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lon: number; name?: string } | null>(null);
   const [calculatedRoutePolyline, setCalculatedRoutePolyline] = useState<any>(null);
 
-  // Auto-resolve driver's current GPS location & destination coords whenever Route Alteration opens
+  // Auto-resolve pickup & destination coords from tour itinerary, plus driver GPS
   useEffect(() => {
     if (showRouteChangeModal) {
       locationService.getCurrentCoordinates().then((coords) => {
         if (coords) setDriverCurrentCoords(coords);
       });
 
-      const destTarget = tour?.dropLocation || tour?.destination || tour?.pickupLocation || '';
+      const pickupTarget = tour?.pickupLocation || '';
+      if (pickupTarget) {
+        geocodePlace(pickupTarget).then((geo) => {
+          if (geo) {
+            setPickupCoords({ lat: geo.lat, lon: geo.lon, name: pickupTarget });
+          }
+        });
+      }
+
+      const destTarget = tour?.dropLocation || tour?.destination || '';
       if (destTarget) {
         geocodePlace(destTarget).then((geo) => {
           if (geo) {
@@ -79,7 +89,7 @@ export default function ActiveTourScreen() {
         });
       }
     }
-  }, [showRouteChangeModal, tour?.dropLocation, tour?.destination, tour?.pickupLocation]);
+  }, [showRouteChangeModal, tour?.pickupLocation, tour?.dropLocation, tour?.destination]);
 
   const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>({
     isTracking: false,
@@ -1287,14 +1297,11 @@ export default function ActiveTourScreen() {
               {/* OpenStreetMap Itinerary & Route Picker */}
               <OpenStreetMapPicker
                 currentLocation={
-                  driverCurrentCoords ||
-                  (locationService.getLatestLocation()?.coords
-                    ? {
-                        lat: locationService.getLatestLocation()!.coords.latitude,
-                        lon: locationService.getLatestLocation()!.coords.longitude,
-                        name: tour.pickupLocation || 'Current Location',
-                      }
-                    : null)
+                  pickupCoords || {
+                    name: tour.pickupLocation || 'Pickup Location',
+                    lat: 6.8406,
+                    lon: 80.0573,
+                  }
                 }
                 destinationLocation={destinationCoords}
                 pickupLocationName={tour.pickupLocation || 'Current Pickup'}

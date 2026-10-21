@@ -705,14 +705,14 @@ export async function geocodePlace(
     };
   }
 
-  // 2. Search online Nominatim with Sri Lanka boundary box
+  // 2. Search online unified engine (Photon Komoot + Nominatim) with Sri Lanka boundary
   try {
-    const online = await searchNominatimOnline(trimmed);
-    if (online && online.length > 0) {
+    const results = await searchPlacesOnlineUnified(trimmed);
+    if (results && results.length > 0) {
       return {
-        lat: online[0].lat,
-        lon: online[0].lon,
-        name: online[0].displayName,
+        lat: results[0].lat,
+        lon: results[0].lon,
+        name: results[0].displayName || results[0].shortName,
       };
     }
   } catch (err) {
@@ -730,49 +730,66 @@ export async function calculateDirectRouteOSRM(
 ): Promise<{ distanceKm: number; durationText: string; geometry?: any } | null> {
   const cacheKey = `${origin.lat.toFixed(4)},${origin.lon.toFixed(4)}->${destination.lat.toFixed(4)},${destination.lon.toFixed(4)}`;
   if (osrmRouteCache.has(cacheKey)) {
-    return osrmRouteCache.get(cacheKey);
+    const cached = osrmRouteCache.get(cacheKey);
+    // Only return cache if it contains actual road geometry
+    if (cached && cached.geometry && cached.geometry.coordinates?.length > 2) {
+      return cached;
+    }
   }
 
   const headers = { 'User-Agent': 'VigilDriverApp/1.0.4 (support@vigil.app)' };
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2800); // 2.8s fast timeout
-    const url = `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson`;
-    const res = await fetch(url, { headers, signal: controller.signal });
-    clearTimeout(timeout);
+  const endpoints = [
+    `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson`,
+    `https://routing.openstreetmap.de/routed-car/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson`,
+  ];
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data.code === 'Ok' && data.routes?.[0]) {
-        const route = data.routes[0];
-        const distanceKm = Math.round((route.distance / 1000) * 10) / 10;
-        const durationMins = Math.round(route.duration / 60);
-        const hours = Math.floor(durationMins / 60);
-        const mins = durationMins % 60;
-        const durationText = hours > 0 ? `${hours}h ${mins}m` : `${mins} mins`;
-        const result = {
-          distanceKm,
-          durationText,
-          geometry: route.geometry,
-        };
-        osrmRouteCache.set(cacheKey, result);
-        return result;
+  for (const url of endpoints) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6500); // 6.5s generous timeout for mobile 4G/3G
+      const res = await fetch(url, { headers, signal: controller.signal });
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.code === 'Ok' && data.routes?.[0]) {
+          const route = data.routes[0];
+          const distanceKm = Math.round((route.distance / 1000) * 10) / 10;
+          const durationMins = Math.round(route.duration / 60);
+          const hours = Math.floor(durationMins / 60);
+          const mins = durationMins % 60;
+          const durationText = hours > 0 ? `${hours}h ${mins}m` : `${mins} mins`;
+          const result = {
+            distanceKm,
+            durationText,
+            geometry: route.geometry,
+          };
+          osrmRouteCache.set(cacheKey, result);
+          return result;
+        }
       }
+    } catch (err) {
+      // Continue to next mirror
     }
-  } catch (err) {
-    // Timeout or network error - use immediate fallback
   }
 
+  // Fallback Haversine calculation ONLY if all OSRM endpoints fail
   const directKm = Math.round(calculateDirectDistanceKm(origin.lat, origin.lon, destination.lat, destination.lon) * 1.35 * 10) / 10;
   const mins = Math.round((directKm / 40) * 60);
   const hours = Math.floor(mins / 60);
   const remMins = mins % 60;
-  const durationText = hours > 0 ? `~${hours}h ${remMins}m` : `~${remMins} mins`;
+  const durationText = hours > 0 ? `${hours}h ${remMins}m` : `${remMins} mins`;
   const fallback = {
     distanceKm: directKm,
     durationText,
+    geometry: {
+      type: 'LineString' as const,
+      coordinates: [
+        [origin.lon, origin.lat],
+        [destination.lon, destination.lat],
+      ],
+    },
   };
-  osrmRouteCache.set(cacheKey, fallback);
   return fallback;
 }
 
@@ -974,19 +991,34 @@ export async function calculateMultiStopRouteOSRM(
 
   try {
     const coordsParam = allPoints.map((p) => `${p.lon},${p.lat}`).join(';');
-    const multiUrl = `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=full&geometries=geojson`;
-
-    // Direct route (A -> B) check cache or fetch in parallel
     const directPromise = destPoint
       ? calculateDirectRouteOSRM(originPoint, destPoint)
       : Promise.resolve(null);
+    const endpoints = [
+      `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=full&geometries=geojson`,
+      `https://routing.openstreetmap.de/routed-car/route/v1/driving/${coordsParam}?overview=full&geometries=geojson`,
+    ];
 
-    const multiPromise = fetch(multiUrl, { headers, signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : null))
-      .catch(() => null);
+    let multiJson: any = null;
+    for (const url of endpoints) {
+      try {
+        const c = new AbortController();
+        const t = setTimeout(() => c.abort(), 6500);
+        const res = await fetch(url, { headers, signal: c.signal });
+        clearTimeout(t);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.code === 'Ok' && json.routes?.[0]) {
+            multiJson = json;
+            break;
+          }
+        }
+      } catch (e) {
+        // try mirror
+      }
+    }
 
-    const [directResult, multiJson] = await Promise.all([directPromise, multiPromise]);
-    clearTimeout(timeout);
+    const directResult = await directPromise;
 
     const directDistanceKm = directResult?.distanceKm || 0;
     const directGeoJson = directResult?.geometry;
