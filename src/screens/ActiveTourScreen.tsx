@@ -15,28 +15,12 @@ import {
 import OpenStreetMapPicker from '../components/OpenStreetMapPicker';
 import { toast } from '../utils/toast';
 import { 
-  calculateRoadDistanceOSRM,
-  calculateRelativeDetourOSRM,
   geocodePlace,
-  type RelativeRouteInfo,
+  type IntermediateStop,
 } from '../services/osmService';
 
 type ActiveTourRouteProp = RouteProp<RootStackParamList, 'ActiveTour'>;
 type ActiveTourNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ActiveTour'>;
-
-const POPULAR_DETOURS = [
-  { label: '🐘 Pinnawala Orphanage', location: 'Pinnawala Elephant Orphanage, Rambukkana', lat: 7.3013, lon: 80.3871 },
-  { label: '🗼 Ambuluwawa Tower', location: 'Ambuluwawa Biodiversity Complex, Gampola', lat: 7.1702, lon: 80.5488 },
-  { label: '🌿 Spice Garden', location: 'Euphoria Spice and Herbal Garden, Mawanella', lat: 7.2541, lon: 80.4512 },
-  { label: '🛕 Dalada Maligawa', location: 'Sri Dalada Maligawa, Kandy', lat: 7.2936, lon: 80.6413 },
-  { label: '🌊 Ramboda Falls', location: 'Ramboda Falls, Pussellawa', lat: 7.0544, lon: 80.6974 },
-  { label: '☕ Damro Tea Factory', location: 'Damro Labookellie Tea Centre, Nuwara Eliya', lat: 7.0267, lon: 80.7354 },
-  { label: '🚂 Nine Arch Bridge', location: 'Nine Arches Bridge, Ella', lat: 6.8768, lon: 81.0608 },
-  { label: '🦁 Sigiriya Lion Rock', location: 'Sigiriya Rock Fortress, Sigiriya', lat: 7.9541, lon: 80.7553 },
-  { label: '🛕 Dambulla Cave', location: 'Dambulla Royal Cave Temple, Dambulla', lat: 7.8567, lon: 80.6485 },
-  { label: '🏄 Mirissa Beach', location: 'Mirissa Beach, Mirissa', lat: 5.9482, lon: 80.4578 },
-  { label: '🏰 Galle Fort', location: 'Galle Fort, Galle', lat: 6.0269, lon: 80.2170 },
-];
 
 export default function ActiveTourScreen() {
   const route = useRoute<ActiveTourRouteProp>();
@@ -64,26 +48,19 @@ export default function ActiveTourScreen() {
   const [breakdownNote, setBreakdownNote] = useState('');
   const [breakdownSubmitting, setBreakdownSubmitting] = useState(false);
 
-  // Mid-Tour Route Change & Detour State
+  // Mid-Tour Route Change, Detours & Itinerary State
   const [showRouteChangeModal, setShowRouteChangeModal] = useState(false);
-  const [routeChangeType, setRouteChangeType] = useState<'DETOUR' | 'DESTINATION'>('DETOUR');
-  const [newRouteLocation, setNewRouteLocation] = useState('');
-  const [routeChangeCoords, setRouteChangeCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [routeChangeType, setRouteChangeType] = useState<'DETOUR' | 'DESTINATION' | 'ITINERARY'>('ITINERARY');
+  const [intermediateStops, setIntermediateStops] = useState<IntermediateStop[]>([]);
+  const [updatedPickup, setUpdatedPickup] = useState('');
+  const [updatedDropoff, setUpdatedDropoff] = useState('');
   const [extraKmInput, setExtraKmInput] = useState('');
-  const [routeChangeReason, setRouteChangeReason] = useState('Guest Requested Sightseeing Detour');
+  const [routeChangeReason, setRouteChangeReason] = useState('Guest Requested Sightseeing Stops');
   const [routeChangeNote, setRouteChangeNote] = useState('');
   const [customerAgreed, setCustomerAgreed] = useState(true);
   const [routeChangeSubmitting, setRouteChangeSubmitting] = useState(false);
   const [driverCurrentCoords, setDriverCurrentCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lon: number; name?: string } | null>(null);
-  const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
-  const [calculatedRouteSummary, setCalculatedRouteSummary] = useState<{
-    km: number;
-    durationText?: string;
-    directKm?: number;
-    detourTotalKm?: number;
-    distToDetourKm?: number;
-  } | null>(null);
 
   // Auto-resolve driver's current GPS location & destination coords whenever Route Alteration opens
   useEffect(() => {
@@ -100,42 +77,8 @@ export default function ActiveTourScreen() {
           }
         });
       }
-    } else {
-      setCalculatedRouteSummary(null);
-      setIsCalculatingDistance(false);
     }
   }, [showRouteChangeModal, tour?.dropLocation, tour?.destination, tour?.pickupLocation]);
-
-  const handleSelectPopularDetour = async (detour: (typeof POPULAR_DETOURS)[0]) => {
-    setNewRouteLocation(detour.location);
-    setRouteChangeCoords({ lat: detour.lat, lon: detour.lon });
-    setIsCalculatingDistance(true);
-    try {
-      const origin =
-        driverCurrentCoords ||
-        (await locationService.getCurrentCoordinates()) ||
-        { lat: 6.9271, lon: 79.8612 };
-      const relInfo = await calculateRelativeDetourOSRM(
-        origin,
-        { lat: detour.lat, lon: detour.lon },
-        routeChangeType === 'DESTINATION' ? null : destinationCoords
-      );
-      if (relInfo) {
-        setExtraKmInput(String(Math.round(relInfo.relativeExtraKm)));
-        setCalculatedRouteSummary({
-          km: Math.round(relInfo.relativeExtraKm),
-          durationText: relInfo.durationToDetourText || relInfo.detourDurationText,
-          directKm: relInfo.directDistanceKm,
-          detourTotalKm: relInfo.detourDistanceKm,
-          distToDetourKm: relInfo.distanceToDetourKm,
-        });
-      }
-    } catch (err) {
-      console.warn('Detour road distance calculation error:', err);
-    } finally {
-      setIsCalculatingDistance(false);
-    }
-  };
 
   const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>({
     isTracking: false,
@@ -276,15 +219,24 @@ export default function ActiveTourScreen() {
   };
 
   const submitRouteChange = async () => {
-    const validation = DriverRouteChangeSchema.safeParse({
-      location: newRouteLocation,
-      changeType: routeChangeType,
+    const loc = intermediateStops.length > 0
+      ? intermediateStops.map((s) => s.name).join(' ➔ ')
+      : updatedDropoff || tour?.dropLocation || tour?.destination || '';
+
+    const payload = {
+      location: loc,
+      changeType: intermediateStops.length > 0 ? ('ITINERARY' as const) : ('DESTINATION' as const),
       extraKm: extraKmInput.trim() || undefined,
       reason: routeChangeReason,
       note: routeChangeNote.trim() || undefined,
       agreedByCustomer: customerAgreed,
-    });
+      pickupLocation: updatedPickup || tour?.pickupLocation || undefined,
+      dropLocation: updatedDropoff || tour?.dropLocation || tour?.destination || undefined,
+      destination: updatedDropoff || tour?.destination || tour?.dropLocation || undefined,
+      stops: intermediateStops.map((s) => ({ id: s.id, name: s.name, lat: s.lat, lon: s.lon })),
+    };
 
+    const validation = DriverRouteChangeSchema.safeParse(payload);
     if (!validation.success) {
       toast.warning('Validation Error', validation.error.issues[0]?.message || 'Please check route change details.');
       return;
@@ -294,26 +246,18 @@ export default function ActiveTourScreen() {
     try {
       const res = await apiClient.put(`/driver/tours/${bookingId}`, {
         action: 'CHANGE_ROUTE',
-        location: validation.data.location,
-        changeType: validation.data.changeType,
-        extraKm: validation.data.extraKm ? Number(validation.data.extraKm) : undefined,
-        reason: validation.data.reason,
-        note: validation.data.note,
-        agreedByCustomer: validation.data.agreedByCustomer,
+        ...payload,
+        extraKm: payload.extraKm ? Number(payload.extraKm) : undefined,
       });
 
       if (res.data?.success) {
         toast.success(
-          'Route Updated',
-          routeChangeType === 'DESTINATION'
-            ? `New destination set to "${validation.data.location}". In-app GPS and dispatch updated.`
-            : `Added detour stop: "${validation.data.location}". Dispatch alerted.`
+          'Itinerary Updated',
+          intermediateStops.length > 0
+            ? `Updated tour itinerary with ${intermediateStops.length} intermediate stop(s). Dispatch notified.`
+            : `Updated tour destination to "${payload.dropLocation || loc}". Dispatch alerted.`
         );
         setShowRouteChangeModal(false);
-        setNewRouteLocation('');
-        setRouteChangeCoords(null);
-        setExtraKmInput('');
-        setRouteChangeNote('');
         fetchTour();
       } else {
         toast.error('Error', res.data?.error || 'Failed to update tour route.');
@@ -554,8 +498,22 @@ export default function ActiveTourScreen() {
 
   const routeChanges = activities.filter((a: any) => a.type === 'ROUTE_CHANGE');
   const latestRouteChange = routeChanges.length > 0 ? routeChanges[routeChanges.length - 1] : null;
-  const detourMatch = latestRouteChange?.note?.match(/Mid-Tour Detour \/ Extra Stop Added:\s*([^(\n|]+)/i);
-  const activeDetourLocation = detourMatch ? detourMatch[1].trim() : null;
+
+  // Extract all active stops from the latest route change
+  const activeIntermediateStops: string[] = [];
+  if (latestRouteChange?.note) {
+    const itineraryMatch = latestRouteChange.note.match(/Stops:\s*([^()|]+)/i);
+    const detourMatch = latestRouteChange.note.match(/Mid-Tour Detour \/ (?:Extra Stop Added|Stops Added):\s*([^()|]+)/i);
+    const rawStops = itineraryMatch ? itineraryMatch[1] : (detourMatch ? detourMatch[1] : null);
+    if (rawStops) {
+      rawStops.split('➔').forEach((s: string) => {
+        const trimmed = s.trim();
+        if (trimmed && !activeIntermediateStops.includes(trimmed)) {
+          activeIntermediateStops.push(trimmed);
+        }
+      });
+    }
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
@@ -793,44 +751,48 @@ export default function ActiveTourScreen() {
               </Text>
             </View>
             
-            {/* Active Detour / Itinerary Alteration Card */}
-            {activeDetourLocation ? (
+            {/* Active Intermediate Stops List Card */}
+            {activeIntermediateStops.length > 0 ? (
               <View className="bg-indigo-50 border border-indigo-200 rounded-xl p-3.5 mb-3.5 shadow-xs">
-                <View className="flex-row items-center justify-between mb-1.5">
+                <View className="flex-row items-center justify-between mb-2">
                   <View className="flex-row items-center gap-1.5">
                     <Text className="text-indigo-900 font-black text-xs uppercase tracking-wide">
-                      📍 Active Detour Stop
+                      📍 Intermediate Tour Stops ({activeIntermediateStops.length})
                     </Text>
                   </View>
                   <View className="bg-indigo-200 px-2 py-0.5 rounded-full">
-                    <Text className="text-indigo-900 text-[10px] font-black uppercase">CURRENT STOP</Text>
+                    <Text className="text-indigo-900 text-[10px] font-black uppercase">ACTIVE ITINERARY</Text>
                   </View>
                 </View>
-                <Text className="text-indigo-950 font-bold text-sm mb-1.5" numberOfLines={2}>
-                  {activeDetourLocation}
-                </Text>
-                {latestRouteChange?.note ? (
-                  <Text className="text-indigo-700 text-[11px] mb-2.5 font-medium leading-4" numberOfLines={2}>
-                    {latestRouteChange.note}
-                  </Text>
-                ) : null}
 
-                {/* Direct 1-Tap Navigation to Detour Stop */}
-                <View className="flex-row gap-2">
-                  <TouchableOpacity
-                    onPress={() => openNavigation('google', activeDetourLocation)}
-                    className="flex-1 bg-indigo-600 py-2.5 px-3 rounded-lg flex-row items-center justify-center shadow-xs"
-                  >
-                    <Text className="text-white font-bold text-xs">🗺️ Maps to Detour</Text>
-                  </TouchableOpacity>
+                {activeIntermediateStops.map((stopName, idx) => (
+                  <View key={idx} className="bg-white rounded-lg p-2.5 border border-indigo-100 mb-2 shadow-2xs">
+                    <View className="flex-row items-center gap-2 mb-1.5">
+                      <View className="w-5 h-5 rounded-full bg-indigo-600 items-center justify-center">
+                        <Text className="text-white text-[10px] font-black">{idx + 1}</Text>
+                      </View>
+                      <Text className="text-gray-900 font-bold text-xs flex-1" numberOfLines={1}>
+                        {stopName}
+                      </Text>
+                    </View>
 
-                  <TouchableOpacity
-                    onPress={() => openNavigation('waze', activeDetourLocation)}
-                    className="flex-1 bg-cyan-600 py-2.5 px-3 rounded-lg flex-row items-center justify-center shadow-xs"
-                  >
-                    <Text className="text-white font-bold text-xs">🚗 Waze to Detour</Text>
-                  </TouchableOpacity>
-                </View>
+                    <View className="flex-row gap-2">
+                      <TouchableOpacity
+                        onPress={() => openNavigation('google', stopName)}
+                        className="flex-1 bg-indigo-600 py-2 px-2.5 rounded-md flex-row items-center justify-center shadow-xs"
+                      >
+                        <Text className="text-white font-bold text-[11px]">🗺️ Maps to Stop {idx + 1}</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        onPress={() => openNavigation('waze', stopName)}
+                        className="flex-1 bg-cyan-600 py-2 px-2.5 rounded-md flex-row items-center justify-center shadow-xs"
+                      >
+                        <Text className="text-white font-bold text-[11px]">🚗 Waze to Stop {idx + 1}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
               </View>
             ) : latestRouteChange ? (
               <View className="bg-indigo-50 border border-indigo-200 rounded-lg p-2.5 mb-3">
@@ -849,8 +811,8 @@ export default function ActiveTourScreen() {
             ) : null}
 
             {/* Final Tour Destination Navigation */}
-            <View className={activeDetourLocation ? "border-t border-gray-100 pt-3" : ""}>
-              {activeDetourLocation && (
+            <View className={activeIntermediateStops.length > 0 ? "border-t border-gray-100 pt-3" : ""}>
+              {activeIntermediateStops.length > 0 && (
                 <Text className="text-gray-500 text-[11px] font-bold uppercase tracking-wider mb-2">
                   🏁 Final Tour Destination ({primaryDestination})
                 </Text>
@@ -878,7 +840,7 @@ export default function ActiveTourScreen() {
               className="mt-2.5 bg-indigo-50 border border-indigo-200 py-2 rounded-lg flex-row items-center justify-center gap-1.5"
             >
               <Text className="text-indigo-800 font-bold text-xs">
-                ➕ Add Detour / Change Destination
+                ✏️ Edit Pickup, Stops & Destination
               </Text>
             </TouchableOpacity>
           </View>
@@ -1310,37 +1272,17 @@ export default function ActiveTourScreen() {
         <View className="flex-1 justify-end bg-black/60">
           <View className="bg-white rounded-t-3xl p-6 shadow-xl max-h-[90%]">
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              <View className="flex-row justify-between items-center mb-3">
+              <View className="flex-row justify-between items-center mb-2">
                 <View>
-                  <Text className="text-xl font-black text-gray-900">Tour Route Alteration</Text>
-                  <Text className="text-gray-500 text-xs mt-0.5">Add an unplanned stop or change destination</Text>
+                  <Text className="text-xl font-black text-gray-900">Tour Itinerary Planner</Text>
+                  <Text className="text-gray-500 text-xs mt-0.5">Edit pickup, add/remove stops, or change destination</Text>
                 </View>
                 <TouchableOpacity onPress={() => setShowRouteChangeModal(false)} className="p-1">
                   <Text className="text-gray-400 font-bold text-lg">✕</Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Type Switcher */}
-              <View className="flex-row bg-gray-100 p-1 rounded-xl mb-4">
-                <TouchableOpacity
-                  onPress={() => setRouteChangeType('DETOUR')}
-                  className={`flex-1 py-2 rounded-lg items-center ${routeChangeType === 'DETOUR' ? 'bg-white shadow-xs' : ''}`}
-                >
-                  <Text className={`text-xs font-black ${routeChangeType === 'DETOUR' ? 'text-indigo-700' : 'text-gray-600'}`}>
-                    📍 Add Extra Stop / Detour
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setRouteChangeType('DESTINATION')}
-                  className={`flex-1 py-2 rounded-lg items-center ${routeChangeType === 'DESTINATION' ? 'bg-white shadow-xs' : ''}`}
-                >
-                  <Text className={`text-xs font-black ${routeChangeType === 'DESTINATION' ? 'text-indigo-700' : 'text-gray-600'}`}>
-                    🏁 Change Destination
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* OpenStreetMap Place & Route Picker (Parity with Admin Platform) */}
+              {/* OpenStreetMap Itinerary & Route Picker */}
               <OpenStreetMapPicker
                 currentLocation={
                   driverCurrentCoords ||
@@ -1348,150 +1290,40 @@ export default function ActiveTourScreen() {
                     ? {
                         lat: locationService.getLatestLocation()!.coords.latitude,
                         lon: locationService.getLatestLocation()!.coords.longitude,
+                        name: tour.pickupLocation || 'Current Location',
                       }
                     : null)
                 }
                 destinationLocation={destinationCoords}
-                routeType={routeChangeType}
-                initialLocationName={newRouteLocation}
-                initialCoords={routeChangeCoords}
-                placeholder={
-                  routeChangeType === 'DESTINATION'
-                    ? 'Search new destination on OpenStreetMap...'
-                    : 'Search extra detour stop on OpenStreetMap...'
-                }
-                onSelectPlace={(place) => {
-                  setNewRouteLocation(place.displayName);
-                  setRouteChangeCoords({ lat: place.lat, lon: place.lon });
-                  const extra = place.relativeExtraKm !== undefined ? place.relativeExtraKm : place.roadDistanceKm;
-                  if (extra !== undefined && extra >= 0) {
-                    setExtraKmInput(String(Math.round(extra)));
-                    setCalculatedRouteSummary({
-                      km: Math.round(extra),
-                      durationText: place.durationToDetourText || place.durationText,
-                      directKm: place.directDistanceKm,
-                      detourTotalKm: place.detourTotalKm,
-                      distToDetourKm: place.distanceToDetourKm,
-                    });
-                  }
+                pickupLocationName={tour.pickupLocation || 'Current Pickup'}
+                dropLocationName={tour.dropLocation || tour.destination || 'Final Destination'}
+                initialStops={intermediateStops}
+                onItineraryChanged={(payload) => {
+                  setIntermediateStops(payload.stops);
+                  setUpdatedPickup(payload.pickupLocation.name);
+                  setUpdatedDropoff(payload.dropLocation.name);
+                  setExtraKmInput(String(Math.round(payload.extraKm)));
                 }}
               />
 
-              {/* Quick Detour Suggestions (One-tap calculation via OSM) */}
-              {routeChangeType === 'DETOUR' ? (
-                <View className="mb-3">
-                  <Text className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                    ⚡ Quick Sightseeing Suggestions
-                  </Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-                    {POPULAR_DETOURS.map((item, index) => {
-                      const isSelected = newRouteLocation === item.location;
-                      return (
-                        <TouchableOpacity
-                          key={index}
-                          onPress={() => handleSelectPopularDetour(item)}
-                          className={`mr-2 px-3 py-1.5 rounded-full border flex-row items-center ${
-                            isSelected
-                              ? 'bg-emerald-100 border-emerald-600'
-                              : 'bg-white border-gray-200'
-                          }`}
-                        >
-                          <Text
-                            className={`text-xs font-semibold ${
-                              isSelected ? 'text-emerald-900 font-bold' : 'text-gray-700'
-                            }`}
-                          >
-                            {item.label}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-              ) : null}
-
               {/* Estimated Extra KM (auto-calculated via OSRM, editable) */}
-              <View className="flex-row items-center justify-between mb-1">
+              <View className="flex-row items-center justify-between mb-1 mt-2">
                 <Text className="text-gray-700 font-semibold text-xs uppercase">
                   Estimated Extra Distance (KM)
                 </Text>
-                {isCalculatingDistance ? (
-                  <View className="flex-row items-center gap-1">
-                    <ActivityIndicator size="small" color="#059669" />
-                    <Text className="text-[11px] font-bold text-emerald-700">OSRM calculating...</Text>
-                  </View>
-                ) : extraKmInput ? (
+                {extraKmInput ? (
                   <Text className="text-[11px] font-bold text-emerald-700">
                     ✓ Auto-Calculated via OSM
                   </Text>
                 ) : null}
               </View>
               <TextInput
-                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 mb-1.5 text-sm font-medium"
+                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 mb-2 text-sm font-medium"
                 placeholder="e.g. 25"
                 keyboardType="numeric"
                 value={extraKmInput}
-                onChangeText={(val) => {
-                  setExtraKmInput(val);
-                  if (!val) setCalculatedRouteSummary(null);
-                }}
+                onChangeText={setExtraKmInput}
               />
-              {calculatedRouteSummary ? (
-                <View className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 mb-3">
-                  <View className="flex-row items-center justify-between mb-2">
-                    <View className="flex-row items-center gap-1.5">
-                      <Text className="text-sm">🛣️</Text>
-                      <Text className="text-xs font-black text-emerald-950 uppercase tracking-wider">
-                        Route Impact Comparison (OSRM)
-                      </Text>
-                    </View>
-                    <View className="bg-emerald-200 px-2 py-0.5 rounded">
-                      <Text className="text-[10px] font-black text-emerald-900">AUTO-CALCULATED</Text>
-                    </View>
-                  </View>
-
-                  <View className="flex-row items-center justify-between bg-white rounded-lg p-2.5 border border-emerald-200 shadow-xs mb-2">
-                    {calculatedRouteSummary.directKm !== undefined ? (
-                      <View className="items-center flex-1">
-                        <Text className="text-[10px] font-bold text-gray-500 uppercase">Scheduled</Text>
-                        <Text className="text-xs font-black text-gray-800">{calculatedRouteSummary.directKm} KM</Text>
-                      </View>
-                    ) : null}
-
-                    {calculatedRouteSummary.distToDetourKm !== undefined ? (
-                      <>
-                        <View className="w-[1px] h-6 bg-gray-200" />
-                        <View className="items-center flex-1">
-                          <Text className="text-[10px] font-bold text-gray-500 uppercase">To Detour</Text>
-                          <Text className="text-xs font-black text-blue-700">{calculatedRouteSummary.distToDetourKm} KM</Text>
-                        </View>
-                      </>
-                    ) : null}
-
-                    {calculatedRouteSummary.detourTotalKm !== undefined ? (
-                      <>
-                        <View className="w-[1px] h-6 bg-gray-200" />
-                        <View className="items-center flex-1">
-                          <Text className="text-[10px] font-bold text-gray-500 uppercase">Via Detour</Text>
-                          <Text className="text-xs font-black text-gray-800">{calculatedRouteSummary.detourTotalKm} KM</Text>
-                        </View>
-                      </>
-                    ) : null}
-
-                    <View className="w-[1px] h-6 bg-gray-200" />
-                    <View className="items-center flex-1.2 bg-emerald-100 py-1 px-1 rounded border border-emerald-300">
-                      <Text className="text-[10px] font-black text-emerald-900 uppercase">Net Extra</Text>
-                      <Text className="text-sm font-black text-emerald-700">+{calculatedRouteSummary.km} KM</Text>
-                    </View>
-                  </View>
-
-                  <Text className="text-[11px] text-emerald-800 font-medium">
-                    ⚡ Relative extra mileage calculated according to Sri Lanka's road network and active tour itinerary.
-                  </Text>
-                </View>
-              ) : (
-                <View className="mb-3" />
-              )}
 
               {/* Reason Selector */}
               <Text className="text-gray-700 font-semibold text-xs mb-1.5 uppercase">
@@ -1550,13 +1382,13 @@ export default function ActiveTourScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={submitRouteChange}
-                  disabled={routeChangeSubmitting || !newRouteLocation.trim()}
-                  className={`flex-1 py-3 rounded-xl items-center flex-row justify-center ${!newRouteLocation.trim() ? 'bg-indigo-300' : 'bg-indigo-600 shadow-sm'}`}
+                  disabled={routeChangeSubmitting}
+                  className={`flex-1 py-3 rounded-xl items-center flex-row justify-center ${'bg-indigo-600 shadow-sm'}`}
                 >
                   {routeChangeSubmitting ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text className="text-white font-bold">Save & Update Route</Text>
+                    <Text className="text-white font-bold">Confirm & Save Itinerary</Text>
                   )}
                 </TouchableOpacity>
               </View>

@@ -8,280 +8,351 @@ import {
   ActivityIndicator,
   Linking,
   StyleSheet,
-  Dimensions,
-  LayoutChangeEvent,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import {
   searchLandmarksOffline,
   searchNominatimOnline,
   mergeSearchResults,
-  calculateRoadDistanceOSRM,
   calculateDirectRouteOSRM,
-  calculateRelativeDetourOSRM,
-  SRI_LANKA_LANDMARKS,
+  calculateMultiStopRouteOSRM,
+  geocodePlace,
   type PlaceSuggestion,
-  type OSRMRouteInfo,
-  type RelativeRouteInfo,
+  type IntermediateStop,
+  type MultiStopRouteResult,
+  type RouteLeg,
 } from '../services/osmService';
 import { locationService } from '../services/locationService';
 
+export interface ItineraryChangePayload {
+  pickupLocation: { name: string; lat: number; lon: number };
+  dropLocation: { name: string; lat: number; lon: number };
+  stops: IntermediateStop[];
+  extraKm: number;
+  totalKm: number;
+  directKm: number;
+  routeResult: MultiStopRouteResult | null;
+}
+
 export interface OpenStreetMapPickerProps {
-  onSelectPlace: (place: {
-    name: string;
-    displayName: string;
-    shortName: string;
-    lat: number;
-    lon: number;
-    roadDistanceKm?: number;
-    durationText?: string;
-    relativeExtraKm?: number;
-    directDistanceKm?: number;
-    detourTotalKm?: number;
-    distanceToDetourKm?: number;
-    durationToDetourText?: string;
-  }) => void;
-  currentLocation?: { lat: number; lon: number } | null;
+  currentLocation?: { lat: number; lon: number; name?: string } | null;
   destinationLocation?: { lat: number; lon: number; name?: string } | null;
+  pickupLocationName?: string;
+  dropLocationName?: string;
+  initialStops?: IntermediateStop[];
+  routeType?: 'DETOUR' | 'DESTINATION' | 'ITINERARY';
+  onItineraryChanged?: (payload: ItineraryChangePayload) => void;
+  // Backwards compatibility props
+  onSelectPlace?: (place: any) => void;
+  onRouteCalculated?: (info: any) => void;
   initialLocationName?: string;
   initialCoords?: { lat: number; lon: number } | null;
   placeholder?: string;
-  routeType?: 'DETOUR' | 'DESTINATION';
-  onRouteCalculated?: (info: RelativeRouteInfo | null) => void;
 }
 
+const QUICK_DETOURS = [
+  { label: '🐘 Pinnawala', name: 'Pinnawala Elephant Orphanage', lat: 7.3013, lon: 80.3871 },
+  { label: '🗼 Ambuluwawa', name: 'Ambuluwawa Biodiversity Complex, Gampola', lat: 7.1742, lon: 80.5286 },
+  { label: '🦁 Sigiriya', name: 'Sigiriya Rock Fortress, Sigiriya', lat: 7.9541, lon: 80.7553 },
+  { label: '🪨 Dambulla', name: 'Dambulla Cave Temple, Dambulla', lat: 7.8569, lon: 80.6485 },
+  { label: '🏯 Dalada Maligawa', name: 'Temple of the Tooth, Kandy', lat: 7.2936, lon: 80.6413 },
+  { label: '🌿 Nine Arch Bridge', name: 'Nine Arches Bridge, Ella', lat: 6.8768, lon: 81.0608 },
+  { label: '🌊 Mirissa Beach', name: 'Mirissa Beach, Mirissa', lat: 5.9482, lon: 80.4578 },
+  { label: '🏰 Galle Fort', name: 'Galle Fort Main Gate, Galle', lat: 6.0354, lon: 80.2173 },
+  { label: '🐆 Yala Safari', name: 'Yala National Park (Palatupana Gate)', lat: 6.2738, lon: 81.4288 },
+  { label: '🌁 Horton Plains', name: 'Horton Plains National Park, Ohiya', lat: 6.8096, lon: 80.8144 },
+];
+
 export default function OpenStreetMapPicker({
-  onSelectPlace,
   currentLocation,
   destinationLocation,
-  initialLocationName = '',
-  initialCoords = null,
-  placeholder = 'Search attraction, city, hotel or address in Sri Lanka...',
+  pickupLocationName = '',
+  dropLocationName = '',
+  initialStops = [],
   routeType = 'DETOUR',
+  onItineraryChanged,
+  onSelectPlace,
   onRouteCalculated,
+  placeholder = 'Search attraction, hotel or city to add stop...',
 }: OpenStreetMapPickerProps) {
-  const [query, setQuery] = useState(initialLocationName);
-  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
-
-  // Selected place state
-  const [selectedPlace, setSelectedPlace] = useState<{
-    displayName: string;
-    shortName: string;
-    lat: number;
-    lon: number;
-  } | null>(
-    initialCoords
+  // 1. Pickup (From) State
+  const [pickup, setPickup] = useState<{ name: string; lat: number; lon: number }>(
+    currentLocation
       ? {
-          displayName: initialLocationName || 'Selected Location',
-          shortName: initialLocationName || 'Selected Location',
-          lat: initialCoords.lat,
-          lon: initialCoords.lon,
+          name: pickupLocationName || currentLocation.name || 'Current Location',
+          lat: currentLocation.lat,
+          lon: currentLocation.lon,
         }
-      : null
+      : {
+          name: pickupLocationName || 'Colombo Fort',
+          lat: 6.9271,
+          lon: 79.8612,
+        }
   );
+  const [isEditingPickup, setIsEditingPickup] = useState(false);
+  const [pickupSearchText, setPickupSearchText] = useState('');
+  const [pickupSuggestions, setPickupSuggestions] = useState<PlaceSuggestion[]>([]);
 
-  // Relative routing calculation info (direct vs detour)
-  const [relativeRoute, setRelativeRoute] = useState<RelativeRouteInfo | null>(null);
-  const [baseTourRoute, setBaseTourRoute] = useState<{
-    distanceKm: number;
-    durationText: string;
-    geometry?: any;
-  } | null>(null);
-  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
+  // 2. Drop-off (To) State
+  const [dropoff, setDropoff] = useState<{ name: string; lat: number; lon: number }>(
+    destinationLocation
+      ? {
+          name: dropLocationName || destinationLocation.name || 'Final Destination',
+          lat: destinationLocation.lat,
+          lon: destinationLocation.lon,
+        }
+      : {
+          name: dropLocationName || 'Kandy City Center',
+          lat: 7.2906,
+          lon: 80.6337,
+        }
+  );
+  const [isEditingDropoff, setIsEditingDropoff] = useState(false);
+  const [dropoffSearchText, setDropoffSearchText] = useState('');
+  const [dropoffSuggestions, setDropoffSuggestions] = useState<PlaceSuggestion[]>([]);
 
-  // Interactive OpenStreetMap preview zoom level
-  const [zoom, setZoom] = useState(14);
+  // 3. Intermediate Stops (Waypoints) List
+  const [stops, setStops] = useState<IntermediateStop[]>(initialStops);
+
+  // 4. Add Stop Search State
+  const [stopQuery, setStopQuery] = useState('');
+  const [stopSuggestions, setStopSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [showStopDropdown, setShowStopDropdown] = useState(false);
+  const [isSearchingStop, setIsSearchingStop] = useState(false);
+
+  // 5. Multi-Stop Route Result & Recalculation State
+  const [routeResult, setRouteResult] = useState<MultiStopRouteResult | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
+
+  // 6. UI Controls
+  const [showLegsBreakdown, setShowLegsBreakdown] = useState(true);
+  const [isDetectingGps, setIsDetectingGps] = useState(false);
 
   const webViewRef = useRef<WebView>(null);
-  const debounceTimerRef = useRef<any>(null);
+  const stopDebounceRef = useRef<any>(null);
   const searchCacheRef = useRef<Map<string, PlaceSuggestion[]>>(new Map());
 
-  // Load the initial scheduled tour navigation route when currentLocation or destinationLocation is available
+  // Sync incoming props
   useEffect(() => {
-    let isCancelled = false;
-    const loadBaseTour = async () => {
-      let origin = currentLocation;
-      if (!origin) origin = await locationService.getCurrentCoordinates();
-      if (!origin || !destinationLocation) return;
+    if (currentLocation && (currentLocation.lat !== pickup.lat || currentLocation.lon !== pickup.lon)) {
+      setPickup({
+        name: pickupLocationName || currentLocation.name || pickup.name,
+        lat: currentLocation.lat,
+        lon: currentLocation.lon,
+      });
+    }
+  }, [currentLocation?.lat, currentLocation?.lon, pickupLocationName]);
 
-      const direct = await calculateDirectRouteOSRM(origin, destinationLocation);
-      if (!isCancelled && direct) {
-        setBaseTourRoute(direct);
+  useEffect(() => {
+    if (destinationLocation && (destinationLocation.lat !== dropoff.lat || destinationLocation.lon !== dropoff.lon)) {
+      setDropoff({
+        name: dropLocationName || destinationLocation.name || dropoff.name,
+        lat: destinationLocation.lat,
+        lon: destinationLocation.lon,
+      });
+    }
+  }, [destinationLocation?.lat, destinationLocation?.lon, dropLocationName]);
+
+  // Recalculate Route whenever Pickup, Dropoff, or Stops change
+  const recalculateMultiStopRoute = useCallback(
+    async (
+      currentPickup = pickup,
+      currentStops = stops,
+      currentDropoff = dropoff
+    ) => {
+      setIsCalculating(true);
+      try {
+        const result = await calculateMultiStopRouteOSRM(
+          currentPickup,
+          currentStops,
+          currentDropoff
+        );
+        setRouteResult(result);
+
+        // Update each stop's distanceFromPrevKm from legs
+        if (result.legs && result.legs.length > 0 && currentStops.length > 0) {
+          const updatedStops = currentStops.map((stop, idx) => {
+            const leg = result.legs[idx];
+            return {
+              ...stop,
+              distanceFromPrevKm: leg ? leg.distanceKm : undefined,
+              durationFromPrevText: leg ? leg.durationText : undefined,
+            };
+          });
+          setStops(updatedStops);
+        }
+
+        // Notify parent component
+        onItineraryChanged?.({
+          pickupLocation: currentPickup,
+          dropLocation: currentDropoff,
+          stops: currentStops,
+          extraKm: result.relativeExtraKm,
+          totalKm: result.totalDistanceKm,
+          directKm: result.directDistanceKm,
+          routeResult: result,
+        });
+
+        // Backward compatibility callback
+        if (currentStops.length > 0) {
+          const lastStop = currentStops[currentStops.length - 1];
+          onSelectPlace?.({
+            name: currentStops.map((s) => s.name).join(' ➔ '),
+            displayName: currentStops.map((s) => s.name).join(' ➔ '),
+            shortName: lastStop.name,
+            lat: lastStop.lat,
+            lon: lastStop.lon,
+            roadDistanceKm: result.relativeExtraKm,
+            relativeExtraKm: result.relativeExtraKm,
+            directDistanceKm: result.directDistanceKm,
+            detourTotalKm: result.totalDistanceKm,
+            distanceToDetourKm: result.legs?.[0]?.distanceKm || result.totalDistanceKm,
+            durationText: result.totalDurationText,
+          });
+        }
+
+        onRouteCalculated?.({
+          directDistanceKm: result.directDistanceKm,
+          detourDistanceKm: result.totalDistanceKm,
+          relativeExtraKm: result.relativeExtraKm,
+          distanceToDetourKm: result.legs?.[0]?.distanceKm || 0,
+          durationToDetourText: result.legs?.[0]?.durationText || '',
+          detourDurationText: result.totalDurationText,
+          directGeoJson: result.directGeoJson,
+          detourGeoJson: result.routeGeoJson,
+        });
+
+        // Inject new routes into Leaflet WebView
         if (webViewRef.current) {
           const payload = {
-            origin,
-            destination: destinationLocation,
-            directGeoJson: direct.geometry,
+            origin: currentPickup,
+            destination: currentDropoff,
+            stops: currentStops,
+            directGeoJson: result.directGeoJson,
+            routeGeoJson: result.routeGeoJson,
           };
           webViewRef.current.injectJavaScript(
-            `if (window.renderRoutes) { window.renderRoutes(${JSON.stringify(JSON.stringify(payload))}); } true;`
+            `if (window.renderMultiRoutes) { window.renderMultiRoutes(${JSON.stringify(JSON.stringify(payload))}); } true;`
           );
         }
+      } catch (err) {
+        console.warn('Error recalculating multi-stop route:', err);
+      } finally {
+        setIsCalculating(false);
       }
-    };
-    loadBaseTour();
-    return () => {
-      isCancelled = true;
-    };
-  }, [
-    currentLocation?.lat,
-    currentLocation?.lon,
-    destinationLocation?.lat,
-    destinationLocation?.lon,
-  ]);
+    },
+    [pickup, stops, dropoff, onItineraryChanged, onSelectPlace, onRouteCalculated]
+  );
 
-  // Live Instant (Offline First) + Debounced Online OpenStreetMap Search
+  // Trigger recalculation when endpoints or stops change
   useEffect(() => {
-    const trimmed = query.trim();
-    if (!trimmed || trimmed.length < 2) {
-      setSuggestions([]);
-      setShowDropdown(false);
-      setIsSearching(false);
-      return;
-    }
+    recalculateMultiStopRoute(pickup, stops, dropoff);
+  }, [pickup.lat, pickup.lon, dropoff.lat, dropoff.lon, stops.length]);
 
-    if (
-      selectedPlace &&
-      (trimmed === selectedPlace.shortName || trimmed === selectedPlace.displayName)
-    ) {
+  // Handle Add Stop from suggestion or chip
+  const handleAddStop = (place: { name: string; lat: number; lon: number }) => {
+    const newStop: IntermediateStop = {
+      id: `stop-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      name: place.name,
+      lat: place.lat,
+      lon: place.lon,
+    };
+    const nextStops = [...stops, newStop];
+    setStops(nextStops);
+    setStopQuery('');
+    setStopSuggestions([]);
+    setShowStopDropdown(false);
+    recalculateMultiStopRoute(pickup, nextStops, dropoff);
+  };
+
+  // Handle Remove Stop
+  const handleRemoveStop = (id: string) => {
+    const nextStops = stops.filter((s) => s.id !== id);
+    setStops(nextStops);
+    recalculateMultiStopRoute(pickup, nextStops, dropoff);
+  };
+
+  // Handle Live GPS Detection for Pickup
+  const handleUseCurrentGps = async () => {
+    setIsDetectingGps(true);
+    try {
+      const coords = await locationService.getCurrentCoordinates();
+      if (coords) {
+        const nextPickup = {
+          name: 'Current Live GPS Location',
+          lat: coords.lat,
+          lon: coords.lon,
+        };
+        setPickup(nextPickup);
+        setIsEditingPickup(false);
+        recalculateMultiStopRoute(nextPickup, stops, dropoff);
+      }
+    } catch (err) {
+      console.warn('Could not get GPS:', err);
+    } finally {
+      setIsDetectingGps(false);
+    }
+  };
+
+  // Debounced search for Add Stop input
+  useEffect(() => {
+    const trimmed = stopQuery.trim();
+    if (!trimmed || trimmed.length < 2) {
+      setStopSuggestions([]);
+      setShowStopDropdown(false);
+      setIsSearchingStop(false);
       return;
     }
 
     const clean = trimmed.toLowerCase();
-
-    // 1. Check memory cache for instant results
     if (searchCacheRef.current.has(clean)) {
-      const cached = searchCacheRef.current.get(clean)!;
-      setSuggestions(cached);
-      setShowDropdown(cached.length > 0);
-      setIsSearching(false);
+      setStopSuggestions(searchCacheRef.current.get(clean)!);
+      setShowStopDropdown(true);
       return;
     }
 
-    // 2. INSTANT phase: Show curated Sri Lanka landmarks immediately (0ms delay)
-    const instantCurated = searchLandmarksOffline(trimmed, currentLocation);
+    const instantCurated = searchLandmarksOffline(trimmed, pickup);
     if (instantCurated.length > 0) {
-      setSuggestions(instantCurated);
-      setShowDropdown(true);
+      setStopSuggestions(instantCurated);
+      setShowStopDropdown(true);
     }
 
-    // 3. ONLINE phase: Debounced Nominatim query in background (250ms)
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    setIsSearching(true);
-    debounceTimerRef.current = setTimeout(async () => {
+    if (stopDebounceRef.current) clearTimeout(stopDebounceRef.current);
+    setIsSearchingStop(true);
+    stopDebounceRef.current = setTimeout(async () => {
       try {
-        const onlineResults = await searchNominatimOnline(trimmed, currentLocation);
+        const onlineResults = await searchNominatimOnline(trimmed, pickup);
         const merged = mergeSearchResults(instantCurated, onlineResults);
         searchCacheRef.current.set(clean, merged);
-        setSuggestions(merged);
-        if (merged.length > 0) setShowDropdown(true);
+        setStopSuggestions(merged);
+        setShowStopDropdown(merged.length > 0);
       } catch (err) {
-        console.warn('OSM search error:', err);
+        console.warn('Search error:', err);
       } finally {
-        setIsSearching(false);
+        setIsSearchingStop(false);
       }
     }, 250);
 
     return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      if (stopDebounceRef.current) clearTimeout(stopDebounceRef.current);
     };
-  }, [query, currentLocation, selectedPlace]);
+  }, [stopQuery, pickup]);
 
-  // When a place is selected, compute Relative OSRM driving distance & draw routes
-  const handleSelectSuggestion = async (place: PlaceSuggestion) => {
-    setShowDropdown(false);
-    setQuery(place.shortName);
-    setSelectedPlace({
-      displayName: place.displayName,
-      shortName: place.shortName,
-      lat: place.lat,
-      lon: place.lon,
-    });
-
-    // Resolve origin coordinates
-    let origin = currentLocation;
-    if (!origin) {
-      origin = await locationService.getCurrentCoordinates();
-    }
-    if (!origin) {
-      origin = { lat: 6.9271, lon: 79.8612 }; // Colombo default fallback
-    }
-
-    setIsCalculatingRoute(true);
+  // Leaflet Map Message Handler (clicks on map add stop)
+  const onWebViewMessage = (event: any) => {
     try {
-      const relInfo = await calculateRelativeDetourOSRM(
-        origin,
-        { lat: place.lat, lon: place.lon },
-        routeType === 'DESTINATION' ? null : destinationLocation
-      );
-
-      if (relInfo) {
-        setRelativeRoute(relInfo);
-        onRouteCalculated?.(relInfo);
-
-        // Inject both routes into Leaflet WebView
-        if (webViewRef.current) {
-          const payload = {
-            origin,
-            destination: routeType === 'DESTINATION' ? null : destinationLocation,
-            detour: { lat: place.lat, lon: place.lon },
-            directGeoJson: relInfo.directGeoJson,
-            detourGeoJson: relInfo.detourGeoJson,
-          };
-          webViewRef.current.injectJavaScript(
-            `if (window.renderRoutes) { window.renderRoutes(${JSON.stringify(JSON.stringify(payload))}); } true;`
-          );
-        }
-
-        onSelectPlace({
-          name: place.displayName,
-          displayName: place.displayName,
-          shortName: place.shortName,
-          lat: place.lat,
-          lon: place.lon,
-          roadDistanceKm: relInfo.relativeExtraKm,
-          relativeExtraKm: relInfo.relativeExtraKm,
-          directDistanceKm: relInfo.directDistanceKm,
-          detourTotalKm: relInfo.detourDistanceKm,
-          distanceToDetourKm: relInfo.distanceToDetourKm,
-          durationText: relInfo.detourDurationText,
-          durationToDetourText: relInfo.durationToDetourText,
-        });
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'map_clicked' && data.lat && data.lon) {
+        const stopName = `Pinned Waypoint (${data.lat.toFixed(4)}, ${data.lon.toFixed(4)})`;
+        handleAddStop({ name: stopName, lat: data.lat, lon: data.lon });
       }
     } catch (err) {
-      console.warn('Error calculating relative detour:', err);
-    } finally {
-      setIsCalculatingRoute(false);
+      console.warn('WebView message error:', err);
     }
   };
 
-  const handleClear = () => {
-    setQuery('');
-    setSelectedPlace(null);
-    setRelativeRoute(null);
-    setSuggestions([]);
-    setShowDropdown(false);
-  };
-
-  const openInExternalMaps = () => {
-    if (!selectedPlace) return;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedPlace.lat},${selectedPlace.lon}&travelmode=driving`;
-    Linking.openURL(url).catch((err) => console.warn('Could not open map:', err));
-  };
-
-  const openInOsmWeb = () => {
-    if (!selectedPlace) return;
-    const url = `https://www.openstreetmap.org/?mlat=${selectedPlace.lat}&mlon=${selectedPlace.lon}#map=${zoom}/${selectedPlace.lat}/${selectedPlace.lon}`;
-    Linking.openURL(url).catch((err) => console.warn('Could not open OSM:', err));
-  };
-
-  // Real Leaflet.js HTML Template (Renders scheduled tour route & detour deviation)
-  const generateLeafletHtml = (lat: number, lon: number, zoomLevel: number = 14) => `
+  // Real Leaflet HTML Template with Multi-Stop Pinning & Sequential Routes
+  const generateLeafletHtml = (lat: number, lon: number) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -295,8 +366,6 @@ export default function OpenStreetMapPicker({
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 28px;
-      line-height: 28px;
       filter: drop-shadow(0 3px 5px rgba(0,0,0,0.35));
     }
     .custom-badge {
@@ -312,12 +381,6 @@ export default function OpenStreetMapPicker({
       box-shadow: 0 2px 6px rgba(0,0,0,0.3);
       border: 1.5px solid #ffffff;
     }
-    .leaflet-control-zoom {
-      border: 1px solid #cbd5e1 !important;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
-      border-radius: 8px !important;
-      overflow: hidden !important;
-    }
   </style>
 </head>
 <body>
@@ -327,23 +390,23 @@ export default function OpenStreetMapPicker({
     var map = L.map('map', {
       zoomControl: true,
       attributionControl: false
-    }).setView([${lat}, ${lon}], ${zoomLevel});
+    }).setView([${lat}, ${lon}], 9);
 
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19
     }).addTo(map);
 
     var directRouteLayer = null;
-    var detourRouteLayer = null;
+    var multiRouteLayer = null;
     var originMarker = null;
     var destMarker = null;
-    var detourMarker = null;
+    var stopMarkers = [];
 
     var carIcon = L.divIcon({
       className: 'custom-pin',
-      html: '<div class="custom-badge" style="background:#2563eb;">🚗 You</div>',
-      iconSize: [54, 22],
-      iconAnchor: [27, 11]
+      html: '<div class="custom-badge" style="background:#2563eb;">🚗 Start</div>',
+      iconSize: [58, 22],
+      iconAnchor: [29, 11]
     });
 
     var destIcon = L.divIcon({
@@ -353,19 +416,7 @@ export default function OpenStreetMapPicker({
       iconAnchor: [27, 11]
     });
 
-    var detourIcon = L.divIcon({
-      className: 'custom-pin',
-      html: '<div class="custom-badge" style="background:#059669;">📍 Detour</div>',
-      iconSize: [66, 22],
-      iconAnchor: [33, 11]
-    });
-
     map.on('click', function(e) {
-      if (!detourMarker) {
-        detourMarker = L.marker(e.latlng, { icon: detourIcon }).addTo(map);
-      } else {
-        detourMarker.setLatLng(e.latlng);
-      }
       if (window.ReactNativeWebView) {
         window.ReactNativeWebView.postMessage(JSON.stringify({
           type: 'map_clicked',
@@ -375,22 +426,15 @@ export default function OpenStreetMapPicker({
       }
     });
 
-    window.updatePosition = function(newLat, newLon) {
-      if (!detourMarker) {
-        detourMarker = L.marker([newLat, newLon], { icon: detourIcon }).addTo(map);
-      } else {
-        detourMarker.setLatLng([newLat, newLon]);
-      }
-      map.flyTo([newLat, newLon], 14, { duration: 0.6 });
-    };
-
-    window.renderRoutes = function(dataStr) {
+    window.renderMultiRoutes = function(dataStr) {
       try {
         var data = (typeof dataStr === 'string') ? JSON.parse(dataStr) : dataStr;
         if (directRouteLayer) { map.removeLayer(directRouteLayer); directRouteLayer = null; }
-        if (detourRouteLayer) { map.removeLayer(detourRouteLayer); detourRouteLayer = null; }
+        if (multiRouteLayer) { map.removeLayer(multiRouteLayer); multiRouteLayer = null; }
         if (originMarker) { map.removeLayer(originMarker); originMarker = null; }
         if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
+        stopMarkers.forEach(function(m) { map.removeLayer(m); });
+        stopMarkers = [];
 
         var points = [];
 
@@ -399,28 +443,33 @@ export default function OpenStreetMapPicker({
           points.push([data.origin.lat, data.origin.lon]);
         }
 
+        if (Array.isArray(data.stops)) {
+          data.stops.forEach(function(s, idx) {
+            var stopIcon = L.divIcon({
+              className: 'custom-pin',
+              html: '<div class="custom-badge" style="background:#4f46e5;">📍 ' + (idx + 1) + '. ' + (s.name ? s.name.substring(0, 16) : 'Stop') + '</div>',
+              iconSize: [85, 22],
+              iconAnchor: [42, 11]
+            });
+            var sm = L.marker([s.lat, s.lon], { icon: stopIcon }).addTo(map);
+            stopMarkers.push(sm);
+            points.push([s.lat, s.lon]);
+          });
+        }
+
         if (data.destination) {
           destMarker = L.marker([data.destination.lat, data.destination.lon], { icon: destIcon }).addTo(map);
           points.push([data.destination.lat, data.destination.lon]);
         }
 
-        if (data.detour) {
-          if (!detourMarker) {
-            detourMarker = L.marker([data.detour.lat, data.detour.lon], { icon: detourIcon }).addTo(map);
-          } else {
-            detourMarker.setLatLng([data.detour.lat, data.detour.lon]);
-          }
-          points.push([data.detour.lat, data.detour.lon]);
-        }
-
-        if (data.directGeoJson) {
+        if (data.directGeoJson && data.stops && data.stops.length > 0) {
           directRouteLayer = L.geoJSON(data.directGeoJson, {
-            style: { color: '#64748b', weight: 4, dashArray: '6, 8', opacity: 0.8 }
+            style: { color: '#64748b', weight: 3, dashArray: '6, 8', opacity: 0.75 }
           }).addTo(map);
         }
 
-        if (data.detourGeoJson) {
-          detourRouteLayer = L.geoJSON(data.detourGeoJson, {
+        if (data.routeGeoJson) {
+          multiRouteLayer = L.geoJSON(data.routeGeoJson, {
             style: { color: '#10b981', weight: 5, opacity: 0.95 }
           }).addTo(map);
         }
@@ -428,78 +477,276 @@ export default function OpenStreetMapPicker({
         if (points.length > 1) {
           map.fitBounds(points, { padding: [35, 35], maxZoom: 14 });
         } else if (points.length === 1) {
-          map.setView(points[0], 14);
+          map.setView(points[0], 12);
         }
       } catch (err) {
-        console.error('renderRoutes error:', err);
+        console.error('renderMultiRoutes error:', err);
       }
     };
   </script>
 </body>
 </html>
-`;
+  `;
 
-  const onWebViewMessage = async (event: any) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-      if (data.type === 'map_clicked') {
-        const { lat, lon } = data;
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`,
-            { headers: { 'User-Agent': 'VigilDriverApp/1.0.4 (driver@vigil.app)' } }
-          );
-          if (res.ok) {
-            const json = await res.json();
-            const parts = (json.display_name || '').split(',');
-            const shortName = parts.slice(0, 2).join(',').trim();
-            handleSelectSuggestion({
-              displayName: json.display_name,
-              shortName: shortName || `${lat.toFixed(4)}, ${lon.toFixed(4)}`,
-              category: 'Tapped on Map',
-              lat,
-              lon,
-            });
-          }
-        } catch {
-          handleSelectSuggestion({
-            displayName: `Selected Coordinate (${lat.toFixed(4)}, ${lon.toFixed(4)})`,
-            shortName: `Pinned (${lat.toFixed(4)}, ${lon.toFixed(4)})`,
-            category: 'Tapped on Map',
-            lat,
-            lon,
-          });
-        }
-      }
-    } catch (err) {
-      console.warn('WebView message parse error:', err);
-    }
-  };
+  return (
+    <View style={styles.wrapper}>
+      {/* Brand Header */}
+      <View style={styles.brandRow}>
+        <View style={styles.brandTag}>
+          <Text style={styles.brandTagText}>🗺️ TOUR ITINERARY PLANNER</Text>
+        </View>
+        <Text style={styles.brandSub}>OSRM Multi-Stop Road Routing</Text>
+      </View>
 
-  // Render Real Leaflet.js Map in Native WebView (Always available)
-  const renderMapTiles = () => {
-    const centerLat =
-      selectedPlace?.lat ||
-      currentLocation?.lat ||
-      destinationLocation?.lat ||
-      7.8731;
-    const centerLon =
-      selectedPlace?.lon ||
-      currentLocation?.lon ||
-      destinationLocation?.lon ||
-      80.7718;
-    const initialZoom = selectedPlace
-      ? 13
-      : currentLocation && destinationLocation
-      ? 9
-      : 8;
+      {/* 🟢 SECTION 1: Pickup Location (From) */}
+      <View style={styles.endpointCard}>
+        <View style={styles.endpointHeader}>
+          <View style={styles.endpointTitleRow}>
+            <View style={[styles.endpointDot, { backgroundColor: '#10b981' }]} />
+            <Text style={styles.endpointLabel}>Pickup Location (From)</Text>
+          </View>
+          <View style={styles.endpointActions}>
+            <TouchableOpacity
+              onPress={handleUseCurrentGps}
+              disabled={isDetectingGps}
+              style={styles.gpsBtn}
+            >
+              {isDetectingGps ? (
+                <ActivityIndicator size="small" color="#047857" />
+              ) : (
+                <Text style={styles.gpsBtnText}>🎯 Use GPS</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setIsEditingPickup(!isEditingPickup)}
+              style={styles.editBtn}
+            >
+              <Text style={styles.editBtnText}>{isEditingPickup ? 'Done' : '✏️ Edit'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
-    return (
+        {isEditingPickup ? (
+          <View>
+            <TextInput
+              style={styles.editInput}
+              value={pickupSearchText}
+              onChangeText={async (txt) => {
+                setPickupSearchText(txt);
+                if (txt.trim().length >= 2) {
+                  const res = await searchNominatimOnline(txt, pickup);
+                  setPickupSuggestions(res);
+                } else {
+                  setPickupSuggestions([]);
+                }
+              }}
+              placeholder="Search new pickup location..."
+              placeholderTextColor="#94a3b8"
+            />
+            {pickupSuggestions.length > 0 && (
+              <View style={styles.subDropdown}>
+                {pickupSuggestions.slice(0, 4).map((item, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.subDropdownItem}
+                    onPress={() => {
+                      setPickup({ name: item.shortName || item.displayName, lat: item.lat, lon: item.lon });
+                      setIsEditingPickup(false);
+                      setPickupSuggestions([]);
+                      setPickupSearchText('');
+                    }}
+                  >
+                    <Text style={styles.subDropdownTitle} numberOfLines={1}>{item.shortName}</Text>
+                    <Text style={styles.subDropdownSub} numberOfLines={1}>{item.displayName}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        ) : (
+          <Text style={styles.endpointValue} numberOfLines={2}>
+            📍 {pickup.name}
+          </Text>
+        )}
+      </View>
+
+      {/* 📍 SECTION 2: Intermediate Stops (Waypoints) List */}
+      <View style={styles.stopsSection}>
+        <View style={styles.stopsHeader}>
+          <Text style={styles.stopsLabel}>
+            📍 Intermediate Stops ({stops.length})
+          </Text>
+          {isCalculating && (
+            <View style={styles.calcIndicator}>
+              <ActivityIndicator size="small" color="#4f46e5" />
+              <Text style={styles.calcText}>Recalculating...</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Stops List */}
+        {stops.map((stop, idx) => (
+          <View key={stop.id} style={styles.stopCard}>
+            <View style={styles.stopBadge}>
+              <Text style={styles.stopBadgeText}>{idx + 1}</Text>
+            </View>
+            <View style={styles.stopInfo}>
+              <Text style={styles.stopName} numberOfLines={1}>
+                {stop.name}
+              </Text>
+              {stop.distanceFromPrevKm !== undefined && (
+                <Text style={styles.stopDistance}>
+                  ~{stop.distanceFromPrevKm} km from previous • {stop.durationFromPrevText || ''}
+                </Text>
+              )}
+            </View>
+            <TouchableOpacity
+              onPress={() => handleRemoveStop(stop.id)}
+              style={styles.trashBtn}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.trashIcon}>🗑️</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+
+        {/* Add Stop Input & Search */}
+        <View style={styles.addStopContainer}>
+          <Text style={styles.addStopSearchIcon}>➕</Text>
+          <TextInput
+            style={styles.addStopInput}
+            placeholder={placeholder}
+            placeholderTextColor="#94a3b8"
+            value={stopQuery}
+            onChangeText={setStopQuery}
+            onFocus={() => {
+              if (stopSuggestions.length > 0) setShowStopDropdown(true);
+            }}
+          />
+          {isSearchingStop && (
+            <ActivityIndicator size="small" color="#4f46e5" style={{ marginRight: 6 }} />
+          )}
+          {stopQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setStopQuery('')} style={styles.clearBtn}>
+              <Text style={styles.clearBtnText}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Suggestions Dropdown */}
+        {showStopDropdown && stopSuggestions.length > 0 && (
+          <View style={styles.dropdownContainer}>
+            <ScrollView style={styles.dropdownScroll} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+              {stopSuggestions.map((item, idx) => (
+                <TouchableOpacity
+                  key={`${item.displayName}-${idx}`}
+                  style={styles.dropdownItem}
+                  onPress={() =>
+                    handleAddStop({
+                      name: item.shortName || item.displayName,
+                      lat: item.lat,
+                      lon: item.lon,
+                    })
+                  }
+                >
+                  <Text style={styles.dropdownPin}>📍</Text>
+                  <View style={styles.dropdownTextCol}>
+                    <Text style={styles.dropdownTitle} numberOfLines={1}>{item.shortName}</Text>
+                    <Text style={styles.dropdownSub} numberOfLines={1}>{item.displayName}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Quick Sightseeing Chips */}
+        <View style={styles.chipsWrapper}>
+          <Text style={styles.chipsLabel}>⚡ Quick Add Sightseeing Stops:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
+            {QUICK_DETOURS.map((item, index) => {
+              const alreadyAdded = stops.some((s) => s.name === item.name);
+              return (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => handleAddStop(item)}
+                  style={[styles.chip, alreadyAdded && styles.chipAdded]}
+                >
+                  <Text style={[styles.chipText, alreadyAdded && styles.chipTextAdded]}>
+                    {alreadyAdded ? `✓ ${item.label}` : `+ ${item.label}`}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </View>
+
+      {/* 🏁 SECTION 3: Drop-off Location (To) */}
+      <View style={styles.endpointCard}>
+        <View style={styles.endpointHeader}>
+          <View style={styles.endpointTitleRow}>
+            <View style={[styles.endpointDot, { backgroundColor: '#dc2626' }]} />
+            <Text style={styles.endpointLabel}>Drop-off / Final Destination (To)</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => setIsEditingDropoff(!isEditingDropoff)}
+            style={styles.editBtn}
+          >
+            <Text style={styles.editBtnText}>{isEditingDropoff ? 'Done' : '✏️ Edit'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {isEditingDropoff ? (
+          <View>
+            <TextInput
+              style={styles.editInput}
+              value={dropoffSearchText}
+              onChangeText={async (txt) => {
+                setDropoffSearchText(txt);
+                if (txt.trim().length >= 2) {
+                  const res = await searchNominatimOnline(txt, dropoff);
+                  setDropoffSuggestions(res);
+                } else {
+                  setDropoffSuggestions([]);
+                }
+              }}
+              placeholder="Search new final destination..."
+              placeholderTextColor="#94a3b8"
+            />
+            {dropoffSuggestions.length > 0 && (
+              <View style={styles.subDropdown}>
+                {dropoffSuggestions.slice(0, 4).map((item, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.subDropdownItem}
+                    onPress={() => {
+                      setDropoff({ name: item.shortName || item.displayName, lat: item.lat, lon: item.lon });
+                      setIsEditingDropoff(false);
+                      setDropoffSuggestions([]);
+                      setDropoffSearchText('');
+                    }}
+                  >
+                    <Text style={styles.subDropdownTitle} numberOfLines={1}>{item.shortName}</Text>
+                    <Text style={styles.subDropdownSub} numberOfLines={1}>{item.displayName}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        ) : (
+          <Text style={styles.endpointValue} numberOfLines={2}>
+            🏁 {dropoff.name}
+          </Text>
+        )}
+      </View>
+
+      {/* 🗺️ SECTION 4: Real Leaflet.js Map */}
       <View style={styles.mapContainer}>
         <WebView
           ref={webViewRef}
           originWhitelist={['*']}
-          source={{ html: generateLeafletHtml(centerLat, centerLon, initialZoom) }}
+          source={{ html: generateLeafletHtml(pickup.lat, pickup.lon) }}
           style={styles.webView}
           nestedScrollEnabled={true}
           onMessage={onWebViewMessage}
@@ -507,285 +754,98 @@ export default function OpenStreetMapPicker({
           domStorageEnabled={true}
           androidLayerType="hardware"
           onLoadEnd={() => {
-            const origin = currentLocation || { lat: 6.9271, lon: 79.8612 };
-            if (selectedPlace && relativeRoute) {
+            if (routeResult) {
               const payload = {
-                origin,
-                destination: routeType === 'DESTINATION' ? null : destinationLocation,
-                detour: { lat: selectedPlace.lat, lon: selectedPlace.lon },
-                directGeoJson: relativeRoute.directGeoJson,
-                detourGeoJson: relativeRoute.detourGeoJson,
+                origin: pickup,
+                destination: dropoff,
+                stops,
+                directGeoJson: routeResult.directGeoJson,
+                routeGeoJson: routeResult.routeGeoJson,
               };
               webViewRef.current?.injectJavaScript(
-                `if (window.renderRoutes) { window.renderRoutes(${JSON.stringify(JSON.stringify(payload))}); } true;`
-              );
-            } else if (destinationLocation && baseTourRoute?.geometry) {
-              const payload = {
-                origin,
-                destination: destinationLocation,
-                directGeoJson: baseTourRoute.geometry,
-              };
-              webViewRef.current?.injectJavaScript(
-                `if (window.renderRoutes) { window.renderRoutes(${JSON.stringify(JSON.stringify(payload))}); } true;`
+                `if (window.renderMultiRoutes) { window.renderMultiRoutes(${JSON.stringify(JSON.stringify(payload))}); } true;`
               );
             }
           }}
         />
         <View pointerEvents="none" style={styles.attributionBadge}>
-          <Text style={styles.attributionText}>🗺️ Leaflet • OpenStreetMap Navigation</Text>
+          <Text style={styles.attributionText}>🗺️ Leaflet • Tap map to add stop</Text>
         </View>
       </View>
-    );
-  };
 
-  return (
-    <View style={styles.wrapper}>
-      {/* Brand Header */}
-      <View style={styles.brandRow}>
-        <View style={styles.brandTag}>
-          <Text style={styles.brandTagText}>🗺️ OPENSTREETMAP</Text>
-        </View>
-        <Text style={styles.brandSub}>Live Place & Route Explorer</Text>
-      </View>
-
-      {/* Search Input Box */}
-      <View style={styles.inputContainer}>
-        <Text style={styles.inputSearchIcon}>🔍</Text>
-        <TextInput
-          style={styles.input}
-          placeholder={placeholder}
-          placeholderTextColor="#94a3b8"
-          value={query}
-          onChangeText={setQuery}
-          onFocus={() => {
-            if (suggestions.length > 0) setShowDropdown(true);
-          }}
-          autoCorrect={false}
-          autoCapitalize="words"
-        />
-        {isSearching && (
-          <ActivityIndicator size="small" color="#10b981" style={{ marginRight: 6 }} />
-        )}
-        {query.length > 0 && (
-          <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
-            <Text style={styles.clearButtonText}>✕</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Live Suggestions Dropdown */}
-      {showDropdown && suggestions.length > 0 && (
-        <View style={styles.dropdownContainer}>
-          <ScrollView
-            style={styles.dropdownScroll}
-            keyboardShouldPersistTaps="handled"
-            nestedScrollEnabled
-          >
-            {suggestions.map((item, idx) => (
-              <TouchableOpacity
-                key={`${item.displayName}-${idx}`}
-                style={styles.dropdownItem}
-                onPress={() => handleSelectSuggestion(item)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.dropdownIconCircle}>
-                  <Text style={styles.dropdownItemIcon}>📍</Text>
-                </View>
-                <View style={styles.dropdownTextCol}>
-                  <View style={styles.dropdownTitleRow}>
-                    <Text style={styles.dropdownTitle} numberOfLines={1}>
-                      {item.shortName}
-                    </Text>
-                    {item.distanceKm !== undefined && (
-                      <Text style={styles.distanceBadge}>~{item.distanceKm} km</Text>
-                    )}
-                  </View>
-                  <Text style={styles.dropdownSub} numberOfLines={1}>
-                    {item.displayName}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          <View style={styles.dropdownFooter}>
-            <Text style={styles.dropdownFooterText}>
-              Verified with OpenStreetMap Nominatim
-            </Text>
+      {/* 🛣️ SECTION 5: Route Impact & Legs Breakdown Card */}
+      {routeResult ? (
+        <View style={styles.impactCard}>
+          <View style={styles.impactHeader}>
+            <View style={styles.impactTitleRow}>
+              <Text style={styles.impactEmoji}>🛣️</Text>
+              <Text style={styles.impactTitle}>ROUTE IMPACT & LEGS (OSRM)</Text>
+            </View>
+            <View style={styles.autoTag}>
+              <Text style={styles.autoTagText}>AUTO-CALCULATED</Text>
+            </View>
           </View>
-        </View>
-      )}
 
-      {/* Popular Sri Lanka Sightseeing Detours Carousel */}
-      <View style={styles.presetsWrapper}>
-        <Text style={styles.presetsLabel}>Popular Sri Lanka Sightseeing Stops</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.presetScrollContent}
-        >
-          {SRI_LANKA_LANDMARKS.slice(0, 10).map((lm, idx) => {
-            const isSelected = selectedPlace?.shortName === lm.shortName;
-            return (
+          {/* Metrics Row */}
+          <View style={styles.metricsRow}>
+            <View style={styles.metricBox}>
+              <Text style={styles.metricLabel}>Scheduled Direct</Text>
+              <Text style={styles.metricVal}>{routeResult.directDistanceKm} KM</Text>
+            </View>
+            <View style={styles.metricDivider} />
+            <View style={styles.metricBox}>
+              <Text style={styles.metricLabel}>Via Stops Total</Text>
+              <Text style={styles.metricVal}>{routeResult.totalDistanceKm} KM</Text>
+            </View>
+            <View style={styles.metricDivider} />
+            <View style={[styles.metricBox, styles.metricHighlight]}>
+              <Text style={styles.metricLabelHighlight}>Net Extra KM</Text>
+              <Text style={styles.metricValHighlight}>+{routeResult.relativeExtraKm} KM</Text>
+            </View>
+          </View>
+
+          {/* Toggle Legs Breakdown */}
+          {routeResult.legs && routeResult.legs.length > 1 && (
+            <View style={styles.legsWrapper}>
               <TouchableOpacity
-                key={idx}
-                onPress={() =>
-                  handleSelectSuggestion({
-                    displayName: lm.name,
-                    shortName: lm.shortName,
-                    category: lm.category,
-                    lat: lm.lat,
-                    lon: lm.lon,
-                  })
-                }
-                style={[
-                  styles.presetChip,
-                  isSelected && styles.presetChipActive,
-                ]}
-                activeOpacity={0.8}
+                onPress={() => setShowLegsBreakdown(!showLegsBreakdown)}
+                style={styles.legsToggle}
               >
-                <Text
-                  style={[
-                    styles.presetChipText,
-                    isSelected && styles.presetChipTextActive,
-                  ]}
-                >
-                  {lm.shortName.split(',')[0]}
+                <Text style={styles.legsToggleText}>
+                  {showLegsBreakdown ? '▼ Hide Step-by-Step Legs' : '▶ View Step-by-Step Legs'}
                 </Text>
               </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
 
-      {/* Selected Location Card / Route Overview */}
-      <View style={styles.previewCard}>
-        {selectedPlace ? (
-          <View style={styles.previewHeader}>
-            <View style={{ flex: 1 }}>
-              <View style={styles.confirmedBadgeRow}>
-                <Text style={styles.confirmedBadge}>✓ PICKED PLACE</Text>
-                <Text style={styles.coordsBadge}>
-                  {selectedPlace.lat.toFixed(4)}° N, {selectedPlace.lon.toFixed(4)}° E
-                </Text>
-              </View>
-              <Text style={styles.previewTitle} numberOfLines={1}>
-                {selectedPlace.shortName}
-              </Text>
-              <Text style={styles.previewSub} numberOfLines={2}>
-                {selectedPlace.displayName}
-              </Text>
-            </View>
-          </View>
-        ) : destinationLocation ? (
-          <View style={styles.previewHeader}>
-            <View style={{ flex: 1 }}>
-              <View style={styles.confirmedBadgeRow}>
-                <Text style={[styles.confirmedBadge, { backgroundColor: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' }]}>
-                  🏁 ACTIVE TOUR ROUTE
-                </Text>
-                <Text style={styles.coordsBadge}>Destination: {destinationLocation.name || 'Drop-off'}</Text>
-              </View>
-              <Text style={styles.previewSub}>
-                Tap anywhere on the map to pin a detour, or search an attraction above.
-              </Text>
-            </View>
-          </View>
-        ) : null}
-
-        {/* Real Leaflet.js Interactive Map (Live Tour Navigation + Detour Route) */}
-        {renderMapTiles()}
-
-        {/* Relative Route Impact Analysis Banner (Calculated via OSRM) */}
-        <View style={styles.roadInfoBanner}>
-          {isCalculatingRoute ? (
-            <View style={styles.calculatingRow}>
-              <ActivityIndicator size="small" color="#10b981" />
-              <Text style={styles.calculatingText}>
-                Analyzing route deviation via OpenStreetMap OSRM...
-              </Text>
-            </View>
-          ) : relativeRoute ? (
-            <View style={styles.relativeAnalysisContainer}>
-              <View style={styles.relativeMetricsGrid}>
-                {destinationLocation ? (
-                  <>
-                    <View style={styles.relativeMetricCol}>
-                      <Text style={styles.relativeMetricLabel}>Scheduled Route</Text>
-                      <Text style={styles.relativeMetricVal}>{relativeRoute.directDistanceKm} km</Text>
-                      <Text style={styles.relativeMetricSub}>Direct</Text>
+              {showLegsBreakdown && (
+                <View style={styles.legsList}>
+                  {routeResult.legs.map((leg: RouteLeg, idx: number) => (
+                    <View key={idx} style={styles.legItem}>
+                      <View style={styles.legBullet}>
+                        <Text style={styles.legBulletText}>{idx + 1}</Text>
+                      </View>
+                      <View style={styles.legInfo}>
+                        <Text style={styles.legNames} numberOfLines={1}>
+                          {leg.fromName} ➔ {leg.toName}
+                        </Text>
+                        <Text style={styles.legMeta}>
+                          {leg.distanceKm} km • ~{leg.durationText}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={styles.relativeDivider} />
-                  </>
-                ) : null}
-
-                <View style={styles.relativeMetricCol}>
-                  <Text style={styles.relativeMetricLabel}>To Detour Stop</Text>
-                  <Text style={styles.relativeMetricVal}>{relativeRoute.distanceToDetourKm} km</Text>
-                  <Text style={styles.relativeMetricSub}>~{relativeRoute.durationToDetourText || 'Driving'}</Text>
+                  ))}
                 </View>
-
-                <View style={styles.relativeDivider} />
-
-                <View style={styles.relativeMetricColHighlight}>
-                  <Text style={styles.relativeMetricLabelHighlight}>Net Extra Mileage</Text>
-                  <Text style={styles.relativeMetricValHighlight}>+{relativeRoute.relativeExtraKm} KM</Text>
-                  <Text style={styles.relativeMetricSubHighlight}>Added to Tour</Text>
-                </View>
-              </View>
-
-              {/* Map Route Legend */}
-              <View style={styles.routeLegendRow}>
-                <View style={styles.routeLegendItem}>
-                  <View style={[styles.legendBar, { backgroundColor: '#64748b' }]} />
-                  <Text style={styles.routeLegendText}>Scheduled ({relativeRoute.directDistanceKm} km)</Text>
-                </View>
-                <View style={styles.routeLegendItem}>
-                  <View style={[styles.legendBar, { backgroundColor: '#10b981' }]} />
-                  <Text style={styles.routeLegendText}>Via Detour ({relativeRoute.detourDistanceKm} km)</Text>
-                </View>
-              </View>
+              )}
             </View>
-          ) : baseTourRoute && destinationLocation ? (
-            <View style={styles.baseTourNoticeRow}>
-              <Text style={styles.baseTourNoticeText}>
-                🏁 Scheduled Tour Route: <Text style={{ fontWeight: '800' }}>{baseTourRoute.distanceKm} KM</Text> ({baseTourRoute.durationText})
-              </Text>
-            </View>
-          ) : (
-            <Text style={styles.defaultRouteNotice}>
-              ✓ OpenStreetMap active. Select a place or tap on map to calculate detour distance.
-            </Text>
           )}
         </View>
-
-        {/* Quick Action Navigation Buttons */}
-        {selectedPlace ? (
-          <View style={styles.actionButtonsRow}>
-            <TouchableOpacity
-              style={styles.openMapsButton}
-              onPress={openInExternalMaps}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.openMapsButtonText}>🧭 Turn-by-Turn GPS</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.openOsmButton}
-              onPress={openInOsmWeb}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.openOsmButtonText}>🌐 OSM Web View</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
-      </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginBottom: 12,
+    marginVertical: 4,
   },
   brandRow: {
     flexDirection: 'row',
@@ -812,422 +872,451 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontWeight: '600',
   },
-  inputContainer: {
+  endpointCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 10,
+    marginBottom: 8,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  endpointHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  endpointTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  endpointDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  endpointLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#475569',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  endpointActions: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  gpsBtn: {
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  gpsBtnText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#047857',
+  },
+  editBtn: {
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  editBtnText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  endpointValue: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  editInput: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    fontSize: 12,
+    color: '#0f172a',
+    marginTop: 4,
+  },
+  subDropdown: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    marginTop: 4,
+    maxHeight: 140,
+    overflow: 'hidden',
+  },
+  subDropdownItem: {
+    padding: 8,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#f1f5f9',
+  },
+  subDropdownTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  subDropdownSub: {
+    fontSize: 10,
+    color: '#64748b',
+  },
+  stopsSection: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 8,
+  },
+  stopsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  stopsLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#334155',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  calcIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  calcText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#4f46e5',
+  },
+  stopCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e0e7ff',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 6,
+  },
+  stopBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#4f46e5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  stopBadgeText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#ffffff',
+  },
+  stopInfo: {
+    flex: 1,
+  },
+  stopName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1e1b4b',
+  },
+  stopDistance: {
+    fontSize: 10,
+    color: '#6366f1',
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  trashBtn: {
+    padding: 6,
+    marginLeft: 6,
+  },
+  trashIcon: {
+    fontSize: 14,
+  },
+  addStopContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
     borderWidth: 1.5,
     borderColor: '#cbd5e1',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    height: 44,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    height: 40,
+    marginTop: 2,
   },
-  inputSearchIcon: {
-    fontSize: 16,
+  addStopSearchIcon: {
+    fontSize: 14,
     marginRight: 6,
   },
-  input: {
+  addStopInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 12,
     color: '#0f172a',
     fontWeight: '600',
     paddingVertical: 0,
   },
-  clearButton: {
+  clearBtn: {
     padding: 6,
   },
-  clearButtonText: {
+  clearBtnText: {
     color: '#94a3b8',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   dropdownContainer: {
     backgroundColor: '#ffffff',
-    borderWidth: 1.5,
-    borderColor: '#10b981',
-    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#4f46e5',
+    borderRadius: 8,
     marginTop: 4,
-    maxHeight: 220,
+    maxHeight: 180,
     overflow: 'hidden',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 6,
-    zIndex: 100,
   },
   dropdownScroll: {
-    maxHeight: 190,
+    maxHeight: 180,
   },
   dropdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
+    padding: 8,
+    borderBottomWidth: 0.5,
     borderBottomColor: '#f1f5f9',
   },
-  dropdownIconCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#f1f5f9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  dropdownItemIcon: {
+  dropdownPin: {
     fontSize: 14,
+    marginRight: 8,
   },
   dropdownTextCol: {
     flex: 1,
   },
-  dropdownTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
   dropdownTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0f172a',
-    flex: 1,
-  },
-  distanceBadge: {
-    fontSize: 10.5,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#059669',
-    backgroundColor: '#ecfdf5',
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
-    marginLeft: 6,
+    color: '#0f172a',
   },
   dropdownSub: {
-    fontSize: 11,
-    color: '#64748b',
-    marginTop: 1,
-  },
-  dropdownFooter: {
-    backgroundColor: '#f8fafc',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    alignItems: 'center',
-  },
-  dropdownFooterText: {
     fontSize: 10,
-    color: '#94a3b8',
-    fontWeight: '600',
+    color: '#64748b',
   },
-  presetsWrapper: {
-    marginTop: 10,
-    marginBottom: 8,
+  chipsWrapper: {
+    marginTop: 8,
   },
-  presetsLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#475569',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  presetScrollContent: {
-    gap: 6,
-    paddingVertical: 2,
-  },
-  presetChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: '#f8fafc',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  presetChipActive: {
-    backgroundColor: '#ecfdf5',
-    borderColor: '#10b981',
-  },
-  presetChipText: {
-    fontSize: 11.5,
-    fontWeight: '600',
-    color: '#475569',
-  },
-  presetChipTextActive: {
-    color: '#065f46',
+  chipsLabel: {
+    fontSize: 10,
     fontWeight: '800',
-  },
-  previewCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#10b981',
-    padding: 12,
-    marginTop: 6,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  previewHeader: {
-    marginBottom: 8,
-  },
-  confirmedBadgeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    color: '#64748b',
+    textTransform: 'uppercase',
     marginBottom: 4,
   },
-  confirmedBadge: {
-    fontSize: 9.5,
-    fontWeight: '900',
-    color: '#065f46',
-    backgroundColor: '#ecfdf5',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+  chipsScroll: {
+    flexDirection: 'row',
   },
-  coordsBadge: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#64748b',
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+  chip: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 14,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    marginRight: 6,
   },
-  previewTitle: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#0f172a',
+  chipAdded: {
+    backgroundColor: '#e0e7ff',
+    borderColor: '#6366f1',
   },
-  previewSub: {
+  chipText: {
     fontSize: 11,
-    color: '#64748b',
-    marginTop: 2,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  chipTextAdded: {
+    color: '#3730a3',
   },
   mapContainer: {
-    height: 220,
-    borderRadius: 14,
+    height: 190,
+    borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#f1f5f9',
     borderWidth: 1.5,
     borderColor: '#cbd5e1',
-    marginVertical: 8,
+    backgroundColor: '#f1f5f9',
+    position: 'relative',
+    marginBottom: 8,
   },
   webView: {
     flex: 1,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#f8fafc',
   },
   attributionBadge: {
     position: 'absolute',
-    left: 8,
-    bottom: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    paddingHorizontal: 7,
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    zIndex: 30,
   },
   attributionText: {
-    fontSize: 9.5,
-    color: '#0f172a',
-    fontWeight: '800',
-  },
-  roadInfoBanner: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 10,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    marginBottom: 8,
-  },
-  calculatingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 4,
-  },
-  calculatingText: {
-    fontSize: 11.5,
-    color: '#059669',
+    fontSize: 9,
+    color: '#ffffff',
     fontWeight: '700',
   },
-  routeResultRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingVertical: 2,
+  impactCard: {
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1.5,
+    borderColor: '#a7f3d0',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 8,
   },
-  routeResultCol: {
-    alignItems: 'center',
-  },
-  routeDistanceText: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#059669',
-  },
-  routeDistanceSub: {
-    fontSize: 10,
-    color: '#64748b',
-    fontWeight: '600',
-  },
-  routeDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#cbd5e1',
-  },
-  routeDurationText: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#0284c7',
-  },
-  routeDurationSub: {
-    fontSize: 10,
-    color: '#64748b',
-    fontWeight: '600',
-  },
-  defaultRouteNotice: {
-    fontSize: 11,
-    color: '#065f46',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  relativeAnalysisContainer: {
-    paddingVertical: 2,
-  },
-  relativeMetricsGrid: {
+  impactHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 4,
+    marginBottom: 8,
   },
-  relativeMetricCol: {
+  impactTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  impactEmoji: {
+    fontSize: 13,
+  },
+  impactTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#064e3b',
+    letterSpacing: 0.5,
+  },
+  autoTag: {
+    backgroundColor: '#a7f3d0',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
+  autoTagText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#065f46',
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d1fae5',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  metricBox: {
     flex: 1,
     alignItems: 'center',
   },
-  relativeMetricColHighlight: {
-    flex: 1.1,
-    alignItems: 'center',
-    backgroundColor: '#ecfdf5',
-    borderRadius: 8,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: '#a7f3d0',
+  metricHighlight: {
+    backgroundColor: '#f0fdf4',
+    borderRadius: 6,
   },
-  relativeMetricLabel: {
-    fontSize: 9.5,
-    color: '#64748b',
+  metricLabel: {
+    fontSize: 9,
     fontWeight: '700',
+    color: '#64748b',
     textTransform: 'uppercase',
   },
-  relativeMetricVal: {
-    fontSize: 14,
+  metricVal: {
+    fontSize: 12,
     fontWeight: '900',
     color: '#0f172a',
-    marginTop: 1,
+    marginTop: 2,
   },
-  relativeMetricSub: {
-    fontSize: 9.5,
-    color: '#64748b',
-    fontWeight: '600',
-  },
-  relativeMetricLabelHighlight: {
-    fontSize: 9.5,
-    color: '#065f46',
+  metricLabelHighlight: {
+    fontSize: 9,
     fontWeight: '800',
+    color: '#047857',
     textTransform: 'uppercase',
   },
-  relativeMetricValHighlight: {
-    fontSize: 15,
+  metricValHighlight: {
+    fontSize: 13,
     fontWeight: '900',
-    color: '#059669',
-    marginTop: 1,
-  },
-  relativeMetricSubHighlight: {
-    fontSize: 9,
     color: '#047857',
-    fontWeight: '700',
+    marginTop: 2,
   },
-  relativeDivider: {
+  metricDivider: {
     width: 1,
-    height: 28,
     backgroundColor: '#e2e8f0',
   },
-  routeLegendRow: {
+  legsWrapper: {
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#d1fae5',
+    paddingTop: 6,
+  },
+  legsToggle: {
+    alignItems: 'center',
+    paddingVertical: 3,
+  },
+  legsToggleText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#047857',
+  },
+  legsList: {
+    marginTop: 4,
+  },
+  legItem: {
     flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    padding: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 4,
+  },
+  legBullet: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#059669',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
-    marginTop: 6,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    marginRight: 6,
   },
-  routeLegendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendBar: {
-    width: 14,
-    height: 4,
-    borderRadius: 2,
-  },
-  routeLegendText: {
+  legBulletText: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#475569',
+    fontWeight: '900',
+    color: '#ffffff',
   },
-  baseTourNoticeRow: {
-    paddingVertical: 4,
-    alignItems: 'center',
+  legInfo: {
+    flex: 1,
   },
-  baseTourNoticeText: {
+  legNames: {
     fontSize: 11,
-    color: '#1e40af',
-    fontWeight: '600',
-  },
-  actionButtonsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  openMapsButton: {
-    flex: 1,
-    backgroundColor: '#eff6ff',
-    borderWidth: 1,
-    borderColor: '#93c5fd',
-    paddingVertical: 7,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  openMapsButtonText: {
-    fontSize: 11.5,
-    fontWeight: '800',
-    color: '#1d4ed8',
-  },
-  openOsmButton: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    paddingVertical: 7,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  openOsmButtonText: {
-    fontSize: 11.5,
     fontWeight: '700',
-    color: '#475569',
+    color: '#0f172a',
+  },
+  legMeta: {
+    fontSize: 10,
+    color: '#059669',
+    fontWeight: '600',
   },
 });

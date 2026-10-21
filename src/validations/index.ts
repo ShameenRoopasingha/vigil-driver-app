@@ -153,11 +153,11 @@ export const DriverExpenseInputSchema = z.object({
 export type DriverExpenseInput = z.infer<typeof DriverExpenseInputSchema>;
 
 // ==========================================
-// 8. Mid-Tour Detour & Route Change Schema
+// 8. Mid-Tour Detour, Stops & Route Change Schema
 // ==========================================
 export const DriverRouteChangeSchema = z.object({
-  location: z.string().trim().min(2, 'New location or stop name is required'),
-  changeType: z.enum(['DETOUR', 'DESTINATION']),
+  location: z.string().trim().optional(),
+  changeType: z.enum(['DETOUR', 'DESTINATION', 'ITINERARY']).default('ITINERARY'),
   extraKm: z
     .string()
     .trim()
@@ -168,6 +168,10 @@ export const DriverRouteChangeSchema = z.object({
   reason: z.string().trim().min(1, 'Reason for route change is required'),
   note: z.string().trim().optional(),
   agreedByCustomer: z.boolean().default(true),
+  pickupLocation: z.string().trim().optional(),
+  dropLocation: z.string().trim().optional(),
+  destination: z.string().trim().optional(),
+  stops: z.array(z.any()).optional(),
 });
 
 export type DriverRouteChangeInput = z.infer<typeof DriverRouteChangeSchema>;
