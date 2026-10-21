@@ -534,8 +534,8 @@ export default function ActiveTourScreen() {
           <Text className="text-blue-600 text-base font-bold">← Back</Text>
         </TouchableOpacity>
 
-        {/* Center / Right: Tour Company Badge */}
-        <View className="flex-row items-center flex-1 justify-end min-w-0" style={{ paddingRight: 46 }}>
+        {/* Center / Right: Tour Company Badge (56px right padding leaves clean clearance for ArcNavbar button) */}
+        <View className="flex-row items-center flex-1 justify-end min-w-0" style={{ paddingRight: 56 }}>
           {tour?.company?.logoUrl ? (
             <View className="w-8 h-8 bg-white rounded-lg border border-gray-200 p-0.5 mr-2 items-center justify-center shadow-xs">
               <Image 

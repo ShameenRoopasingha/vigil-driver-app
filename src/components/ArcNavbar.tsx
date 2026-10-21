@@ -491,7 +491,7 @@ export default function ArcNavbar() {
     <>
       {/* Sleek Top-Right Corner Trigger Button (Admin App Style) */}
       {!isOpen && (
-        <View style={[styles.triggerWrapper, { top: insets.top + 12, right: 16 }]}>
+        <View style={[styles.triggerWrapper, { top: insets.top + 10, right: 16 }]}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={openMenu}
@@ -518,7 +518,7 @@ export default function ArcNavbar() {
 
       {/* Fullscreen Modal Overlay for the Arc Dial */}
       {isOpen && (
-        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        <View style={[StyleSheet.absoluteFill, { zIndex: 10002, elevation: 25 }]} pointerEvents="box-none">
           {/* Frosted Dark Backdrop */}
           <Animated.View
             style={[
@@ -784,7 +784,8 @@ const styles = StyleSheet.create({
   // Sleek Trigger Button matching Light Driver App
   triggerWrapper: {
     position: 'absolute',
-    zIndex: 99,
+    zIndex: 10001,
+    elevation: 20,
   },
   triggerButton: {
     width: 40,
@@ -849,7 +850,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: -4, height: 8 },
     shadowOpacity: 0.16,
     shadowRadius: 24,
-    elevation: 16,
+    elevation: 25,
+    zIndex: 10003,
     overflow: 'visible',
   },
   concentricOuter: {
@@ -992,7 +994,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 18,
     width: 250,
-    zIndex: 40,
+    zIndex: 10005,
+    elevation: 28,
   },
   detailCard: {
     backgroundColor: '#ffffff',

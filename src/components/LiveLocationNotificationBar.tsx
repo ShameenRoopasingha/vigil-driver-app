@@ -7,6 +7,15 @@ import { navigationRef } from '../navigation/navigationRef';
 export default function LiveLocationNotificationBar() {
   const insets = useSafeAreaInsets();
   
+  const [currentRoute, setCurrentRoute] = useState<string>(() => {
+    try {
+      if (navigationRef.isReady()) {
+        return navigationRef.getCurrentRoute()?.name || '';
+      }
+    } catch {}
+    return '';
+  });
+
   const [status, setStatus] = useState<TrackingStatus>({
     isTracking: false,
     isMoving: false,
@@ -18,6 +27,31 @@ export default function LiveLocationNotificationBar() {
   });
 
   useEffect(() => {
+    const updateRoute = () => {
+      if (navigationRef.isReady()) {
+        const route = navigationRef.getCurrentRoute();
+        if (route?.name && route.name !== currentRoute) {
+          setCurrentRoute(route.name);
+        }
+      }
+    };
+
+    updateRoute();
+    const interval = setInterval(updateRoute, 300);
+
+    const unsubscribeNav = navigationRef.addListener?.('state', () => {
+      updateRoute();
+    });
+
+    return () => {
+      clearInterval(interval);
+      if (typeof unsubscribeNav === 'function') {
+        unsubscribeNav();
+      }
+    };
+  }, [currentRoute]);
+
+  useEffect(() => {
     const unsubscribe = locationService.subscribeStatus((st) => {
       setStatus(st);
     });
@@ -26,7 +60,9 @@ export default function LiveLocationNotificationBar() {
     };
   }, []);
 
-  if (!status.isTracking) {
+  // NEVER show on ActiveTour screen (the active tour screen has its own rich status banner, and the "Tour ->" button would be redundant and cover headers)
+  // NEVER show on Splash or Login
+  if (!status.isTracking || currentRoute === 'ActiveTour' || currentRoute === 'Splash' || currentRoute === 'Login') {
     return null;
   }
 
@@ -85,8 +121,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#064e3b', // Deep emerald green
     borderBottomWidth: 1,
     borderBottomColor: '#059669',
-    zIndex: 9999,
-    elevation: 10,
+    zIndex: 9990,
+    elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
@@ -96,7 +132,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingLeft: 14,
+    paddingRight: 64, // Clears the 40px ArcNavbar trigger button in top-right corner
     paddingVertical: 10,
   },
   leftRow: {
