@@ -427,6 +427,96 @@ export function searchLandmarksOffline(
 }
 
 /**
+ * Fast Photon Komoot Search (OpenStreetMap Full Elasticsearch Database)
+ * Incredibly fast (~250-600ms), no harsh rate limits, supports fuzzy queries, and indexes
+ * every small town, village, junction, hamlet, road, building, and landmark across Sri Lanka.
+ */
+export async function searchPhotonKomootOnline(
+  query: string,
+  userCoords?: { lat: number; lon: number } | null
+): Promise<PlaceSuggestion[]> {
+  if (!query || query.trim().length < 2) return [];
+
+  const trimmed = query.trim();
+  const lat = userCoords?.lat || 7.8731; // Centered on Sri Lanka
+  const lon = userCoords?.lon || 80.7718;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+
+    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(
+      trimmed
+    )}&lat=${lat}&lon=${lon}&limit=10`;
+
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (res.ok) {
+      const data = await res.json();
+      const features = Array.isArray(data?.features) ? data.features : [];
+
+      const results: PlaceSuggestion[] = [];
+      for (const f of features) {
+        const coords = f.geometry?.coordinates;
+        if (!coords || coords.length < 2) continue;
+
+        const fLon = coords[0];
+        const fLat = coords[1];
+
+        // Ensure within Sri Lanka geographical bounding box (lat 5.8-9.9, lon 79.5-82.0)
+        const isSriLanka =
+          fLat >= 5.8 && fLat <= 9.9 && fLon >= 79.5 && fLon <= 82.0;
+        if (!isSriLanka) continue;
+
+        const p = f.properties || {};
+        const name = p.name || p.street || p.district || p.city || 'Location';
+        const subParts = [p.district, p.county, p.state].filter(Boolean);
+        const subText = subParts.length > 0 ? subParts.join(', ') : 'Sri Lanka';
+        const displayName = `${name}, ${subText}`;
+
+        let category = 'Location';
+        const osmValue = (p.osm_value || p.osm_key || p.type || '').toLowerCase();
+        if (['town', 'city', 'village', 'hamlet', 'suburb'].includes(osmValue)) {
+          category = 'Town / Village';
+        } else if (['hotel', 'guest_house', 'motel', 'resort', 'hostel'].includes(osmValue)) {
+          category = 'Hotel / Resort';
+        } else if (['tourism', 'attraction', 'viewpoint', 'museum'].includes(osmValue)) {
+          category = 'Tourist Attraction';
+        } else if (['secondary', 'tertiary', 'primary', 'trunk', 'motorway', 'residential', 'road'].includes(osmValue)) {
+          category = 'Road / Junction';
+        } else if (['place_of_worship'].includes(osmValue)) {
+          category = 'Temple / Religious Site';
+        } else if (['hospital', 'clinic', 'pharmacy'].includes(osmValue)) {
+          category = 'Hospital / Medical';
+        }
+
+        const distanceKm = userCoords
+          ? calculateDirectDistanceKm(userCoords.lat, userCoords.lon, fLat, fLon)
+          : undefined;
+
+        results.push({
+          displayName,
+          shortName: name,
+          category,
+          lat: fLat,
+          lon: fLon,
+          distanceKm,
+        });
+      }
+
+      return results;
+    }
+  } catch (err: any) {
+    if (err?.name !== 'AbortError') {
+      console.warn('Photon search error:', err);
+    }
+  }
+
+  return [];
+}
+
+/**
  * ONLINE search — OpenStreetMap Nominatim API (network required, ~0.5–3s)
  * Returns only the OSM results; caller merges with offline results.
  */
@@ -438,7 +528,7 @@ export async function searchNominatimOnline(
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2500); // 4s hard timeout
+    const timeout = setTimeout(() => controller.abort(), 3500);
 
     const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
       query.trim()
@@ -446,7 +536,7 @@ export async function searchNominatimOnline(
 
     const res = await fetch(nominatimUrl, {
       headers: {
-        'User-Agent': 'VigilDriverApp/1.0.3 (driver@vigil.app)',
+        'User-Agent': 'VigilDriverApp/1.0.4 (support@vigil.app)',
         'Accept-Language': 'en',
       },
       signal: controller.signal,
@@ -493,6 +583,65 @@ export async function searchNominatimOnline(
 }
 
 /**
+ * Unified Online Geocoding Engine:
+ * 1. Queries Photon Komoot (Fast Elasticsearch OSM) & Nominatim in parallel.
+ * 2. If initial query yields no results, attempts phonetic/transliteration variants
+ *    (e.g., "th" <-> "t", "w" <-> "v") commonly found in Sri Lankan place names.
+ * 3. Merges and deduplicates results with high precision.
+ */
+export async function searchPlacesOnlineUnified(
+  query: string,
+  userCoords?: { lat: number; lon: number } | null
+): Promise<PlaceSuggestion[]> {
+  if (!query || query.trim().length < 2) return [];
+
+  const trimmed = query.trim();
+
+  // Run Photon and Nominatim in parallel for maximum coverage
+  const [photonResults, nominatimResults] = await Promise.all([
+    searchPhotonKomootOnline(trimmed, userCoords),
+    searchNominatimOnline(trimmed, userCoords),
+  ]);
+
+  let combined = [...photonResults];
+  for (const nItem of nominatimResults) {
+    const alreadyExists = combined.some(
+      (c) =>
+        calculateDirectDistanceKm(c.lat, c.lon, nItem.lat, nItem.lon) < 0.4 ||
+        c.shortName.toLowerCase() === nItem.shortName.toLowerCase()
+    );
+    if (!alreadyExists) {
+      combined.push(nItem);
+    }
+  }
+
+  // If no results found, test phonetic transliteration variants (e.g. Thalawathugoda -> Talawatugoda)
+  if (combined.length === 0) {
+    let altQuery: string | null = null;
+    const lower = trimmed.toLowerCase();
+
+    if (lower.includes('th')) {
+      altQuery = trimmed.replace(/th/gi, 't');
+    } else if (lower.includes('t')) {
+      altQuery = trimmed.replace(/t/gi, 'th');
+    } else if (lower.includes('w')) {
+      altQuery = trimmed.replace(/w/gi, 'v');
+    } else if (lower.includes('v')) {
+      altQuery = trimmed.replace(/v/gi, 'w');
+    }
+
+    if (altQuery && altQuery !== trimmed) {
+      const altPhoton = await searchPhotonKomootOnline(altQuery, userCoords);
+      if (altPhoton.length > 0) {
+        combined = altPhoton;
+      }
+    }
+  }
+
+  return combined;
+}
+
+/**
  * Merge curated + OSM results, deduplicating nearby coordinates
  */
 export function mergeSearchResults(
@@ -503,25 +652,25 @@ export function mergeSearchResults(
   for (const osmItem of online) {
     const alreadyExists = combined.some(
       (c) =>
-        calculateDirectDistanceKm(c.lat, c.lon, osmItem.lat, osmItem.lon) < 0.5 ||
+        calculateDirectDistanceKm(c.lat, c.lon, osmItem.lat, osmItem.lon) < 0.4 ||
         c.shortName.toLowerCase() === osmItem.shortName.toLowerCase()
     );
     if (!alreadyExists) {
       combined.push(osmItem);
     }
   }
-  return combined.slice(0, 8);
+  return combined.slice(0, 10);
 }
 
 /**
- * Full search (kept for backward compatibility) — curated + Nominatim combined
+ * Full search (kept for backward compatibility) — curated + Unified online combined
  */
 export async function searchPlacesOSM(
   query: string,
   userCoords?: { lat: number; lon: number } | null
 ): Promise<PlaceSuggestion[]> {
   const curated = searchLandmarksOffline(query, userCoords);
-  const online = await searchNominatimOnline(query, userCoords);
+  const online = await searchPlacesOnlineUnified(query, userCoords);
   return mergeSearchResults(curated, online);
 }
 

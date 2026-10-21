@@ -12,6 +12,7 @@ import { WebView } from 'react-native-webview';
 import {
   searchLandmarksOffline,
   searchNominatimOnline,
+  searchPlacesOnlineUnified,
   mergeSearchResults,
   calculateMultiStopRouteOSRM,
   type PlaceSuggestion,
@@ -247,7 +248,7 @@ export default function OpenStreetMapPicker({
   }, []);
 
   // ----------------------------------------------------
-  // TWO-PHASE SEARCH LOGIC (0ms Instant Curated + 250ms Debounced Online)
+  // TWO-PHASE SEARCH LOGIC (0ms Instant Curated + 200ms Debounced Online Photon + Nominatim)
   // ----------------------------------------------------
   const performSearch = useCallback(
     (
@@ -272,7 +273,7 @@ export default function OpenStreetMapPicker({
         setResults(instantCurated);
       }
 
-      // 2. Debounced Online Nominatim Query (250ms)
+      // 2. Debounced Online Photon & Nominatim Query (200ms)
       if (debounceRef.current) clearTimeout(debounceRef.current);
       setLoading(true);
       debounceRef.current = setTimeout(async () => {
@@ -283,16 +284,18 @@ export default function OpenStreetMapPicker({
             setLoading(false);
             return;
           }
-          const onlineResults = await searchNominatimOnline(trimmed, referenceCoords);
+          const onlineResults = await searchPlacesOnlineUnified(trimmed, referenceCoords);
           const merged = mergeSearchResults(instantCurated, onlineResults);
-          searchCacheRef.current.set(clean, merged);
+          if (merged.length > 0) {
+            searchCacheRef.current.set(clean, merged);
+          }
           setResults(merged);
         } catch (err) {
           console.warn('Search error:', err);
         } finally {
           setLoading(false);
         }
-      }, 250);
+      }, 200);
     },
     []
   );
@@ -313,12 +316,14 @@ export default function OpenStreetMapPicker({
 
   // Listen for Add Stop search text changes
   useEffect(() => {
+    if (stopQuery.trim().length >= 2) {
+      setShowStopDropdown(true);
+    }
     performSearch(
       stopQuery,
       pickup,
       (res) => {
         setStopSuggestions(res);
-        setShowStopDropdown(res.length > 0);
       },
       setIsSearchingStop,
       stopDebounceRef
@@ -572,7 +577,7 @@ export default function OpenStreetMapPicker({
                 style={styles.searchInput}
                 value={pickupQuery}
                 onChangeText={setPickupQuery}
-                placeholder="Search airport, hotel or city..."
+                placeholder="Search town, village, hotel or address..."
                 placeholderTextColor="#94a3b8"
                 autoFocus
               />
@@ -604,31 +609,58 @@ export default function OpenStreetMapPicker({
               ))}
             </ScrollView>
 
+            {/* Searching indicator feedback */}
+            {isSearchingPickup && pickupSuggestions.length === 0 && (
+              <View style={styles.searchingBox}>
+                <ActivityIndicator size="small" color="#10b981" />
+                <Text style={styles.searchingText}>Searching OSM map for "{pickupQuery}"...</Text>
+              </View>
+            )}
+
+            {/* No results feedback */}
+            {!isSearchingPickup && pickupQuery.trim().length >= 2 && pickupSuggestions.length === 0 && (
+              <View style={styles.noResultsBox}>
+                <Text style={styles.noResultsText}>No locations found for "{pickupQuery}".</Text>
+                <Text style={styles.noResultsSub}>Try typing a nearby town or junction.</Text>
+              </View>
+            )}
+
             {/* Search Suggestions Dropdown */}
             {pickupSuggestions.length > 0 && (
               <View style={styles.searchDropdown}>
-                {pickupSuggestions.map((item, idx) => (
-                  <TouchableOpacity
-                    key={idx}
-                    style={styles.searchDropdownItem}
-                    onPress={() => {
-                      const nextPickup = {
-                        name: item.shortName || item.displayName,
-                        lat: item.lat,
-                        lon: item.lon,
-                      };
-                      setPickup(nextPickup);
-                      setIsEditingPickup(false);
-                      triggerRecalculate(nextPickup, stops, dropoff);
-                    }}
-                  >
-                    <Text style={styles.searchItemPin}>📍</Text>
-                    <View style={styles.searchItemTextCol}>
-                      <Text style={styles.searchItemTitle} numberOfLines={1}>{item.shortName}</Text>
-                      <Text style={styles.searchItemSub} numberOfLines={1}>{item.displayName}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                <ScrollView
+                  style={{ maxHeight: 220 }}
+                  keyboardShouldPersistTaps="handled"
+                  nestedScrollEnabled
+                >
+                  {pickupSuggestions.map((item, idx) => (
+                    <TouchableOpacity
+                      key={`${item.displayName}-${idx}`}
+                      style={styles.searchDropdownItem}
+                      onPress={() => {
+                        const nextPickup = {
+                          name: item.shortName || item.displayName,
+                          lat: item.lat,
+                          lon: item.lon,
+                        };
+                        setPickup(nextPickup);
+                        setIsEditingPickup(false);
+                        triggerRecalculate(nextPickup, stops, dropoff);
+                      }}
+                    >
+                      <Text style={styles.searchItemPin}>📍</Text>
+                      <View style={styles.searchItemTextCol}>
+                        <View style={styles.searchItemTitleRow}>
+                          <Text style={styles.searchItemTitle} numberOfLines={1}>{item.shortName}</Text>
+                          {item.category && (
+                            <Text style={styles.searchItemCategoryBadge}>{item.category}</Text>
+                          )}
+                        </View>
+                        <Text style={styles.searchItemSub} numberOfLines={1}>{item.displayName}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
             )}
           </View>
@@ -703,9 +735,23 @@ export default function OpenStreetMapPicker({
         </View>
 
         {/* Suggestions Dropdown for Stops */}
+        {showStopDropdown && isSearchingStop && stopSuggestions.length === 0 && (
+          <View style={[styles.searchingBox, { backgroundColor: '#eef2ff', borderColor: '#c7d2fe' }]}>
+            <ActivityIndicator size="small" color="#4f46e5" />
+            <Text style={[styles.searchingText, { color: '#3730a3' }]}>Searching OSM map for "{stopQuery}"...</Text>
+          </View>
+        )}
+
+        {showStopDropdown && !isSearchingStop && stopQuery.trim().length >= 2 && stopSuggestions.length === 0 && (
+          <View style={styles.noResultsBox}>
+            <Text style={styles.noResultsText}>No locations found for "{stopQuery}".</Text>
+            <Text style={styles.noResultsSub}>Try typing a nearby town or junction.</Text>
+          </View>
+        )}
+
         {showStopDropdown && stopSuggestions.length > 0 && (
           <View style={styles.searchDropdown}>
-            <ScrollView style={{ maxHeight: 180 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+            <ScrollView style={{ maxHeight: 220 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
               {stopSuggestions.map((item, idx) => (
                 <TouchableOpacity
                   key={`${item.displayName}-${idx}`}
@@ -720,7 +766,12 @@ export default function OpenStreetMapPicker({
                 >
                   <Text style={styles.searchItemPin}>📍</Text>
                   <View style={styles.searchItemTextCol}>
-                    <Text style={styles.searchItemTitle} numberOfLines={1}>{item.shortName}</Text>
+                    <View style={styles.searchItemTitleRow}>
+                      <Text style={styles.searchItemTitle} numberOfLines={1}>{item.shortName}</Text>
+                      {item.category && (
+                        <Text style={styles.searchItemCategoryBadge}>{item.category}</Text>
+                      )}
+                    </View>
                     <Text style={styles.searchItemSub} numberOfLines={1}>{item.displayName}</Text>
                   </View>
                 </TouchableOpacity>
@@ -780,7 +831,7 @@ export default function OpenStreetMapPicker({
                 style={styles.searchInput}
                 value={dropoffQuery}
                 onChangeText={setDropoffQuery}
-                placeholder="Search final destination, hotel or city..."
+                placeholder="Search town, village, hotel or address..."
                 placeholderTextColor="#94a3b8"
                 autoFocus
               />
@@ -812,31 +863,58 @@ export default function OpenStreetMapPicker({
               ))}
             </ScrollView>
 
+            {/* Searching indicator feedback */}
+            {isSearchingDropoff && dropoffSuggestions.length === 0 && (
+              <View style={[styles.searchingBox, { backgroundColor: '#fef2f2', borderColor: '#fecaca' }]}>
+                <ActivityIndicator size="small" color="#dc2626" />
+                <Text style={[styles.searchingText, { color: '#991b1b' }]}>Searching OSM map for "{dropoffQuery}"...</Text>
+              </View>
+            )}
+
+            {/* No results feedback */}
+            {!isSearchingDropoff && dropoffQuery.trim().length >= 2 && dropoffSuggestions.length === 0 && (
+              <View style={styles.noResultsBox}>
+                <Text style={styles.noResultsText}>No locations found for "{dropoffQuery}".</Text>
+                <Text style={styles.noResultsSub}>Try typing a nearby town or junction.</Text>
+              </View>
+            )}
+
             {/* Search Suggestions Dropdown */}
             {dropoffSuggestions.length > 0 && (
               <View style={styles.searchDropdown}>
-                {dropoffSuggestions.map((item, idx) => (
-                  <TouchableOpacity
-                    key={idx}
-                    style={styles.searchDropdownItem}
-                    onPress={() => {
-                      const nextDropoff = {
-                        name: item.shortName || item.displayName,
-                        lat: item.lat,
-                        lon: item.lon,
-                      };
-                      setDropoff(nextDropoff);
-                      setIsEditingDropoff(false);
-                      triggerRecalculate(pickup, stops, nextDropoff);
-                    }}
-                  >
-                    <Text style={styles.searchItemPin}>📍</Text>
-                    <View style={styles.searchItemTextCol}>
-                      <Text style={styles.searchItemTitle} numberOfLines={1}>{item.shortName}</Text>
-                      <Text style={styles.searchItemSub} numberOfLines={1}>{item.displayName}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                <ScrollView
+                  style={{ maxHeight: 220 }}
+                  keyboardShouldPersistTaps="handled"
+                  nestedScrollEnabled
+                >
+                  {dropoffSuggestions.map((item, idx) => (
+                    <TouchableOpacity
+                      key={`${item.displayName}-${idx}`}
+                      style={styles.searchDropdownItem}
+                      onPress={() => {
+                        const nextDropoff = {
+                          name: item.shortName || item.displayName,
+                          lat: item.lat,
+                          lon: item.lon,
+                        };
+                        setDropoff(nextDropoff);
+                        setIsEditingDropoff(false);
+                        triggerRecalculate(pickup, stops, nextDropoff);
+                      }}
+                    >
+                      <Text style={styles.searchItemPin}>📍</Text>
+                      <View style={styles.searchItemTextCol}>
+                        <View style={styles.searchItemTitleRow}>
+                          <Text style={styles.searchItemTitle} numberOfLines={1}>{item.shortName}</Text>
+                          {item.category && (
+                            <Text style={styles.searchItemCategoryBadge}>{item.category}</Text>
+                          )}
+                        </View>
+                        <Text style={styles.searchItemSub} numberOfLines={1}>{item.displayName}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
             )}
           </View>
@@ -1098,13 +1176,48 @@ const styles = StyleSheet.create({
     borderColor: '#4f46e5',
     borderRadius: 8,
     marginTop: 6,
-    maxHeight: 180,
+    maxHeight: 220,
     overflow: 'hidden',
     shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 9999,
+  },
+  searchingBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    backgroundColor: '#f0fdf4',
+    borderRadius: 6,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  searchingText: {
+    fontSize: 11,
+    color: '#166534',
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  noResultsBox: {
+    padding: 8,
+    backgroundColor: '#fffbeb',
+    borderRadius: 6,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  noResultsText: {
+    fontSize: 11,
+    color: '#92400e',
+    fontWeight: '700',
+  },
+  noResultsSub: {
+    fontSize: 10,
+    color: '#b45309',
+    marginTop: 2,
   },
   searchDropdownItem: {
     flexDirection: 'row',
@@ -1120,14 +1233,32 @@ const styles = StyleSheet.create({
   searchItemTextCol: {
     flex: 1,
   },
+  searchItemTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   searchItemTitle: {
     fontSize: 12,
     fontWeight: '700',
     color: '#0f172a',
+    flex: 1,
+  },
+  searchItemCategoryBadge: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#4f46e5',
+    backgroundColor: '#eef2ff',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginLeft: 6,
   },
   searchItemSub: {
     fontSize: 10,
     color: '#64748b',
+    marginTop: 1,
   },
   stopsSection: {
     backgroundColor: '#f8fafc',
