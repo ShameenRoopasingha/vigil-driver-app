@@ -388,7 +388,7 @@ export default function OpenStreetMapPicker({
     }
   };
 
-  // Leaflet HTML with Dual-Color Route Rendering (matching Admin Quotation & Live Radar)
+  // Leaflet HTML with Teardrop SVG Map Pins and Dual-Color Route Rendering
   const generateLeafletHtml = (lat: number, lon: number) => `
 <!DOCTYPE html>
 <html>
@@ -399,24 +399,9 @@ export default function OpenStreetMapPicker({
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #map { width: 100%; height: 100%; background: #f8fafc; }
-    .custom-pin {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      filter: drop-shadow(0 3px 5px rgba(0,0,0,0.35));
-    }
-    .custom-badge {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 3px 8px;
-      border-radius: 12px;
-      color: #ffffff;
-      font-size: 11px;
-      font-weight: 800;
-      white-space: nowrap;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      border: 1.5px solid #ffffff;
+    .custom-map-pin {
+      background: transparent !important;
+      border: 0 !important;
     }
     .route-legend {
       position: absolute;
@@ -485,19 +470,36 @@ export default function OpenStreetMapPicker({
     var destMarker = null;
     var stopMarkers = [];
 
-    var carIcon = L.divIcon({
-      className: 'custom-pin',
-      html: '<div class="custom-badge" style="background:#2563eb;">🚗 Start</div>',
-      iconSize: [58, 22],
-      iconAnchor: [29, 11]
-    });
+    // Precise Teardrop Map Pin Factory (matching Quotation Map & Google Maps)
+    function createTeardropPin(label, markerColor, isDual) {
+      var pinW = isDual ? 36 : 28;
+      var pinH = isDual ? 38 : 36;
+      var anchorX = pinW / 2;
+      var circleR = isDual ? 11 : 9;
+      var circleCy = isDual ? 15 : 14;
+      var fontSize = isDual ? 9 : 11;
+      var textY = isDual ? 18.5 : 18;
 
-    var destIcon = L.divIcon({
-      className: 'custom-pin',
-      html: '<div class="custom-badge" style="background:#dc2626;">🏁 End</div>',
-      iconSize: [54, 22],
-      iconAnchor: [27, 11]
-    });
+      var path = isDual
+        ? 'M18 0C8.059 0 0 8.059 0 18C0 28 18 38 18 38C18 38 36 28 36 18C36 8.059 27.941 0 18 0Z'
+        : 'M14 0C6.268 0 0 6.268 0 14C0 24.5 14 36 14 36C14 36 28 24.5 28 14C28 6.268 21.732 0 14 0Z';
+
+      var html = '<div style="position:relative;width:' + pinW + 'px;height:' + pinH + 'px;">' +
+        '<svg width="' + pinW + '" height="' + pinH + '" viewBox="0 0 ' + pinW + ' ' + pinH + '" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.35));">' +
+          '<path d="' + path + '" fill="' + markerColor + '" stroke="#ffffff" stroke-width="2"/>' +
+          '<circle cx="' + anchorX + '" cy="' + circleCy + '" r="' + circleR + '" fill="#ffffff"/>' +
+          '<text x="' + anchorX + '" y="' + textY + '" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="' + fontSize + '" font-weight="900" fill="' + markerColor + '" text-anchor="middle">' + label + '</text>' +
+        '</svg>' +
+      '</div>';
+
+      return L.divIcon({
+        className: 'custom-map-pin',
+        html: html,
+        iconSize: [pinW, pinH],
+        iconAnchor: [anchorX, pinH],
+        popupAnchor: [0, -pinH]
+      });
+    }
 
     map.on('click', function(e) {
       if (window.ReactNativeWebView) {
@@ -524,38 +526,51 @@ export default function OpenStreetMapPicker({
 
         var points = [];
 
+        var isRoundTrip = data.origin && data.destination && (
+          Math.hypot(data.origin.lat - data.destination.lat, data.origin.lon - data.destination.lon) < 0.05 ||
+          ((data.origin.name || '').toLowerCase().split(',')[0].trim() === (data.destination.name || '').toLowerCase().split(',')[0].trim())
+        );
+
+        // 1. Origin Pin (Teardrop Marker 'A')
         if (data.origin) {
-          originMarker = L.marker([data.origin.lat, data.origin.lon], { icon: carIcon }).addTo(map);
+          var originColor = isRoundTrip ? '#0f766e' : '#059669';
+          var originLabel = isRoundTrip ? 'A • B' : 'A';
+          var originPin = createTeardropPin(originLabel, originColor, isRoundTrip);
+          originMarker = L.marker([data.origin.lat, data.origin.lon], { icon: originPin }).addTo(map);
+          originMarker.bindPopup('<div style="font-family:-apple-system,sans-serif;padding:3px;"><div style="font-weight:700;font-size:12px;color:' + originColor + ';">' + (isRoundTrip ? 'Start & Finish (Round Trip)' : 'Origin') + '</div><div style="font-size:11px;color:#0f172a;margin-top:2px;">' + (data.origin.name || '') + '</div></div>');
           points.push([data.origin.lat, data.origin.lon]);
         }
 
+        // 2. Intermediate Stop Pins (Teardrop Markers '1', '2', '3'...)
         if (Array.isArray(data.stops)) {
           data.stops.forEach(function(s, idx) {
-            var stopIcon = L.divIcon({
-              className: 'custom-pin',
-              html: '<div class="custom-badge" style="background:#4f46e5;">📍 ' + (idx + 1) + '. ' + (s.name ? s.name.substring(0, 16) : 'Stop') + '</div>',
-              iconSize: [88, 22],
-              iconAnchor: [44, 11]
-            });
-            var sm = L.marker([s.lat, s.lon], { icon: stopIcon }).addTo(map);
+            var stopColor = '#2563eb';
+            var stopPin = createTeardropPin('' + (idx + 1), stopColor, false);
+            var sm = L.marker([s.lat, s.lon], { icon: stopPin }).addTo(map);
+            sm.bindPopup('<div style="font-family:-apple-system,sans-serif;padding:3px;"><div style="font-weight:700;font-size:12px;color:#2563eb;">Stop ' + (idx + 1) + '</div><div style="font-size:11px;color:#0f172a;margin-top:2px;">' + (s.name || '') + '</div></div>');
             stopMarkers.push(sm);
             points.push([s.lat, s.lon]);
           });
         }
 
-        if (data.destination) {
-          destMarker = L.marker([data.destination.lat, data.destination.lon], { icon: destIcon }).addTo(map);
+        // 3. Destination Pin (Teardrop Marker 'B')
+        if (data.destination && !isRoundTrip) {
+          var destColor = '#e11d48';
+          var destLabel = 'B';
+          var destPin = createTeardropPin(destLabel, destColor, false);
+          destMarker = L.marker([data.destination.lat, data.destination.lon], { icon: destPin }).addTo(map);
+          destMarker.bindPopup('<div style="font-family:-apple-system,sans-serif;padding:3px;"><div style="font-weight:700;font-size:12px;color:#e11d48;">Destination</div><div style="font-size:11px;color:#0f172a;margin-top:2px;">' + (data.destination.name || '') + '</div></div>');
           points.push([data.destination.lat, data.destination.lon]);
         }
 
-        // 1. Direct Baseline Route (Sky Blue Dashed Line)
+        // 4. Baseline Direct Route (Sky Blue Dashed Line)
         if (data.directGeoJson && data.stops && data.stops.length > 0) {
           directRouteLayer = L.geoJSON(data.directGeoJson, {
             style: { color: '#0ea5e9', weight: 3.5, dashArray: '6, 6', opacity: 0.8 }
           }).addTo(map);
         }
 
-        // 2. Active Tour Route - Dual Color Split (Quotation & Live Radar style)
+        // 5. Active Tour Route - Dual Color Split (Quotation & Live Radar style)
         if (data.routeGeoJson) {
           var coords = [];
           if (data.routeGeoJson.coordinates && Array.isArray(data.routeGeoJson.coordinates)) {
@@ -569,57 +584,50 @@ export default function OpenStreetMapPicker({
           if (data.destination) allPts.push(data.destination);
 
           var splitIndex = -1;
-          var isCircuit = false;
 
-          if (coords.length > 4 && allPts.length >= 3) {
-            var orig = allPts[0];
-            var dest = allPts[allPts.length - 1];
-            var dOrigDest = Math.hypot(orig.lat - dest.lat, orig.lon - dest.lon);
-            var nameOrig = (orig.name || '').toLowerCase().split(',')[0].trim();
-            var nameDest = (dest.name || '').toLowerCase().split(',')[0].trim();
-
-            if (dOrigDest < 0.05 || nameOrig === nameDest || (nameOrig && nameDest && (nameOrig.includes(nameDest) || nameDest.includes(nameOrigin)))) {
-              isCircuit = true;
-              // Farthest waypoint is turnaround point
-              var maxD = -1;
-              var turnaroundPt = allPts[1];
-              for (var w = 1; w < allPts.length - 1; w++) {
-                var d = Math.hypot(allPts[w].lat - orig.lat, allPts[w].lon - orig.lon);
-                if (d > maxD) {
-                  maxD = d;
-                  turnaroundPt = allPts[w];
-                }
-              }
-              // Find coordinate closest to turnaround point
-              var minDist = Infinity;
-              for (var i = 1; i < coords.length - 1; i++) {
-                var cDist = Math.hypot(coords[i][0] - turnaroundPt.lat, coords[i][1] - turnaroundPt.lon);
-                if (cDist < minDist) {
-                  minDist = cDist;
-                  splitIndex = i;
-                }
-              }
-            } else {
-              // Intermediate stops exist on one-way tour: split at last intermediate stop before final leg
-              var lastStop = allPts[allPts.length - 2];
-              var minDist = Infinity;
-              for (var i = 1; i < coords.length - 1; i++) {
-                var cDist = Math.hypot(coords[i][0] - lastStop.lat, coords[i][1] - lastStop.lon);
-                if (cDist < minDist) {
-                  minDist = cDist;
-                  splitIndex = i;
-                }
+          // A. If intermediate stops exist, split at the last intermediate stop
+          if (Array.isArray(data.stops) && data.stops.length > 0) {
+            var lastStop = data.stops[data.stops.length - 1];
+            var minD = Infinity;
+            for (var i = 1; i < coords.length - 1; i++) {
+              var d = Math.hypot(coords[i][0] - lastStop.lat, coords[i][1] - lastStop.lon);
+              if (d < minD) {
+                minD = d;
+                splitIndex = i;
               }
             }
           }
+
+          // B. If round trip circuit without intermediate stops, find turnaround point
+          if (isRoundTrip && splitIndex <= 0 && coords.length > 4) {
+            var maxD = -1;
+            var turnaroundIdx = Math.floor(coords.length / 2);
+            for (var i = 1; i < coords.length - 1; i++) {
+              var d = Math.hypot(coords[i][0] - data.origin.lat, coords[i][1] - data.origin.lon);
+              if (d > maxD) {
+                maxD = d;
+                turnaroundIdx = i;
+              }
+            }
+            splitIndex = turnaroundIdx;
+          }
+
+          // C. If direct A-to-B route with no intermediate stops, split at midpoint so it ALWAYS displays in Dual Colors (Forward Blue & Approach Orange)
+          if (splitIndex <= 1 || splitIndex >= coords.length - 2) {
+            splitIndex = Math.floor(coords.length / 2);
+          }
+
+          // Ensure valid split bounds
+          if (splitIndex < 1) splitIndex = 1;
+          if (splitIndex >= coords.length - 1) splitIndex = coords.length - 2;
 
           var legendEl = document.getElementById('route-legend');
           var legendLabel1 = document.getElementById('legend-label-1');
           var legendLabel2 = document.getElementById('legend-label-2');
           var legendItem2 = document.getElementById('legend-item-2');
 
-          if (coords.length > 1 && splitIndex > 3 && splitIndex < coords.length - 3) {
-            // 🔵 Forward / Outbound: Royal Blue (#2563eb)
+          if (coords.length > 1) {
+            // 🔵 Forward / Outbound Polyline: Royal Blue (#2563eb)
             var outboundCoords = coords.slice(0, splitIndex + 1);
             var outboundPolyline = L.polyline(outboundCoords, {
               color: '#2563eb', // Blue-600
@@ -628,13 +636,13 @@ export default function OpenStreetMapPicker({
               lineJoin: 'round'
             }).addTo(map);
 
-            // 🟠 Return / Final Leg: Vibrant Amber Orange (#ea580c)
+            // 🟠 Return / Final Leg / Approach: Vibrant Amber Orange (#ea580c)
             var returnCoords = coords.slice(splitIndex);
             var returnPolyline = L.polyline(returnCoords, {
               color: '#ea580c', // Orange-600
               weight: 5,
               opacity: 0.95,
-              dashArray: isCircuit ? '8, 4' : undefined,
+              dashArray: isRoundTrip ? '8, 4' : undefined,
               lineJoin: 'round'
             }).addTo(map);
 
@@ -642,33 +650,33 @@ export default function OpenStreetMapPicker({
 
             if (legendEl) {
               legendEl.style.display = 'flex';
-              legendLabel1.innerText = isCircuit ? 'Outbound' : 'Forward Leg';
-              legendLabel2.innerText = isCircuit ? 'Return' : 'Final Leg';
+              if (isRoundTrip) {
+                legendLabel1.innerText = 'Outbound';
+                legendLabel2.innerText = 'Return';
+              } else if (Array.isArray(data.stops) && data.stops.length > 0) {
+                legendLabel1.innerText = 'Forward Route';
+                legendLabel2.innerText = 'Final Leg';
+              } else {
+                legendLabel1.innerText = 'Departure Leg';
+                legendLabel2.innerText = 'Arrival Leg';
+              }
               legendItem2.style.display = 'flex';
             }
-          } else if (coords.length > 1) {
-            // Standard single route - Royal Blue
-            var polyline = L.polyline(coords, {
-              color: '#2563eb',
-              weight: 5,
-              opacity: 0.9,
-              lineJoin: 'round'
-            }).addTo(map);
-            multiRouteLayers.push(polyline);
-
-            if (legendEl) {
-              legendEl.style.display = 'flex';
-              legendLabel1.innerText = 'Tour Route';
-              legendItem2.style.display = 'none';
-            }
-          } else {
-            // Fallback GeoJSON
-            var geoLayer = L.geoJSON(data.routeGeoJson, {
-              style: { color: '#2563eb', weight: 5, opacity: 0.9 }
-            }).addTo(map);
-            multiRouteLayers.push(geoLayer);
           }
         }
+
+        if (points.length > 1) {
+          map.fitBounds(points, { padding: [35, 35], maxZoom: 14 });
+        } else if (points.length === 1) {
+          map.setView(points[0], 12);
+        }
+      } catch (err) {
+        console.error('renderMultiRoutes error:', err);
+      }
+    };
+  </script>
+</body>
+</html>
 
         if (points.length > 1) {
           map.fitBounds(points, { padding: [35, 35], maxZoom: 14 });

@@ -737,7 +737,7 @@ export async function calculateDirectRouteOSRM(
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2800); // 2.8s fast timeout
-    const url = `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}?overview=simplified&geometries=geojson`;
+    const url = `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson`;
     const res = await fetch(url, { headers, signal: controller.signal });
     clearTimeout(timeout);
 
@@ -974,7 +974,7 @@ export async function calculateMultiStopRouteOSRM(
 
   try {
     const coordsParam = allPoints.map((p) => `${p.lon},${p.lat}`).join(';');
-    const multiUrl = `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=simplified&geometries=geojson`;
+    const multiUrl = `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=full&geometries=geojson`;
 
     // Direct route (A -> B) check cache or fetch in parallel
     const directPromise = destPoint
