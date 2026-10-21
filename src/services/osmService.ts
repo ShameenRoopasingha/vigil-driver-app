@@ -4,6 +4,7 @@
  */
 
 import Fuse from 'fuse.js';
+import { apiClient } from '../api/client';
 
 export interface PlaceSuggestion {
   displayName: string;
@@ -725,29 +726,52 @@ export async function geocodePlace(
 // In-memory cache for OSRM routes to make recalculations and baseline comparisons 0ms instantaneous
 const osrmRouteCache = new Map<string, any>();
 export async function calculateDirectRouteOSRM(
-  origin: { lat: number; lon: number },
-  destination: { lat: number; lon: number }
-): Promise<{ distanceKm: number; durationText: string; geometry?: any } | null> {
+  origin: { lat: number; lon: number; name?: string },
+  destination: { lat: number; lon: number; name?: string }
+): Promise<{ distanceKm: number; durationText: string; geometry?: any; coordinates?: [number, number][] } | null> {
   const cacheKey = `${origin.lat.toFixed(4)},${origin.lon.toFixed(4)}->${destination.lat.toFixed(4)},${destination.lon.toFixed(4)}`;
   if (osrmRouteCache.has(cacheKey)) {
     const cached = osrmRouteCache.get(cacheKey);
-    // Only return cache if it contains actual road geometry
-    if (cached && cached.geometry && cached.geometry.coordinates?.length > 2) {
+    // Only return cache if it contains actual road geometry (> 2 points)
+    if (cached && ((cached.coordinates && cached.coordinates.length > 2) || (cached.geometry?.coordinates && cached.geometry.coordinates.length > 2))) {
       return cached;
     }
   }
 
-  const headers = { 'User-Agent': 'VigilDriverApp/1.0.4 (support@vigil.app)' };
+  // 1. High-speed Dedicated Datacenter Vercel Proxy (Bypasses mobile carrier rate-limits & CGNAT)
+  try {
+    const serverRes = await apiClient.post('/driver/route', {
+      origin: origin.name || `${origin.lat},${origin.lon}`,
+      destination: destination.name || `${destination.lat},${destination.lon}`,
+      originCoords: { lat: origin.lat, lon: origin.lon },
+      destCoords: { lat: destination.lat, lon: destination.lon },
+    });
+    if (serverRes.data?.success && serverRes.data.coordinates?.length > 2) {
+      const result = {
+        distanceKm: serverRes.data.distanceKm,
+        durationText: serverRes.data.durationText,
+        geometry: serverRes.data.routeGeoJson,
+        coordinates: serverRes.data.coordinates,
+      };
+      osrmRouteCache.set(cacheKey, result);
+      return result;
+    }
+  } catch (serverErr) {
+    // Continue to direct lightweight OSRM mirrors
+  }
+
+  // 2. Direct Ultra-Lightweight OSRM Endpoints (1.2 KB payload via overview=simplified, no forbidden headers)
   const endpoints = [
+    `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}?overview=simplified&geometries=geojson`,
+    `https://routing.openstreetmap.de/routed-car/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}?overview=simplified&geometries=geojson`,
     `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson`,
-    `https://routing.openstreetmap.de/routed-car/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson`,
   ];
 
   for (const url of endpoints) {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 6500); // 6.5s generous timeout for mobile 4G/3G
-      const res = await fetch(url, { headers, signal: controller.signal });
+      const timeout = setTimeout(() => controller.abort(), 7500);
+      const res = await fetch(url, { signal: controller.signal });
       clearTimeout(timeout);
 
       if (res.ok) {
@@ -759,10 +783,12 @@ export async function calculateDirectRouteOSRM(
           const hours = Math.floor(durationMins / 60);
           const mins = durationMins % 60;
           const durationText = hours > 0 ? `${hours}h ${mins}m` : `${mins} mins`;
+          const coords = (route.geometry?.coordinates || []).map(([lon, lat]: [number, number]) => [lat, lon] as [number, number]);
           const result = {
             distanceKm,
             durationText,
             geometry: route.geometry,
+            coordinates: coords,
           };
           osrmRouteCache.set(cacheKey, result);
           return result;
@@ -985,9 +1011,35 @@ export async function calculateMultiStopRouteOSRM(
     return osrmRouteCache.get(multiKey);
   }
 
-  const headers = { 'User-Agent': 'VigilDriverApp/1.0.4 (support@vigil.app)' };
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 6500); // 6.5s generous timeout for mobile 4G/3G networks
+  // 1. High-Speed Datacenter Vercel Proxy (Matches Admin Platform 1:1, never blocked on mobile)
+  try {
+    const serverRes = await apiClient.post('/driver/route', {
+      origin: originPoint.name,
+      destination: destPoint ? destPoint.name : originPoint.name,
+      originCoords: { lat: originPoint.lat, lon: originPoint.lon },
+      destCoords: destPoint ? { lat: destPoint.lat, lon: destPoint.lon } : undefined,
+      waypoints: stops.map((s) => ({ name: s.name, lat: s.lat, lon: s.lon })),
+    });
+    if (serverRes.data?.success && serverRes.data.coordinates?.length > 2) {
+      const d = serverRes.data;
+      const result: MultiStopRouteResult = {
+        success: true,
+        directDistanceKm: d.directDistanceKm,
+        totalDistanceKm: d.totalDistanceKm,
+        relativeExtraKm: d.relativeExtraKm,
+        totalDurationMinutes: 0,
+        totalDurationText: d.totalDurationText,
+        legs: d.legs || [],
+        allPoints,
+        directGeoJson: d.directGeoJson,
+        routeGeoJson: d.routeGeoJson,
+      };
+      osrmRouteCache.set(multiKey, result);
+      return result;
+    }
+  } catch (serverErr) {
+    // Fall back to direct lightweight OSRM mirrors
+  }
 
   try {
     const coordsParam = allPoints.map((p) => `${p.lon},${p.lat}`).join(';');
@@ -995,16 +1047,17 @@ export async function calculateMultiStopRouteOSRM(
       ? calculateDirectRouteOSRM(originPoint, destPoint)
       : Promise.resolve(null);
     const endpoints = [
+      `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=simplified&geometries=geojson`,
+      `https://routing.openstreetmap.de/routed-car/route/v1/driving/${coordsParam}?overview=simplified&geometries=geojson`,
       `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=full&geometries=geojson`,
-      `https://routing.openstreetmap.de/routed-car/route/v1/driving/${coordsParam}?overview=full&geometries=geojson`,
     ];
 
     let multiJson: any = null;
     for (const url of endpoints) {
       try {
         const c = new AbortController();
-        const t = setTimeout(() => c.abort(), 6500);
-        const res = await fetch(url, { headers, signal: c.signal });
+        const t = setTimeout(() => c.abort(), 7500);
+        const res = await fetch(url, { signal: c.signal });
         clearTimeout(t);
         if (res.ok) {
           const json = await res.json();
@@ -1067,7 +1120,7 @@ export async function calculateMultiStopRouteOSRM(
       return finalResult;
     }
   } catch (err) {
-    clearTimeout(timeout);
+    // mirror fallback
   }
 
   // Instant Fallback Haversine sequential (0.1ms)

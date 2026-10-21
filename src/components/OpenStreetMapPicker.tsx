@@ -228,6 +228,7 @@ export default function OpenStreetMapPicker({
             stops: currentStops,
             directGeoJson: result.directGeoJson,
             routeGeoJson: result.routeGeoJson,
+            coordinates: (result as any).coordinates,
           };
           lastInjectedPayloadRef.current = payload;
           if (webViewRef.current) {
@@ -637,7 +638,9 @@ export default function OpenStreetMapPicker({
 
         // 5. Active Tour Route - Dual Color Split (Quotation & Live Radar style)
         var coords = [];
-        if (data.routeGeoJson && data.routeGeoJson.coordinates && Array.isArray(data.routeGeoJson.coordinates) && data.routeGeoJson.coordinates.length > 0) {
+        if (data.coordinates && Array.isArray(data.coordinates) && data.coordinates.length > 0) {
+          coords = data.coordinates;
+        } else if (data.routeGeoJson && data.routeGeoJson.coordinates && Array.isArray(data.routeGeoJson.coordinates) && data.routeGeoJson.coordinates.length > 0) {
           // Convert GeoJSON [lon, lat] to Leaflet [lat, lon]
           coords = data.routeGeoJson.coordinates.map(function(c) { return [c[1], c[0]]; });
         } else if (points.length >= 2) {
