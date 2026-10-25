@@ -18,6 +18,7 @@ import {
   geocodePlace,
   type IntermediateStop,
 } from '../services/osmService';
+import { colors, themeStyles } from '../theme';
 
 type ActiveTourRouteProp = RouteProp<RootStackParamList, 'ActiveTour'>;
 type ActiveTourNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ActiveTour'>;
@@ -464,29 +465,29 @@ export default function ActiveTourScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50 items-center justify-center px-6">
-        <View className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-3 items-center justify-center">
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.day.background, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+        <View style={{ backgroundColor: colors.day.card, padding: 16, borderRadius: 24, borderWidth: 1.5, borderColor: colors.day.cardBorder, marginBottom: 14, alignItems: 'center', justifyContent: 'center' }}>
           <Image 
             source={require('../../assets/logo-icon.png')} 
             style={{ width: 56, height: 56 }} 
             resizeMode="contain" 
           />
         </View>
-        <Text className="text-xl font-black text-gray-900 tracking-tight">VIGIL</Text>
-        <Text className="text-blue-600 font-bold text-xs uppercase tracking-widest mt-1">
+        <Text style={{ fontSize: 24, fontWeight: '900', color: colors.day.foreground, letterSpacing: 2 }}>VIGIL</Text>
+        <Text style={{ color: colors.primary[600], fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.2, marginTop: 4 }}>
           Loading Tour & GPS Radar...
         </Text>
-        <ActivityIndicator size="small" color="#2563eb" className="mt-4" />
+        <ActivityIndicator size="small" color={colors.primary[500]} style={{ marginTop: 16 }} />
       </SafeAreaView>
     );
   }
 
   if (!tour) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50 items-center justify-center">
-        <Text className="text-gray-500">Tour not found.</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} className="mt-4 bg-blue-600 px-6 py-2 rounded-lg">
-          <Text className="text-white font-bold">Go Back</Text>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.day.background, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+        <Text style={{ color: colors.day.mutedForeground, fontSize: 14, fontWeight: '600' }}>Tour not found.</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[themeStyles.btnPrimary, { marginTop: 16, paddingHorizontal: 24 }]}>
+          <Text style={themeStyles.btnPrimaryText}>Go Back</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -528,16 +529,16 @@ export default function ActiveTourScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <View className="px-5 py-3.5 bg-white border-b border-gray-200 flex-row items-center justify-between">
-        <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3 flex-row items-center">
-          <Text className="text-blue-600 text-base font-bold">← Back</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.day.background }}>
+      <View style={{ backgroundColor: colors.day.card, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.day.cardBorder, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[themeStyles.btnSecondary, { paddingHorizontal: 12, paddingVertical: 6, marginRight: 10 }]}>
+          <Text style={themeStyles.btnSecondaryText}>← Back</Text>
         </TouchableOpacity>
 
         {/* Center / Right: Tour Company Badge (56px right padding leaves clean clearance for ArcNavbar button) */}
-        <View className="flex-row items-center flex-1 justify-end min-w-0" style={{ paddingRight: 56 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'flex-end', minWidth: 0, paddingRight: 56 }}>
           {tour?.company?.logoUrl ? (
-            <View className="w-8 h-8 bg-white rounded-lg border border-gray-200 p-0.5 mr-2 items-center justify-center shadow-xs">
+            <View style={{ width: 32, height: 32, backgroundColor: colors.day.card, borderRadius: 8, borderWidth: 1, borderColor: colors.day.cardBorder, padding: 2, marginRight: 8, alignItems: 'center', justifyContent: 'center' }}>
               <Image 
                 source={{ uri: tour.company.logoUrl }} 
                 style={{ width: 24, height: 24 }} 
@@ -545,13 +546,15 @@ export default function ActiveTourScreen() {
               />
             </View>
           ) : null}
-          <View className="items-end min-w-0">
-            <Text className="text-xs font-bold text-gray-900 truncate" numberOfLines={1}>
+          <View style={{ alignItems: 'flex-end', minWidth: 0 }}>
+            <Text style={{ fontSize: 12, fontWeight: '800', color: colors.day.foreground }} numberOfLines={1}>
               {tour?.company?.companyName || 'Tour'}
             </Text>
-            <Text className="text-[10px] text-gray-500 font-medium">
-              {tour.vehicleNo}
-            </Text>
+            <View style={{ backgroundColor: colors.plate.bg, paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 4, marginTop: 2 }}>
+              <Text style={{ fontSize: 9.5, color: colors.plate.text, fontWeight: '800', fontFamily: 'monospace', letterSpacing: 0.5 }}>
+                {tour.vehicleNo}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -964,26 +967,48 @@ export default function ActiveTourScreen() {
             <TouchableOpacity 
               onPress={() => handleAction('TAKEOVER')}
               disabled={actionLoading}
-              className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl items-center shadow-md"
+              style={{
+                backgroundColor: colors.telemetry.moving,
+                borderRadius: 14,
+                paddingVertical: 14,
+                alignItems: 'center',
+                justifyContent: 'center',
+                shadowColor: colors.telemetry.moving,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.35,
+                shadowRadius: 8,
+                elevation: 4,
+              }}
             >
-              {actionLoading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-black text-base">✅ Confirm Takeover & Resume Live GPS</Text>}
+              {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 15, letterSpacing: 0.5 }}>✅ CONFIRM TAKEOVER & RESUME GPS</Text>}
             </TouchableOpacity>
           ) : isStarted ? (
             <View>
               <TouchableOpacity 
                 onPress={() => handleAction('END_TRIP')}
                 disabled={actionLoading}
-                className="bg-red-600 py-3 rounded-lg items-center shadow-sm"
+                style={{
+                  backgroundColor: colors.telemetry.alert,
+                  borderRadius: 14,
+                  paddingVertical: 14,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  shadowColor: colors.telemetry.alert,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.35,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }}
               >
-                {actionLoading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-lg">End Trip & Stop GPS</Text>}
+                {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 15, letterSpacing: 0.5 }}>END TRIP & STOP GPS</Text>}
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => setShowRouteChangeModal(true)}
                 disabled={actionLoading}
-                className="mt-3 border border-indigo-500 bg-indigo-50 py-3 rounded-lg items-center shadow-sm"
+                style={[themeStyles.btnSecondary, { marginTop: 10, paddingVertical: 12 }]}
               >
-                <Text className="text-indigo-800 font-bold text-base">
+                <Text style={themeStyles.btnSecondaryText}>
                   🗺️ Add Detour / Change Tour Route
                 </Text>
               </TouchableOpacity>
@@ -991,9 +1016,17 @@ export default function ActiveTourScreen() {
               <TouchableOpacity
                 onPress={handleOpenHandoverModal}
                 disabled={actionLoading}
-                className="mt-3 border border-amber-500 bg-amber-50 py-3 rounded-lg items-center shadow-sm"
+                style={{
+                  backgroundColor: '#FFFBEB',
+                  borderWidth: 1.5,
+                  borderColor: '#FDE68A',
+                  borderRadius: 14,
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                  marginTop: 10,
+                }}
               >
-                <Text className="text-amber-800 font-bold text-base">
+                <Text style={{ color: '#92400E', fontWeight: '800', fontSize: 13.5 }}>
                   {isHandoverRequested ? '✏️ Update Handover Request' : '⚠️ Request Mid-Tour Driver Handover'}
                 </Text>
               </TouchableOpacity>
@@ -1001,9 +1034,17 @@ export default function ActiveTourScreen() {
               <TouchableOpacity
                 onPress={handleOpenBreakdownModal}
                 disabled={actionLoading}
-                className="mt-3 border border-red-500 bg-red-50 py-3 rounded-lg items-center shadow-sm"
+                style={{
+                  backgroundColor: '#FFF1F2',
+                  borderWidth: 1.5,
+                  borderColor: '#FECDD3',
+                  borderRadius: 14,
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                  marginTop: 10,
+                }}
               >
-                <Text className="text-red-800 font-bold text-base">
+                <Text style={{ color: colors.telemetry.alert, fontWeight: '800', fontSize: 13.5 }}>
                   {isBreakdownReported ? '✏️ Update Breakdown Report' : '🚨 Report Vehicle Breakdown'}
                 </Text>
               </TouchableOpacity>
@@ -1013,17 +1054,17 @@ export default function ActiveTourScreen() {
               <TouchableOpacity 
                 onPress={() => handleAction('START_TRIP')}
                 disabled={actionLoading}
-                className="bg-green-600 py-3 rounded-lg items-center shadow-sm"
+                style={themeStyles.btnPrimary}
               >
-                {actionLoading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-lg">Start Trip & Broadcast GPS</Text>}
+                {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={themeStyles.btnPrimaryText}>START TRIP & BROADCAST GPS</Text>}
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => setShowRouteChangeModal(true)}
                 disabled={actionLoading}
-                className="mt-3 border border-indigo-500 bg-indigo-50 py-2.5 rounded-lg items-center shadow-sm"
+                style={[themeStyles.btnSecondary, { marginTop: 10, paddingVertical: 12 }]}
               >
-                <Text className="text-indigo-800 font-bold text-sm">
+                <Text style={themeStyles.btnSecondaryText}>
                   🗺️ Add Detour / Change Route
                 </Text>
               </TouchableOpacity>

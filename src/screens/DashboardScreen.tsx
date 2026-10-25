@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, Alert, Image, Linking, Modal } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, Image, Linking, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -58,13 +58,8 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
   const [refreshing, setRefreshing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   
-  let hookNavigation: DashboardNavigationProp | null = null;
-  try {
-    hookNavigation = useNavigation<DashboardNavigationProp>();
-  } catch {
-    // Fallback gracefully if context is mounting
-  }
-  const navigation = (propNavigation || hookNavigation)!;
+  const hookNavigation = useNavigation<DashboardNavigationProp>();
+  const navigation = propNavigation || hookNavigation;
 
   const loadData = async () => {
     try {
@@ -134,19 +129,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
     setRefreshing(false);
   }, []);
 
-  const handleLogout = async () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { 
-        text: 'Sign Out', 
-        style: 'destructive',
-        onPress: async () => {
-          await AsyncStorage.clear();
-          navigation.replace('Login');
-        }
-      }
-    ]);
-  };
+
 
   const getGreeting = () => {
     const hour = new Date().getHours();

@@ -171,9 +171,9 @@ export default function ArcNavbar() {
   const TOTAL_ITEMS = items.length; // 12 items
   const ANGLE_STEP = 360 / TOTAL_ITEMS; // Exactly 30° per item
 
-  // Animation Refs
-  const animMenu = useRef(new Animated.Value(0)).current;
-  const animOffset = useRef(new Animated.Value(0)).current;
+  // Animations
+  const [animMenu] = useState(() => new Animated.Value(0));
+  const [animOffset] = useState(() => new Animated.Value(0));
   const lastStepRef = useRef(0);
   const isDraggingRef = useRef(false);
   const startTouchAngleRef = useRef(0);
@@ -202,7 +202,7 @@ export default function ArcNavbar() {
       updateActiveStep(value);
     });
     return () => animOffset.removeListener(listenerId);
-  }, [updateActiveStep]);
+  }, [updateActiveStep, animOffset]);
 
   // Listen to navigation state & driver data
   useEffect(() => {
@@ -237,25 +237,6 @@ export default function ArcNavbar() {
     return () => clearInterval(interval);
   }, []);
 
-  // Update active item to match current route on open
-  useEffect(() => {
-    if (isOpen) {
-      const currentIdx = items.findIndex((item) => item.screen === currentRoute);
-      if (currentIdx !== -1) {
-        const currentStep = Math.round(-offsetValueRef.current / ANGLE_STEP);
-        const currentWrapped = ((currentStep % TOTAL_ITEMS) + TOTAL_ITEMS) % TOTAL_ITEMS;
-        let diffSteps = currentIdx - currentWrapped;
-        if (diffSteps > TOTAL_ITEMS / 2) diffSteps -= TOTAL_ITEMS;
-        if (diffSteps < -TOTAL_ITEMS / 2) diffSteps += TOTAL_ITEMS;
-
-        const targetOffset = -(currentStep + diffSteps) * ANGLE_STEP;
-        lastStepRef.current = Math.round(-targetOffset / ANGLE_STEP);
-        animOffset.setValue(targetOffset);
-        setActiveIndex(currentIdx);
-      }
-    }
-  }, [isOpen, currentRoute]);
-
   const toggleDuty = async () => {
     try {
       Vibration.vibrate(12);
@@ -273,6 +254,19 @@ export default function ArcNavbar() {
 
   const openMenu = () => {
     Vibration.vibrate(10);
+    const currentIdx = items.findIndex((item) => item.screen === currentRoute);
+    if (currentIdx !== -1) {
+      const currentStep = Math.round(-offsetValueRef.current / ANGLE_STEP);
+      const currentWrapped = ((currentStep % TOTAL_ITEMS) + TOTAL_ITEMS) % TOTAL_ITEMS;
+      let diffSteps = currentIdx - currentWrapped;
+      if (diffSteps > TOTAL_ITEMS / 2) diffSteps -= TOTAL_ITEMS;
+      if (diffSteps < -TOTAL_ITEMS / 2) diffSteps += TOTAL_ITEMS;
+
+      const targetOffset = -(currentStep + diffSteps) * ANGLE_STEP;
+      lastStepRef.current = Math.round(-targetOffset / ANGLE_STEP);
+      animOffset.setValue(targetOffset);
+      setActiveIndex(currentIdx);
+    }
     setIsOpen(true);
     Animated.spring(animMenu, {
       toValue: 1,
@@ -385,7 +379,7 @@ export default function ArcNavbar() {
   };
 
   // PanResponder for smooth rotary dragging & low-friction inertia glide
-  const panResponder = useRef(
+  const [panResponder] = useState(() =>
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
@@ -443,7 +437,7 @@ export default function ArcNavbar() {
         }).start();
       },
     })
-  ).current;
+  );
 
   // Emergency SOS dispatch actions
   const triggerCallOffice = () => {

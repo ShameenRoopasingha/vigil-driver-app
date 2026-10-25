@@ -15,10 +15,6 @@ export default function CalendarScreen() {
   const [markedDates, setMarkedDates] = useState<any>({});
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchTours();
-  }, []);
-
   const fetchTours = async () => {
     try {
       const response = await apiClient.get('/driver/tours');
@@ -53,6 +49,10 @@ export default function CalendarScreen() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchTours();
+  }, []);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.day.background }}>

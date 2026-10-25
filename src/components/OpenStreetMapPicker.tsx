@@ -839,14 +839,14 @@ export default function OpenStreetMapPicker({
             {isSearchingPickup && pickupSuggestions.length === 0 && (
               <View style={styles.searchingBox}>
                 <ActivityIndicator size="small" color="#10b981" />
-                <Text style={styles.searchingText}>Searching OSM map for "{pickupQuery}"...</Text>
+                <Text style={styles.searchingText}>Searching OSM map for &ldquo;{pickupQuery}&rdquo;...</Text>
               </View>
             )}
 
             {/* No results feedback */}
             {!isSearchingPickup && pickupQuery.trim().length >= 2 && pickupSuggestions.length === 0 && (
               <View style={styles.noResultsBox}>
-                <Text style={styles.noResultsText}>No locations found for "{pickupQuery}".</Text>
+                <Text style={styles.noResultsText}>No locations found for &ldquo;{pickupQuery}&rdquo;.</Text>
                 <Text style={styles.noResultsSub}>Try typing a nearby town or junction.</Text>
               </View>
             )}
@@ -964,13 +964,13 @@ export default function OpenStreetMapPicker({
         {showStopDropdown && isSearchingStop && stopSuggestions.length === 0 && (
           <View style={[styles.searchingBox, { backgroundColor: '#eef2ff', borderColor: '#c7d2fe' }]}>
             <ActivityIndicator size="small" color="#4f46e5" />
-            <Text style={[styles.searchingText, { color: '#3730a3' }]}>Searching OSM map for "{stopQuery}"...</Text>
+            <Text style={[styles.searchingText, { color: '#3730a3' }]}>Searching OSM map for &ldquo;{stopQuery}&rdquo;...</Text>
           </View>
         )}
 
         {showStopDropdown && !isSearchingStop && stopQuery.trim().length >= 2 && stopSuggestions.length === 0 && (
           <View style={styles.noResultsBox}>
-            <Text style={styles.noResultsText}>No locations found for "{stopQuery}".</Text>
+            <Text style={styles.noResultsText}>No locations found for &ldquo;{stopQuery}&rdquo;.</Text>
             <Text style={styles.noResultsSub}>Try typing a nearby town or junction.</Text>
           </View>
         )}
@@ -1093,14 +1093,14 @@ export default function OpenStreetMapPicker({
             {isSearchingDropoff && dropoffSuggestions.length === 0 && (
               <View style={[styles.searchingBox, { backgroundColor: '#fef2f2', borderColor: '#fecaca' }]}>
                 <ActivityIndicator size="small" color="#dc2626" />
-                <Text style={[styles.searchingText, { color: '#991b1b' }]}>Searching OSM map for "{dropoffQuery}"...</Text>
+                <Text style={[styles.searchingText, { color: '#991b1b' }]}>Searching OSM map for &ldquo;{dropoffQuery}&rdquo;...</Text>
               </View>
             )}
 
             {/* No results feedback */}
             {!isSearchingDropoff && dropoffQuery.trim().length >= 2 && dropoffSuggestions.length === 0 && (
               <View style={styles.noResultsBox}>
-                <Text style={styles.noResultsText}>No locations found for "{dropoffQuery}".</Text>
+                <Text style={styles.noResultsText}>No locations found for &ldquo;{dropoffQuery}&rdquo;.</Text>
                 <Text style={styles.noResultsSub}>Try typing a nearby town or junction.</Text>
               </View>
             )}

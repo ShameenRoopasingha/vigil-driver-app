@@ -44,7 +44,7 @@ const AVATAR_PRESETS = [
 
 export default function ProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
-  const { isDark, colors: themeColors, toggleTheme, setTheme } = useTheme();
+  const { isDark, colors: themeColors, setTheme } = useTheme();
 
   const [loading, setLoading] = useState(true);
   const [driverName, setDriverName] = useState('');
@@ -72,16 +72,6 @@ export default function ProfileScreen() {
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
-
-  useEffect(() => {
-    loadProfile();
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadProfile();
-    }, [])
-  );
 
   const loadProfile = async () => {
     try {
@@ -125,6 +115,16 @@ export default function ProfileScreen() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [])
+  );
 
   const handleUpdateDetails = async () => {
     const validation = DriverProfileDetailsSchema.safeParse({ name: editName });
@@ -484,9 +484,16 @@ export default function ProfileScreen() {
                     </View>
                   </View>
 
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.day.mutedForeground }} numberOfLines={1}>
-                    🏢 {companyName || 'Tour Transport Company'}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {companyLogoUrl ? (
+                      <Image source={{ uri: companyLogoUrl }} style={{ width: 14, height: 14, borderRadius: 3, marginRight: 6 }} resizeMode="contain" />
+                    ) : (
+                      <Text style={{ fontSize: 12, marginRight: 4 }}>🏢</Text>
+                    )}
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: colors.day.mutedForeground, flex: 1 }} numberOfLines={1}>
+                      {companyName || 'Tour Transport Company'}
+                    </Text>
+                  </View>
                   <Text style={{ fontSize: 11, color: colors.day.mutedForeground, marginTop: 2 }} numberOfLines={1}>
                     ✉️ {currentEmail || 'Not configured'}
                   </Text>

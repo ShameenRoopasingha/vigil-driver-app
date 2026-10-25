@@ -44,3 +44,7 @@ yarn-error.*
 .vscode/
 check-*.js
 test-*.js
+
+# APK build outputs
+*.apk
+*.aab
