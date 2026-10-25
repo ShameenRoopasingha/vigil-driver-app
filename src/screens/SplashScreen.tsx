@@ -2,10 +2,10 @@ import React, { useEffect } from 'react';
 import { View, Text, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { navigationRef } from '../navigation/navigationRef';
+import { colors } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
@@ -46,28 +46,127 @@ export default function SplashScreen({ navigation }: Props) {
   }, [navigation]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#020617', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+    <SafeAreaView
+      style={{
+        flex: 1,
+        backgroundColor: colors.night.background,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 24,
+      }}
+    >
       <View style={{ alignItems: 'center' }}>
-        {/* VIGIL Logo Card */}
-        <View style={{ backgroundColor: '#ffffff', padding: 16, borderRadius: 24, marginBottom: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#1e293b' }}>
-          <Image 
-            source={require('../../assets/logo-icon.png')} 
-            style={{ width: 84, height: 84 }} 
-            resizeMode="contain" 
+        {/* VIGIL Logo Card (Obsidian glass with signature Matte Orange specular highlight) */}
+        <View
+          style={{
+            backgroundColor: '#0D0D0D',
+            padding: 18,
+            borderRadius: 28,
+            marginBottom: 20,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1.5,
+            borderColor: 'rgba(232, 115, 42, 0.4)',
+            shadowColor: colors.primary[500],
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.35,
+            shadowRadius: 18,
+            elevation: 10,
+          }}
+        >
+          <Image
+            source={require('../../assets/logo-icon.png')}
+            style={{ width: 84, height: 84 }}
+            resizeMode="contain"
           />
         </View>
 
-        <Text style={{ fontSize: 30, fontWeight: '900', color: '#ffffff', letterSpacing: 4 }}>VIGIL</Text>
-        <Text style={{ color: '#34d399', fontWeight: '700', fontSize: 12, textTransform: 'uppercase', letterSpacing: 2, marginTop: 4 }}>
-          Driver Fleet Portal
-        </Text>
-        <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 4, textAlign: 'center' }}>
-          Real-time GPS Radar & Travel Management
+        {/* Brand Heading */}
+        <Text
+          style={{
+            fontSize: 32,
+            fontWeight: '900',
+            color: colors.night.foreground,
+            letterSpacing: 4,
+          }}
+        >
+          VIGIL
         </Text>
 
-        <View style={{ marginTop: 32, flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 9999, borderWidth: 1, borderColor: '#1e293b' }}>
-          <ActivityIndicator size="small" color="#10b981" />
-          <Text style={{ color: '#cbd5e1', fontSize: 12, fontWeight: '500', marginLeft: 8 }}>Initializing workspace...</Text>
+        {/* Tactical Accent Chip */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: 'rgba(232, 115, 42, 0.15)',
+            borderWidth: 1,
+            borderColor: colors.primary[500],
+            paddingHorizontal: 12,
+            paddingVertical: 3.5,
+            borderRadius: 20,
+            marginTop: 8,
+          }}
+        >
+          <View
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: colors.primary[500],
+              marginRight: 6,
+            }}
+          />
+          <Text
+            style={{
+              color: colors.primary[400],
+              fontWeight: '900',
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: 1.5,
+            }}
+          >
+            Driver Telematics Portal
+          </Text>
+        </View>
+
+        <Text
+          style={{
+            color: colors.night.mutedForeground,
+            fontSize: 12,
+            marginTop: 8,
+            textAlign: 'center',
+            fontWeight: '500',
+          }}
+        >
+          Tour Operations & Real-Time GPS Radar
+        </Text>
+
+        {/* Initializing telemetry state */}
+        <View
+          style={{
+            marginTop: 40,
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.night.card,
+            paddingHorizontal: 18,
+            paddingVertical: 10,
+            borderRadius: 9999,
+            borderWidth: 1,
+            borderColor: colors.night.cardBorder,
+          }}
+        >
+          <ActivityIndicator size="small" color={colors.primary[500]} />
+          <Text
+            style={{
+              color: colors.night.mutedForeground,
+              fontSize: 12,
+              fontWeight: '600',
+              marginLeft: 10,
+              letterSpacing: 0.3,
+            }}
+          >
+            Synchronizing Bitgard Engine...
+          </Text>
         </View>
       </View>
     </SafeAreaView>

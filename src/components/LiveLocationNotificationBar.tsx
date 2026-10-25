@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { locationService, TrackingStatus } from '../services/locationService';
 import { navigationRef } from '../navigation/navigationRef';
+import { colors } from '../theme';
 
 export default function LiveLocationNotificationBar() {
   const insets = useSafeAreaInsets();
@@ -60,7 +61,7 @@ export default function LiveLocationNotificationBar() {
     };
   }, []);
 
-  // NEVER show on ActiveTour screen (the active tour screen has its own rich status banner, and the "Tour ->" button would be redundant and cover headers)
+  // NEVER show on ActiveTour screen (the active tour screen has its own rich status banner)
   // NEVER show on Splash or Login
   if (!status.isTracking || currentRoute === 'ActiveTour' || currentRoute === 'Splash' || currentRoute === 'Login') {
     return null;
@@ -85,10 +86,10 @@ export default function LiveLocationNotificationBar() {
         style={styles.touchable}
       >
         <View style={styles.leftRow}>
-          <View style={{ width: 28, height: 28, backgroundColor: '#ffffff', borderRadius: 7, justifyContent: 'center', alignItems: 'center', marginRight: 8 }}>
+          <View style={styles.logoWrapper}>
             <Image 
               source={require('../../assets/logo-icon.png')} 
-              style={{ width: 22, height: 22 }} 
+              style={{ width: 20, height: 20 }} 
               resizeMode="contain" 
             />
           </View>
@@ -97,7 +98,7 @@ export default function LiveLocationNotificationBar() {
             <View style={styles.pulseDot} />
           </View>
           <View style={styles.textColumn}>
-            <Text style={styles.titleText}>VIGIL Live Radar Active</Text>
+            <Text style={styles.titleText}>VIGIL LIVE RADAR</Text>
             <Text style={styles.subtitleText}>
               {speedText} • {status.pendingOfflineCount > 0 ? `📦 ${status.pendingOfflineCount} cached` : 'Synced with office'}
             </Text>
@@ -118,22 +119,22 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#064e3b', // Deep emerald green
-    borderBottomWidth: 1,
-    borderBottomColor: '#059669',
+    backgroundColor: '#0D0D0D', // Midnight Obsidian Base
+    borderBottomWidth: 1.5,
+    borderBottomColor: 'rgba(232, 115, 42, 0.45)', // Signature Matte Orange hairline
     zIndex: 9990,
     elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
   },
   touchable: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingLeft: 14,
-    paddingRight: 64, // Clears the 40px ArcNavbar trigger button in top-right corner
+    paddingRight: 64, // Clears the ArcNavbar trigger button in top-right corner
     paddingVertical: 10,
   },
   leftRow: {
@@ -141,6 +142,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     marginRight: 8,
+  },
+  logoWrapper: {
+    width: 28,
+    height: 28,
+    backgroundColor: '#1A1B1C',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#2E3035',
   },
   pulseDotWrapper: {
     width: 14,
@@ -154,40 +166,44 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: 'rgba(52, 211, 153, 0.4)',
+    backgroundColor: 'rgba(16, 185, 129, 0.35)',
   },
   pulseDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#34d399', // Bright emerald dot
+    backgroundColor: colors.telemetry.moving,
   },
   textColumn: {
     flex: 1,
   },
   titleText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '900',
+    letterSpacing: 0.8,
   },
   subtitleText: {
-    color: '#a7f3d0',
-    fontSize: 11,
+    color: colors.night.mutedForeground,
+    fontSize: 10.5,
     fontWeight: '500',
     marginTop: 1,
   },
   viewBadge: {
-    backgroundColor: '#059669',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#34d399',
+    backgroundColor: colors.primary[500],
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: 10,
+    shadowColor: colors.primary[500],
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 3,
   },
   viewBadgeText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '900',
+    letterSpacing: 0.3,
   },
 });

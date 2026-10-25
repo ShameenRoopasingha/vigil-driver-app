@@ -8,6 +8,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { DriverLoginInputSchema } from '../validations';
 import { toast } from '../utils/toast';
+import { colors, themeStyles } from '../theme';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -15,6 +16,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<'email' | 'password' | null>(null);
   const navigation = useNavigation<LoginScreenNavigationProp>();
 
   const handleLogin = async () => {
@@ -34,7 +36,7 @@ export default function LoginScreen() {
       if (response.data?.success && response.data?.data?.token) {
         await AsyncStorage.setItem('driverToken', response.data.data.token);
         await AsyncStorage.setItem('driverData', JSON.stringify(response.data.data.driver));
-        toast.success('Welcome back!', 'Logged in successfully');
+        toast.success('Welcome back!', 'Authenticated to VIGIL Fleet Radar');
         navigation.replace('Dashboard');
       } else {
         toast.error('Login Failed', response.data?.error || 'Invalid credentials');
@@ -48,59 +50,143 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc', justifyContent: 'center', paddingHorizontal: 24 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.day.background, justifyContent: 'center', paddingHorizontal: 24 }}>
+      {/* Brand Header */}
       <View style={{ alignItems: 'center', marginBottom: 28 }}>
-        <View style={{ backgroundColor: '#ffffff', padding: 14, borderRadius: 24, borderWidth: 1.5, borderColor: '#e2e8f0', marginBottom: 12, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4 }}>
+        <View
+          style={{
+            backgroundColor: colors.day.card,
+            padding: 16,
+            borderRadius: 26,
+            borderWidth: 1.5,
+            borderColor: colors.day.cardBorder,
+            marginBottom: 14,
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: colors.day.foreground,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.08,
+            shadowRadius: 10,
+            elevation: 4,
+          }}
+        >
           <Image 
             source={require('../../assets/logo-icon.png')} 
             style={{ width: 64, height: 64 }} 
             resizeMode="contain" 
           />
         </View>
-        <Text style={{ fontSize: 32, fontWeight: '900', color: '#0f172a', letterSpacing: 1.5 }}>VIGIL</Text>
-        <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.12)', borderWidth: 1, borderColor: '#10b981', paddingHorizontal: 12, paddingVertical: 3, borderRadius: 20, marginTop: 6 }}>
-          <Text style={{ color: '#047857', fontSize: 10, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' }}>
+
+        <Text style={{ fontSize: 32, fontWeight: '900', color: colors.day.foreground, letterSpacing: 2 }}>
+          VIGIL
+        </Text>
+
+        {/* Signature Matte Orange Pill Chip */}
+        <View
+          style={{
+            backgroundColor: colors.primary[50],
+            borderWidth: 1.2,
+            borderColor: colors.primary[400],
+            paddingHorizontal: 12,
+            paddingVertical: 3.5,
+            borderRadius: 20,
+            marginTop: 6,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
+          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary[500], marginRight: 6 }} />
+          <Text style={{ color: colors.primary[600], fontSize: 10, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase' }}>
             Chauffeur & Fleet Portal
           </Text>
         </View>
-        <Text style={{ color: '#64748b', fontSize: 12, fontWeight: '600', marginTop: 4 }}>Fleet & Travel Management</Text>
+
+        <Text style={{ color: colors.day.mutedForeground, fontSize: 12, fontWeight: '600', marginTop: 6 }}>
+          Tour Operations & Telematics
+        </Text>
       </View>
 
-      <View style={{ backgroundColor: '#ffffff', padding: 22, borderRadius: 24, borderWidth: 1, borderColor: '#e2e8f0', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 4 }}>
-        <Text style={{ fontSize: 20, fontWeight: '900', color: '#0f172a', marginBottom: 4, textAlign: 'center' }}>Driver Sign In</Text>
-        <Text style={{ fontSize: 12, color: '#64748b', marginBottom: 20, textAlign: 'center' }}>Access your assigned tours & GPS radar</Text>
+      {/* Login Card */}
+      <View
+        style={{
+          backgroundColor: colors.day.card,
+          padding: 24,
+          borderRadius: 24,
+          borderWidth: 1,
+          borderColor: colors.day.cardBorder,
+          shadowColor: colors.day.foreground,
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.07,
+          shadowRadius: 16,
+          elevation: 5,
+        }}
+      >
+        <Text style={{ fontSize: 20, fontWeight: '900', color: colors.day.foreground, marginBottom: 4, textAlign: 'center' }}>
+          Driver Sign In
+        </Text>
+        <Text style={{ fontSize: 12, color: colors.day.mutedForeground, marginBottom: 22, textAlign: 'center' }}>
+          Access your assigned tours & GPS radar
+        </Text>
         
-        <Text style={{ color: '#334155', marginBottom: 6, fontSize: 13, fontWeight: '800' }}>Email Address</Text>
+        {/* Email Field */}
+        <Text style={{ color: colors.day.foreground, marginBottom: 6, fontSize: 12.5, fontWeight: '800', letterSpacing: 0.3 }}>
+          EMAIL ADDRESS
+        </Text>
         <TextInput 
-          style={{ backgroundColor: '#f8fafc', borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 16, fontSize: 14, color: '#0f172a' }}
+          style={[
+            themeStyles.input,
+            {
+              marginBottom: 16,
+              borderColor: focusedInput === 'email' ? colors.primary[500] : colors.day.cardBorder,
+              backgroundColor: focusedInput === 'email' ? '#FFFFFF' : colors.day.input,
+            },
+          ]}
+          onFocus={() => setFocusedInput('email')}
+          onBlur={() => setFocusedInput(null)}
           placeholder="Enter your driver email"
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={colors.day.mutedForeground}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
         />
 
-        <Text style={{ color: '#334155', marginBottom: 6, fontSize: 13, fontWeight: '800' }}>Password</Text>
+        {/* Password Field */}
+        <Text style={{ color: colors.day.foreground, marginBottom: 6, fontSize: 12.5, fontWeight: '800', letterSpacing: 0.3 }}>
+          PASSWORD
+        </Text>
         <TextInput 
-          style={{ backgroundColor: '#f8fafc', borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 22, fontSize: 14, color: '#0f172a' }}
+          style={[
+            themeStyles.input,
+            {
+              marginBottom: 24,
+              borderColor: focusedInput === 'password' ? colors.primary[500] : colors.day.cardBorder,
+              backgroundColor: focusedInput === 'password' ? '#FFFFFF' : colors.day.input,
+            },
+          ]}
+          onFocus={() => setFocusedInput('password')}
+          onBlur={() => setFocusedInput(null)}
           placeholder="Enter your password"
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={colors.day.mutedForeground}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
         />
 
+        {/* Sign In Button (Signature Matte Orange with tactile amber glow) */}
         <TouchableOpacity 
-          style={{ backgroundColor: '#10b981', borderRadius: 14, paddingVertical: 15, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', shadowColor: '#10b981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 4 }}
+          style={[
+            themeStyles.btnPrimary,
+            { opacity: loading ? 0.75 : 1 },
+          ]}
           onPress={handleLogin}
           disabled={loading}
           activeOpacity={0.85}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 16, letterSpacing: 0.5 }}>Sign In</Text>
+            <Text style={themeStyles.btnPrimaryText}>SIGN IN</Text>
           )}
         </TouchableOpacity>
       </View>

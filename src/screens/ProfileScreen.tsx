@@ -25,6 +25,8 @@ import {
   DriverPasswordChangeSchema,
 } from '../validations';
 import { toast } from '../utils/toast';
+import { colors, themeStyles } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 
@@ -42,6 +44,7 @@ const AVATAR_PRESETS = [
 
 export default function ProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
+  const { isDark, colors: themeColors, toggleTheme, setTheme } = useTheme();
 
   const [loading, setLoading] = useState(true);
   const [driverName, setDriverName] = useState('');
@@ -344,7 +347,7 @@ export default function ProfileScreen() {
   const isPasswordReady = currentPassword.length > 0 && newPassword.length >= 6 && confirmPassword.length >= 6;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.background }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
@@ -352,11 +355,11 @@ export default function ProfileScreen() {
         {/* Sleek Top Header */}
         <View
           style={{
-            backgroundColor: '#ffffff',
+            backgroundColor: themeColors.card,
             paddingHorizontal: 16,
             paddingVertical: 12,
             borderBottomWidth: 1,
-            borderBottomColor: '#e2e8f0',
+            borderBottomColor: themeColors.cardBorder,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -365,20 +368,21 @@ export default function ProfileScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity
               onPress={() => navigation.goBack()}
-              style={{
-                backgroundColor: '#f1f5f9',
-                borderWidth: 1,
-                borderColor: '#cbd5e1',
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 12,
-                marginRight: 12,
-              }}
+              style={[
+                themeStyles.btnSecondary,
+                {
+                  backgroundColor: isDark ? '#1e293b' : colors.day.secondary,
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : colors.day.secondaryBorder,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  marginRight: 12,
+                },
+              ]}
               activeOpacity={0.7}
             >
-              <Text style={{ color: '#334155', fontSize: 13, fontWeight: '800' }}>‹ Back</Text>
+              <Text style={[themeStyles.btnSecondaryText, { color: themeColors.textPrimary }]}>‹ Back</Text>
             </TouchableOpacity>
-            <Text style={{ fontSize: 18, fontWeight: '900', color: '#0f172a' }}>Settings & Profile</Text>
+            <Text style={{ fontSize: 18, fontWeight: '900', color: themeColors.textPrimary }}>Settings & Profile</Text>
           </View>
 
           {/* Reserved space for top-right Arc Nav button */}
@@ -387,8 +391,8 @@ export default function ProfileScreen() {
 
         {loading ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator size="large" color="#10b981" />
-            <Text style={{ color: '#64748b', fontSize: 12, marginTop: 12, fontWeight: '600' }}>
+            <ActivityIndicator size="large" color={colors.primary[500]} />
+            <Text style={{ color: themeColors.textMuted, fontSize: 12, marginTop: 12, fontWeight: '600' }}>
               Loading profile settings...
             </Text>
           </View>
@@ -402,13 +406,13 @@ export default function ProfileScreen() {
             {/* 1. Identity Hero Card (Fixed Badge Layout) */}
             <View
               style={{
-                backgroundColor: '#ffffff',
+                backgroundColor: themeColors.card,
                 padding: 16,
                 borderRadius: 20,
                 borderWidth: 1,
-                borderColor: '#e2e8f0',
+                borderColor: themeColors.cardBorder,
                 marginBottom: 14,
-                shadowColor: '#000',
+                shadowColor: isDark ? '#000000' : colors.day.foreground,
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.04,
                 shadowRadius: 5,
@@ -423,10 +427,10 @@ export default function ProfileScreen() {
                       height: 64,
                       borderRadius: 32,
                       borderWidth: 2.5,
-                      borderColor: '#10b981',
+                      borderColor: colors.primary[500],
                       padding: 2,
                       marginRight: 14,
-                      backgroundColor: '#ecfdf5',
+                      backgroundColor: colors.primary[50],
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
@@ -443,22 +447,22 @@ export default function ProfileScreen() {
                       width: 64,
                       height: 64,
                       borderRadius: 32,
-                      backgroundColor: '#eff6ff',
+                      backgroundColor: colors.primary[50],
                       alignItems: 'center',
                       justifyContent: 'center',
-                      borderWidth: 2,
-                      borderColor: '#bfdbfe',
+                      borderWidth: 1.5,
+                      borderColor: colors.primary[300],
                       marginRight: 14,
                     }}
                   >
-                    <Text style={{ color: '#1d4ed8', fontWeight: '900', fontSize: 22 }}>
+                    <Text style={{ color: colors.primary[600], fontWeight: '900', fontSize: 22 }}>
                       {(driverName || 'DR').substring(0, 2).toUpperCase()}
                     </Text>
                   </View>
                 )}
 
                 <View style={{ flex: 1 }}>
-                  {/* Name & Badge Row - Guaranteed No Overflow */}
+                  {/* Name & Badge Row */}
                   <View
                     style={{
                       flexDirection: 'row',
@@ -468,32 +472,22 @@ export default function ProfileScreen() {
                     }}
                   >
                     <Text
-                      style={{ fontSize: 17, fontWeight: '900', color: '#0f172a', flex: 1, marginRight: 8 }}
+                      style={{ fontSize: 17, fontWeight: '900', color: colors.day.foreground, flex: 1, marginRight: 8 }}
                       numberOfLines={1}
                     >
                       {driverName || 'Chauffeur'}
                     </Text>
-                    <View
-                      style={{
-                        backgroundColor: '#ecfdf5',
-                        paddingHorizontal: 8,
-                        paddingVertical: 2.5,
-                        borderRadius: 6,
-                        borderWidth: 1,
-                        borderColor: '#a7f3d0',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#065f46', letterSpacing: 0.5 }}>
+                    <View style={themeStyles.brandBadge}>
+                      <Text style={themeStyles.brandBadgeText}>
                         CHAUFFEUR
                       </Text>
                     </View>
                   </View>
 
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748b' }} numberOfLines={1}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.day.mutedForeground }} numberOfLines={1}>
                     🏢 {companyName || 'Tour Transport Company'}
                   </Text>
-                  <Text style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }} numberOfLines={1}>
+                  <Text style={{ fontSize: 11, color: colors.day.mutedForeground, marginTop: 2 }} numberOfLines={1}>
                     ✉️ {currentEmail || 'Not configured'}
                   </Text>
                 </View>
@@ -503,13 +497,13 @@ export default function ProfileScreen() {
             {/* 2. Driver Name & Photo Card */}
             <View
               style={{
-                backgroundColor: '#ffffff',
+                backgroundColor: colors.day.card,
                 padding: 18,
                 borderRadius: 20,
                 borderWidth: 1,
-                borderColor: '#e2e8f0',
+                borderColor: colors.day.cardBorder,
                 marginBottom: 14,
-                shadowColor: '#000',
+                shadowColor: colors.day.foreground,
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.04,
                 shadowRadius: 5,
@@ -517,21 +511,21 @@ export default function ProfileScreen() {
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                <Text style={{ fontSize: 15, fontWeight: '900', color: '#0f172a' }}>Driver Name & Photo</Text>
+                <Text style={{ fontSize: 15, fontWeight: '900', color: colors.day.foreground }}>Driver Name & Photo</Text>
                 <View
                   style={{
-                    backgroundColor: '#eff6ff',
+                    backgroundColor: colors.primary[50],
                     paddingHorizontal: 8,
                     paddingVertical: 2,
                     borderRadius: 6,
                     borderWidth: 1,
-                    borderColor: '#bfdbfe',
+                    borderColor: colors.primary[200],
                   }}
                 >
-                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#1d4ed8' }}>Public Profile</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: colors.primary[600] }}>Public Profile</Text>
                 </View>
               </View>
-              <Text style={{ fontSize: 11, color: '#64748b', marginBottom: 14, lineHeight: 16 }}>
+              <Text style={{ fontSize: 11, color: colors.day.mutedForeground, marginBottom: 14, lineHeight: 16 }}>
                 This name and profile picture appear on passenger itineraries and welcome greeting.
               </Text>
 
@@ -546,9 +540,9 @@ export default function ProfileScreen() {
                   onPress={handlePickFromFiles}
                   style={{
                     flex: 1,
-                    backgroundColor: '#eff6ff',
+                    backgroundColor: colors.day.secondary,
                     borderWidth: 1.5,
-                    borderColor: '#93c5fd',
+                    borderColor: colors.day.secondaryBorder,
                     borderRadius: 14,
                     paddingVertical: 12,
                     paddingHorizontal: 8,
@@ -557,8 +551,8 @@ export default function ProfileScreen() {
                   }}
                 >
                   <Text style={{ fontSize: 22, marginBottom: 2 }}>📁</Text>
-                  <Text style={{ color: '#1d4ed8', fontWeight: '800', fontSize: 13 }}>Browse Files</Text>
-                  <Text style={{ color: '#64748b', fontSize: 10, fontWeight: '600', marginTop: 1 }}>
+                  <Text style={{ color: colors.day.foreground, fontWeight: '800', fontSize: 13 }}>Browse Files</Text>
+                  <Text style={{ color: colors.day.mutedForeground, fontSize: 10, fontWeight: '600', marginTop: 1 }}>
                     Gallery & Device
                   </Text>
                 </TouchableOpacity>
@@ -568,9 +562,9 @@ export default function ProfileScreen() {
                   onPress={handleTakePhoto}
                   style={{
                     flex: 1,
-                    backgroundColor: '#ecfdf5',
+                    backgroundColor: colors.primary[50],
                     borderWidth: 1.5,
-                    borderColor: '#a7f3d0',
+                    borderColor: colors.primary[300],
                     borderRadius: 14,
                     paddingVertical: 12,
                     paddingHorizontal: 8,
@@ -579,8 +573,8 @@ export default function ProfileScreen() {
                   }}
                 >
                   <Text style={{ fontSize: 22, marginBottom: 2 }}>📷</Text>
-                  <Text style={{ color: '#065f46', fontWeight: '800', fontSize: 13 }}>Take Photo</Text>
-                  <Text style={{ color: '#64748b', fontSize: 10, fontWeight: '600', marginTop: 1 }}>
+                  <Text style={{ color: colors.primary[700], fontWeight: '800', fontSize: 13 }}>Take Photo</Text>
+                  <Text style={{ color: colors.day.mutedForeground, fontSize: 10, fontWeight: '600', marginTop: 1 }}>
                     Use Camera
                   </Text>
                 </TouchableOpacity>
@@ -588,11 +582,11 @@ export default function ProfileScreen() {
 
               {/* Divider */}
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                <View style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
-                <Text style={{ color: '#94a3b8', fontSize: 10, fontWeight: '800', marginHorizontal: 8, letterSpacing: 0.5 }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: colors.day.cardBorder }} />
+                <Text style={{ color: colors.day.mutedForeground, fontSize: 10, fontWeight: '800', marginHorizontal: 8, letterSpacing: 0.5 }}>
                   OR SELECT AVATAR
                 </Text>
-                <View style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
+                <View style={{ flex: 1, height: 1, backgroundColor: colors.day.cardBorder }} />
               </View>
 
               {/* Avatar Selector Row - Perfectly Sized & Always Visible */}
@@ -808,6 +802,102 @@ export default function ProfileScreen() {
                   <Text style={{ color: '#16a34a', fontSize: 12, fontWeight: '700' }}>✓ Profile is up to date</Text>
                 </View>
               )}
+            </View>
+
+            {/* Theme & Cockpit Appearance Card */}
+            <View
+              style={{
+                backgroundColor: themeColors.card,
+                padding: 18,
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: themeColors.cardBorder,
+                marginBottom: 14,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.04,
+                shadowRadius: 5,
+                elevation: 2,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                <Text style={{ fontSize: 15, fontWeight: '900', color: themeColors.textPrimary }}>
+                  Cockpit Theme
+                </Text>
+                <View
+                  style={{
+                    backgroundColor: isDark ? 'rgba(56, 189, 248, 0.15)' : 'rgba(234, 88, 12, 0.12)',
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                    borderRadius: 6,
+                    borderWidth: 1,
+                    borderColor: isDark ? 'rgba(56, 189, 248, 0.3)' : 'rgba(234, 88, 12, 0.25)',
+                  }}
+                >
+                  <Text style={{ fontSize: 10, fontWeight: '900', color: isDark ? '#38bdf8' : '#ea580c' }}>
+                    {isDark ? '🌙 NIGHT VISION' : '☀️ DAYLIGHT'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={{ fontSize: 11, color: themeColors.textSecondary, marginBottom: 12, lineHeight: 16 }}>
+                Switch between Alabaster daylight contrast and Midnight Obsidian cockpit night vision for road safety.
+              </Text>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                {/* Day Mode Tile */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    Vibration.vibrate(10);
+                    setTheme('light');
+                    toast.info('☀️ Day Mode Active', 'Alabaster daylight theme activated.');
+                  }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: !isDark ? '#FFFBEB' : '#0F172A',
+                    borderWidth: !isDark ? 2 : 1,
+                    borderColor: !isDark ? '#E8732A' : 'rgba(255, 255, 255, 0.1)',
+                    borderRadius: 14,
+                    padding: 12,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ fontSize: 24, marginBottom: 4 }}>☀️</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '900', color: !isDark ? '#9A3412' : '#94A3B8' }}>
+                    Day Mode
+                  </Text>
+                  <Text style={{ fontSize: 9.5, color: !isDark ? '#C2410C' : '#64748B', marginTop: 2 }}>
+                    Alabaster Ceramic
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Night Mode Tile */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    Vibration.vibrate(10);
+                    setTheme('dark');
+                    toast.info('🌙 Night Mode Active', 'Obsidian cockpit night vision activated.');
+                  }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: isDark ? '#111827' : '#F8FAFC',
+                    borderWidth: isDark ? 2 : 1,
+                    borderColor: isDark ? '#E8732A' : '#E2E8F0',
+                    borderRadius: 14,
+                    padding: 12,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ fontSize: 24, marginBottom: 4 }}>🌙</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '900', color: isDark ? '#F8FAFC' : '#64748B' }}>
+                    Night Mode
+                  </Text>
+                  <Text style={{ fontSize: 9.5, color: isDark ? '#38BDF8' : '#94A3B8', marginTop: 2 }}>
+                    Obsidian Cockpit
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* 3. Email Address Card */}

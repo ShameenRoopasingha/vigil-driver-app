@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import Toast, { ToastConfig, ToastConfigParams } from 'react-native-toast-message';
+import { colors } from '../theme';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -13,30 +14,30 @@ interface ToastCardProps {
 
 const THEME_CONFIG = {
   success: {
-    accent: '#10b981',       // Emerald 500
-    iconBg: '#d1fae5',       // Emerald 100
-    iconColor: '#059669',    // Emerald 600
+    accent: colors.telemetry.moving,
+    iconBg: '#ecfdf5',
+    iconColor: colors.telemetry.movingDark,
     icon: '✓',
     defaultTitle: 'Success',
   },
   error: {
-    accent: '#ef4444',       // Red 500
-    iconBg: '#fee2e2',       // Red 100
-    iconColor: '#dc2626',    // Red 600
+    accent: colors.telemetry.alert,
+    iconBg: '#fff1f2',
+    iconColor: '#be123c',
     icon: '✕',
     defaultTitle: 'Error',
   },
   info: {
-    accent: '#0284c7',       // Sky 600
-    iconBg: '#e0f2fe',       // Sky 100
-    iconColor: '#0284c7',    // Sky 600
+    accent: colors.primary[500], // Signature Matte Orange
+    iconBg: colors.primary[50],
+    iconColor: colors.primary[600],
     icon: 'ℹ',
-    defaultTitle: 'Information',
+    defaultTitle: 'VIGIL Telemetry',
   },
   warning: {
-    accent: '#f59e0b',       // Amber 500
-    iconBg: '#fef3c7',       // Amber 100
-    iconColor: '#d97706',    // Amber 600
+    accent: colors.telemetry.idle,
+    iconBg: '#fef3c7',
+    iconColor: colors.telemetry.idleDark,
     icon: '⚠',
     defaultTitle: 'Attention',
   },
@@ -154,17 +155,17 @@ export default toast;
 const styles = StyleSheet.create({
   cardContainer: {
     width: Math.min(SCREEN_WIDTH - 28, 420),
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
+    backgroundColor: colors.day.card,
+    borderRadius: 16,
     borderLeftWidth: 5,
     borderTopWidth: 1,
     borderRightWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#f1f5f9',
-    shadowColor: '#0f172a',
+    borderColor: colors.day.cardBorder,
+    shadowColor: colors.day.foreground,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
     elevation: 8,
     marginHorizontal: 14,
   },
@@ -172,12 +173,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
   },
   iconBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -192,14 +193,15 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#0f172a',
+    fontWeight: '800',
+    color: colors.day.foreground,
     lineHeight: 18,
+    letterSpacing: 0.2,
   },
   messageText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#64748b',
+    color: colors.day.mutedForeground,
     marginTop: 2,
     lineHeight: 16,
   },
@@ -209,7 +211,7 @@ const styles = StyleSheet.create({
   },
   closeBtnText: {
     fontSize: 13,
-    color: '#94a3b8',
+    color: colors.day.mutedForeground,
     fontWeight: '700',
   },
 });

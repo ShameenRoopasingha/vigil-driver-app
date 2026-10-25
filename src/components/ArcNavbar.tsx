@@ -18,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { navigationRef } from '../navigation/navigationRef';
 import { locationService } from '../services/locationService';
 import { toast } from '../utils/toast';
+import { useTheme } from '../context/ThemeContext';
 
 export interface ArcNavItem {
   id: string;
@@ -33,6 +34,8 @@ export interface ArcNavItem {
 
 export default function ArcNavbar() {
   const insets = useSafeAreaInsets();
+  const { isDark, colors, toggleTheme } = useTheme();
+
   const [isOpen, setIsOpen] = useState(false);
   const [currentRoute, setCurrentRoute] = useState<string>('Dashboard');
   const [onDuty, setOnDuty] = useState(true);
@@ -49,15 +52,15 @@ export default function ArcNavbar() {
   const RADIUS = 210;   // Radial distance of icons
   const FOCAL_ANGLE = 135; // 135 degrees = 45 degrees down-left into phone thumb zone
 
-  // 12 Items = 30° per step (Identical to Admin Platform for continuous rich multi-icon display)
+  // 12 Items = 30° per step with Day/Night Theme toggle item
   const items: ArcNavItem[] = [
     {
       id: 'dashboard',
       name: 'Dashboard',
       screen: 'Dashboard',
       icon: '🏠',
-      color: '#38bdf8',
-      bgColor: 'rgba(56, 189, 248, 0.2)',
+      color: isDark ? '#38bdf8' : '#0284c7',
+      bgColor: isDark ? 'rgba(56, 189, 248, 0.2)' : 'rgba(2, 132, 199, 0.15)',
       subtitle: 'Overview & Assigned Tours',
     },
     {
@@ -71,12 +74,22 @@ export default function ArcNavbar() {
       subtitle: 'Live Radar & GPS Route',
     },
     {
+      id: 'theme',
+      name: isDark ? 'Mode: Night Cockpit' : 'Mode: Day Alabaster',
+      icon: isDark ? '🌙' : '☀️',
+      color: isDark ? '#38bdf8' : '#ea580c',
+      bgColor: isDark ? 'rgba(56, 189, 248, 0.2)' : 'rgba(234, 88, 12, 0.18)',
+      badge: isDark ? 'NIGHT' : 'DAY',
+      subtitle: isDark ? 'Switch to Light Alabaster Mode' : 'Switch to Dark Obsidian Cockpit',
+      isAction: true,
+    },
+    {
       id: 'calendar',
       name: 'Calendar',
       screen: 'Calendar',
       icon: '📅',
-      color: '#818cf8',
-      bgColor: 'rgba(129, 140, 248, 0.2)',
+      color: isDark ? '#818cf8' : '#4f46e5',
+      bgColor: isDark ? 'rgba(129, 140, 248, 0.2)' : 'rgba(79, 70, 229, 0.15)',
       subtitle: 'Scheduled Booking Dates',
     },
     {
@@ -84,8 +97,8 @@ export default function ArcNavbar() {
       name: 'Add Expense',
       screen: 'AddExpense',
       icon: '💸',
-      color: '#fbbf24',
-      bgColor: 'rgba(251, 191, 36, 0.2)',
+      color: isDark ? '#fbbf24' : '#d97706',
+      bgColor: isDark ? 'rgba(251, 191, 36, 0.2)' : 'rgba(217, 119, 6, 0.15)',
       subtitle: 'Fuel, Tolls & Receipts',
     },
     {
@@ -93,8 +106,8 @@ export default function ArcNavbar() {
       name: 'Driver Profile',
       screen: 'Profile',
       icon: '👤',
-      color: '#2dd4bf',
-      bgColor: 'rgba(45, 212, 191, 0.2)',
+      color: isDark ? '#2dd4bf' : '#0d9488',
+      bgColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(13, 148, 136, 0.15)',
       subtitle: 'Name, Avatar & Fleet Info',
     },
     {
@@ -121,8 +134,8 @@ export default function ArcNavbar() {
       id: 'callOffice',
       name: 'Call Fleet Office',
       icon: '📞',
-      color: '#38bdf8',
-      bgColor: 'rgba(56, 189, 248, 0.2)',
+      color: isDark ? '#38bdf8' : '#0284c7',
+      bgColor: isDark ? 'rgba(56, 189, 248, 0.2)' : 'rgba(2, 132, 199, 0.15)',
       subtitle: 'Direct Dispatch Contact',
       isAction: true,
     },
@@ -130,8 +143,8 @@ export default function ArcNavbar() {
       id: 'breakdown',
       name: 'Report Breakdown',
       icon: '🛠️',
-      color: '#f97316',
-      bgColor: 'rgba(249, 115, 22, 0.2)',
+      color: '#E8732A',
+      bgColor: 'rgba(232, 115, 42, 0.2)',
       subtitle: 'Dispatch Emergency Swap',
       isAction: true,
     },
@@ -148,19 +161,10 @@ export default function ArcNavbar() {
       id: 'refresh',
       name: 'Sync GPS Radar',
       icon: '🔄',
-      color: '#a78bfa',
-      bgColor: 'rgba(167, 139, 250, 0.2)',
+      color: isDark ? '#a78bfa' : '#7c3aed',
+      bgColor: isDark ? 'rgba(167, 139, 250, 0.2)' : 'rgba(124, 58, 237, 0.15)',
       subtitle: 'Sync Live Location Now',
       isAction: true,
-    },
-    {
-      id: 'history',
-      name: 'Tour History',
-      screen: 'Dashboard',
-      icon: '📜',
-      color: '#f472b6',
-      bgColor: 'rgba(244, 114, 182, 0.2)',
-      subtitle: 'Completed Trip Logs',
     },
   ];
 
@@ -291,6 +295,15 @@ export default function ArcNavbar() {
   };
 
   const executeItemAction = (item: ArcNavItem) => {
+    if (item.id === 'theme') {
+      Vibration.vibrate(12);
+      toggleTheme();
+      toast.info(
+        isDark ? '☀️ Day Theme Active' : '🌙 Night Theme Active',
+        isDark ? 'Alabaster Ceramic daylight theme activated.' : 'Obsidian Cockpit night vision activated.'
+      );
+      return;
+    }
     if (item.id === 'sos') {
       closeMenu(() => setShowSosModal(true));
       return;
@@ -479,9 +492,6 @@ export default function ArcNavbar() {
     return null;
   }
 
-  const bottomOffset = Math.max(insets.bottom, 16) + 16;
-  const rightOffset = 20;
-
   // Focal point coordinates (135° = 45° down-left from top-right corner)
   const focalRad = (FOCAL_ANGLE * Math.PI) / 180;
   const focalX = ORIGIN_X + RADIUS * Math.cos(focalRad); // ~ 171.5
@@ -489,20 +499,27 @@ export default function ArcNavbar() {
 
   return (
     <>
-      {/* Sleek Top-Right Corner Trigger Button (Admin App Style) */}
+      {/* Sleek Top-Right Corner Trigger Button with Day/Night Theming */}
       {!isOpen && (
         <View style={[styles.triggerWrapper, { top: insets.top + 10, right: 16 }]}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={openMenu}
-            style={styles.triggerButton}
+            style={[
+              styles.triggerButton,
+              {
+                backgroundColor: colors.triggerBg,
+                borderColor: colors.triggerBorder,
+                shadowColor: isDark ? '#000000' : '#0f172a',
+              },
+            ]}
             aria-label="Open Navigation Dial"
           >
-            {/* Dial Rotary Icon */}
+            {/* Dial Rotary Bars in High-Contrast Day/Night Tokens */}
             <View style={styles.triggerDialIcon}>
-              <View style={[styles.dialBar, { width: 13, height: 2.2, backgroundColor: '#10b981' }]} />
-              <View style={[styles.dialBar, { width: 17, height: 2.2, backgroundColor: '#0284c7', marginTop: 2.8 }]} />
-              <View style={[styles.dialBar, { width: 11, height: 2.2, backgroundColor: '#10b981', marginTop: 2.8 }]} />
+              <View style={[styles.dialBar, { width: 14, height: 2.2, backgroundColor: colors.dialBarColor }]} />
+              <View style={[styles.dialBar, { width: 18, height: 2.2, backgroundColor: colors.primary, marginTop: 2.8 }]} />
+              <View style={[styles.dialBar, { width: 12, height: 2.2, backgroundColor: colors.dialBarColor, marginTop: 2.8 }]} />
             </View>
 
             {/* Glowing Emerald Pulse Dot */}
@@ -519,12 +536,13 @@ export default function ArcNavbar() {
       {/* Fullscreen Modal Overlay for the Arc Dial */}
       {isOpen && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 10002, elevation: 25 }]} pointerEvents="box-none">
-          {/* Frosted Dark Backdrop */}
+          {/* Frosted Backdrop */}
           <Animated.View
             style={[
               StyleSheet.absoluteFill,
               styles.backdrop,
               {
+                backgroundColor: colors.modalOverlay,
                 opacity: animMenu.interpolate({
                   inputRange: [0, 1],
                   outputRange: [0, 1],
@@ -547,6 +565,10 @@ export default function ArcNavbar() {
               {
                 top: insets.top,
                 right: 0,
+                backgroundColor: colors.navBackground,
+                borderLeftColor: colors.navBorder,
+                borderBottomColor: colors.navBorder,
+                shadowColor: isDark ? '#000000' : '#0f172a',
                 opacity: animMenu,
                 transform: [
                   {
@@ -572,21 +594,66 @@ export default function ArcNavbar() {
             ]}
           >
             {/* Concentric Guide Arcs (Radius 210 and 150) */}
-            <View pointerEvents="none" style={styles.concentricOuter} />
-            <View pointerEvents="none" style={styles.concentricInner} />
+            <View
+              pointerEvents="none"
+              style={[
+                styles.concentricOuter,
+                { borderColor: colors.navConcentricOuter },
+              ]}
+            />
+            <View
+              pointerEvents="none"
+              style={[
+                styles.concentricInner,
+                { borderColor: colors.navConcentricInner },
+              ]}
+            />
 
-            {/* Top-Right Corner Hub: Brand & Close Button */}
+            {/* Top-Right Corner Hub: Brand, Quick 1-Tap Day/Night Switcher & Close Button */}
             <View style={[styles.cornerHub, { top: insets.top > 0 ? 12 : 8 }]}>
               <View style={styles.hubBrand}>
-                <Text style={styles.hubBrandTitle}>VIGIL DIAL</Text>
-                <Text style={styles.hubBrandSubtitle}>Infinite 360° • Rotary</Text>
+                <Text style={[styles.hubBrandTitle, { color: isDark ? '#34d399' : '#065f46' }]}>VIGIL DIAL</Text>
+                <Text style={[styles.hubBrandSubtitle, { color: isDark ? '#94a3b8' : '#64748b' }]}>
+                  {isDark ? 'NIGHT COCKPIT' : 'DAY ALABASTER'}
+                </Text>
               </View>
+
+              {/* Quick 1-Tap Day/Night Theme Toggle */}
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  Vibration.vibrate(10);
+                  toggleTheme();
+                  toast.info(
+                    isDark ? '☀️ Day Mode Active' : '🌙 Night Mode Active',
+                    isDark ? 'Alabaster daylight theme activated.' : 'Obsidian cockpit night vision activated.'
+                  );
+                }}
+                style={[
+                  styles.hubThemeButton,
+                  {
+                    backgroundColor: isDark ? '#1e293b' : '#f1f5f9',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#e2e8f0',
+                  },
+                ]}
+                aria-label="Toggle Theme"
+              >
+                <Text style={{ fontSize: 13 }}>{isDark ? '🌙' : '☀️'}</Text>
+              </TouchableOpacity>
+
+              {/* Close Button */}
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => closeMenu()}
-                style={styles.hubCloseButton}
+                style={[
+                  styles.hubCloseButton,
+                  {
+                    backgroundColor: isDark ? '#1e293b' : '#f1f5f9',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#e2e8f0',
+                  },
+                ]}
               >
-                <Text style={styles.hubCloseIcon}>✕</Text>
+                <Text style={[styles.hubCloseIcon, { color: colors.textPrimary }]}>✕</Text>
               </TouchableOpacity>
             </View>
 
@@ -598,6 +665,8 @@ export default function ArcNavbar() {
                 {
                   left: focalX - 22,
                   top: focalY - 22,
+                  borderColor: colors.accent,
+                  backgroundColor: colors.accentGlow,
                 },
               ]}
             />
@@ -642,13 +711,29 @@ export default function ArcNavbar() {
                     onPress={() => handleItemClick(idx, item)}
                     style={[
                       styles.itemSquircle,
-                      isFocused && styles.itemSquircleFocused,
-                      isActiveRoute && !isFocused && styles.itemSquircleActiveRoute,
+                      {
+                        backgroundColor: colors.squircleBg,
+                        borderColor: colors.squircleBorder,
+                      },
+                      isFocused && [
+                        styles.itemSquircleFocused,
+                        {
+                          backgroundColor: colors.squircleFocusedBg,
+                          borderColor: colors.squircleFocusedBorder,
+                        },
+                      ],
+                      isActiveRoute && !isFocused && [
+                        styles.itemSquircleActiveRoute,
+                        {
+                          backgroundColor: isDark ? 'rgba(16, 185, 129, 0.16)' : 'rgba(16, 185, 129, 0.12)',
+                          borderColor: colors.accent,
+                        },
+                      ],
                     ]}
                   >
                     <Text style={styles.itemIconText}>{item.icon}</Text>
                     {item.badge && (
-                      <View style={styles.itemBadge}>
+                      <View style={[styles.itemBadge, { backgroundColor: item.badge === 'LIVE' ? '#10b981' : colors.primary }]}>
                         <Text style={styles.itemBadgeText}>{item.badge}</Text>
                       </View>
                     )}
@@ -680,7 +765,14 @@ export default function ArcNavbar() {
               <TouchableOpacity
                 activeOpacity={0.85}
                 onPress={() => executeItemAction(items[activeIndex])}
-                style={styles.detailCard}
+                style={[
+                  styles.detailCard,
+                  {
+                    backgroundColor: colors.detailCardBg,
+                    borderColor: colors.detailCardBorder,
+                    shadowColor: isDark ? '#000000' : '#0f172a',
+                  },
+                ]}
               >
                 <View
                   style={[
@@ -692,15 +784,23 @@ export default function ArcNavbar() {
                 </View>
                 <View style={styles.detailTextWrapper}>
                   <View style={styles.detailTitleRow}>
-                    <Text style={styles.detailTitleText} numberOfLines={1}>
+                    <Text
+                      style={[styles.detailTitleText, { color: colors.textPrimary }]}
+                      numberOfLines={1}
+                    >
                       {items[activeIndex].name}
                     </Text>
-                    <Text style={styles.detailChevronText}>›</Text>
+                    <Text style={[styles.detailChevronText, { color: isDark ? '#34d399' : '#059669' }]}>›</Text>
                   </View>
-                  <Text style={styles.detailSubtitleText} numberOfLines={1}>
+                  <Text
+                    style={[styles.detailSubtitleText, { color: colors.textSecondary }]}
+                    numberOfLines={1}
+                  >
                     {items[activeIndex].subtitle}
                   </Text>
-                  <Text style={styles.detailActionText}>TAP TO OPEN</Text>
+                  <Text style={[styles.detailActionText, { color: colors.accent }]}>
+                    {items[activeIndex].id === 'theme' ? 'TAP TO SWITCH THEME' : 'TAP TO OPEN'}
+                  </Text>
                 </View>
               </TouchableOpacity>
             </Animated.View>
@@ -708,30 +808,47 @@ export default function ArcNavbar() {
         </View>
       )}
 
-      {/* Emergency SOS Quick Action Modal */}
+      {/* Emergency SOS Quick Action Modal with Day/Night Support */}
       <Modal
         visible={showSosModal}
         transparent
         animationType="fade"
         onRequestClose={() => setShowSosModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <View style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}>
+          <View
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor: colors.modalBg,
+                borderColor: colors.modalBorder,
+                shadowColor: isDark ? '#000000' : '#0f172a',
+              },
+            ]}
+          >
             <View style={styles.modalHeader}>
               <Text style={styles.modalHeaderIcon}>🚨</Text>
-              <Text style={styles.modalTitle}>Emergency Assistance</Text>
-              <Text style={styles.modalSubtitle}>Roadside safety & fleet management hotline</Text>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Emergency Assistance</Text>
+              <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
+                Roadside safety & fleet management hotline
+              </Text>
             </View>
 
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={triggerCallOffice}
-              style={styles.sosActionButtonPrimary}
+              style={[
+                styles.sosActionButtonPrimary,
+                {
+                  backgroundColor: isDark ? '#111827' : '#eff6ff',
+                  borderColor: isDark ? 'rgba(56, 189, 248, 0.4)' : '#93c5fd',
+                },
+              ]}
             >
               <Text style={styles.sosActionIcon}>📞</Text>
               <View style={{ flex: 1 }}>
-                <Text style={styles.sosActionTitle}>Call Fleet Office Hotline</Text>
-                <Text style={styles.sosActionDesc}>
+                <Text style={[styles.sosActionTitle, { color: colors.textPrimary }]}>Call Fleet Office Hotline</Text>
+                <Text style={[styles.sosActionDesc, { color: colors.textSecondary }]}>
                   {companyPhone ? `Direct dispatch to ${companyName} (${companyPhone})` : 'Office phone not configured'}
                 </Text>
               </View>
@@ -740,12 +857,18 @@ export default function ArcNavbar() {
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={triggerBreakdownReport}
-              style={styles.sosActionButtonSecondary}
+              style={[
+                styles.sosActionButtonSecondary,
+                {
+                  backgroundColor: isDark ? '#111827' : '#fff7ed',
+                  borderColor: isDark ? 'rgba(232, 115, 42, 0.4)' : '#fdba74',
+                },
+              ]}
             >
               <Text style={styles.sosActionIcon}>🛠️</Text>
               <View style={{ flex: 1 }}>
-                <Text style={styles.sosActionTitle}>Report Vehicle Breakdown</Text>
-                <Text style={styles.sosActionDesc}>
+                <Text style={[styles.sosActionTitle, { color: colors.textPrimary }]}>Report Vehicle Breakdown</Text>
+                <Text style={[styles.sosActionDesc, { color: colors.textSecondary }]}>
                   Dispatches emergency vehicle swap & notifies office manager
                 </Text>
               </View>
@@ -753,22 +876,39 @@ export default function ArcNavbar() {
 
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => Linking.openURL('tel:1912')}
-              style={styles.sosActionButtonTertiary}
+              onPress={() => {
+                setShowSosModal(false);
+                Linking.openURL('tel:1912');
+              }}
+              style={[
+                styles.sosActionButtonTertiary,
+                {
+                  backgroundColor: isDark ? '#111827' : '#ecfdf5',
+                  borderColor: isDark ? 'rgba(16, 185, 129, 0.4)' : '#6ee7b7',
+                },
+              ]}
             >
               <Text style={styles.sosActionIcon}>🛡️</Text>
               <View style={{ flex: 1 }}>
-                <Text style={styles.sosActionTitle}>Sri Lanka Tourist Police</Text>
-                <Text style={styles.sosActionDesc}>Dial 1912 24/7 dedicated tourist safety helpline</Text>
+                <Text style={[styles.sosActionTitle, { color: colors.textPrimary }]}>Tourist Police Hotline (1912)</Text>
+                <Text style={[styles.sosActionDesc, { color: colors.textSecondary }]}>
+                  Toll-free 24/7 dedicated tourist safety helpline
+                </Text>
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => setShowSosModal(false)}
-              style={styles.modalCloseButton}
+              style={[
+                styles.modalCloseButton,
+                {
+                  backgroundColor: isDark ? '#1e293b' : '#f1f5f9',
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#e2e8f0',
+                },
+              ]}
             >
-              <Text style={styles.modalCloseText}>Dismiss</Text>
+              <Text style={[styles.modalCloseText, { color: colors.textPrimary }]}>Close Emergency Menu</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -778,27 +918,20 @@ export default function ArcNavbar() {
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
-  },
-  // Sleek Trigger Button matching Light Driver App
   triggerWrapper: {
     position: 'absolute',
-    zIndex: 10001,
+    zIndex: 9999,
     elevation: 20,
   },
   triggerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#ffffff',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.12,
     shadowRadius: 6,
     elevation: 4,
   },
@@ -841,14 +974,10 @@ const styles = StyleSheet.create({
     width: 320,
     height: 320,
     borderBottomLeftRadius: 320,
-    backgroundColor: '#ffffff',
     borderLeftWidth: 2,
     borderBottomWidth: 2,
-    borderLeftColor: '#10b981',
-    borderBottomColor: '#10b981',
-    shadowColor: '#0f172a',
     shadowOffset: { width: -4, height: 8 },
-    shadowOpacity: 0.16,
+    shadowOpacity: 0.22,
     shadowRadius: 24,
     elevation: 25,
     zIndex: 10003,
@@ -862,7 +991,6 @@ const styles = StyleSheet.create({
     height: 420,
     borderRadius: 210,
     borderWidth: 1.5,
-    borderColor: 'rgba(16, 185, 129, 0.35)',
     borderStyle: 'dashed',
   },
   concentricInner: {
@@ -873,7 +1001,6 @@ const styles = StyleSheet.create({
     height: 300,
     borderRadius: 150,
     borderWidth: 1,
-    borderColor: 'rgba(226, 232, 240, 0.9)',
   },
 
   // Top-Right Corner Hub
@@ -891,29 +1018,32 @@ const styles = StyleSheet.create({
   hubBrandTitle: {
     fontSize: 10,
     fontWeight: '900',
-    color: '#065f46',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   hubBrandSubtitle: {
     fontSize: 8.5,
     fontWeight: '700',
-    color: '#64748b',
     letterSpacing: 0.4,
   },
-  hubCloseButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#f1f5f9',
+  hubThemeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  hubCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   hubCloseIcon: {
-    fontSize: 13,
-    color: '#0f172a',
+    fontSize: 12,
     fontWeight: '900',
   },
 
@@ -924,8 +1054,6 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     borderWidth: 2,
-    borderColor: '#10b981',
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
@@ -946,30 +1074,24 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 14,
-    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
   itemSquircleFocused: {
-    backgroundColor: '#10b981',
-    borderColor: '#059669',
-    borderWidth: 1.5,
+    borderWidth: 1.8,
     shadowColor: '#10b981',
     shadowOpacity: 0.5,
     shadowRadius: 10,
     elevation: 8,
   },
   itemSquircleActiveRoute: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#3b82f6',
-    borderWidth: 1.5,
+    borderWidth: 1.6,
   },
   itemIconText: {
     fontSize: 21,
@@ -978,7 +1100,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -4,
     right: -4,
-    backgroundColor: '#10b981',
     borderRadius: 8,
     paddingHorizontal: 4,
     paddingVertical: 1,
@@ -998,16 +1119,13 @@ const styles = StyleSheet.create({
     elevation: 28,
   },
   detailCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 18,
     borderWidth: 1.5,
-    borderColor: '#10b981',
     padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 8,
   },
@@ -1032,25 +1150,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   detailTitleText: {
-    color: '#0f172a',
     fontSize: 13.5,
     fontWeight: '900',
     flex: 1,
     marginRight: 4,
   },
   detailChevronText: {
-    color: '#10b981',
     fontSize: 16,
     fontWeight: '900',
   },
   detailSubtitleText: {
-    color: '#64748b',
     fontSize: 9.5,
     fontWeight: '600',
     marginTop: 2,
   },
   detailActionText: {
-    color: '#059669',
     fontSize: 9,
     fontWeight: '900',
     letterSpacing: 0.8,
@@ -1058,24 +1172,27 @@ const styles = StyleSheet.create({
   },
 
   // Emergency SOS Modal
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#ffffff',
     borderRadius: 22,
     borderWidth: 1.5,
-    borderColor: '#fca5a5',
     width: '100%',
     maxWidth: 380,
     padding: 20,
-    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
     shadowRadius: 20,
     elevation: 12,
   },
@@ -1090,19 +1207,15 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '900',
-    color: '#0f172a',
     letterSpacing: 0.5,
   },
   modalSubtitle: {
     fontSize: 12,
-    color: '#64748b',
     marginTop: 2,
     textAlign: 'center',
   },
   sosActionButtonPrimary: {
-    backgroundColor: '#eff6ff',
     borderWidth: 1.2,
-    borderColor: '#93c5fd',
     borderRadius: 14,
     padding: 12,
     flexDirection: 'row',
@@ -1110,9 +1223,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sosActionButtonSecondary: {
-    backgroundColor: '#fff7ed',
     borderWidth: 1.2,
-    borderColor: '#fdba74',
     borderRadius: 14,
     padding: 12,
     flexDirection: 'row',
@@ -1120,9 +1231,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sosActionButtonTertiary: {
-    backgroundColor: '#ecfdf5',
     borderWidth: 1.2,
-    borderColor: '#6ee7b7',
     borderRadius: 14,
     padding: 12,
     flexDirection: 'row',
@@ -1136,23 +1245,18 @@ const styles = StyleSheet.create({
   sosActionTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#0f172a',
   },
   sosActionDesc: {
     fontSize: 10.5,
-    color: '#64748b',
     marginTop: 1,
   },
   modalCloseButton: {
-    backgroundColor: '#f1f5f9',
     borderRadius: 12,
     paddingVertical: 11,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
   },
   modalCloseText: {
-    color: '#475569',
     fontSize: 13,
     fontWeight: '700',
   },
