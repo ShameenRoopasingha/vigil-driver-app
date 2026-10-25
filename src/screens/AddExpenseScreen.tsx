@@ -28,11 +28,41 @@ export default function AddExpenseScreen() {
   const [loading, setLoading] = useState(false);
 
   const categories = [
-    { id: 'FUEL', label: '⛽ Fuel Fill', color: colors.primary[500], bg: colors.primary[50], border: colors.primary[300] },
-    { id: 'SERVICE', label: '⚙️ Service', color: colors.primary[600], bg: colors.primary[100], border: colors.primary[300] },
-    { id: 'REPAIR', label: '🔧 Repair', color: '#EA580C', bg: '#FFF7ED', border: '#FED7AA' },
-    { id: 'BREAKDOWN', label: '⚡ Breakdown', color: colors.telemetry.alert, bg: '#FFF1F2', border: '#FECDD3' },
-    { id: 'OTHER', label: '📝 Note / Other', color: colors.day.mutedForeground, bg: colors.day.secondary, border: colors.day.secondaryBorder },
+    {
+      id: 'FUEL',
+      label: '⛽ Fuel Fill',
+      color: isDark ? '#FB923C' : colors.primary[500],
+      bg: isDark ? 'rgba(232, 115, 42, 0.2)' : colors.primary[50],
+      border: isDark ? '#EA580C' : colors.primary[300],
+    },
+    {
+      id: 'SERVICE',
+      label: '⚙️ Service',
+      color: isDark ? '#38BDF8' : colors.primary[600],
+      bg: isDark ? 'rgba(56, 189, 248, 0.2)' : colors.primary[100],
+      border: isDark ? '#0284C7' : colors.primary[300],
+    },
+    {
+      id: 'REPAIR',
+      label: '🔧 Repair',
+      color: isDark ? '#FBBF24' : '#EA580C',
+      bg: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FFF7ED',
+      border: isDark ? '#D97706' : '#FED7AA',
+    },
+    {
+      id: 'BREAKDOWN',
+      label: '⚡ Breakdown',
+      color: isDark ? '#F87171' : colors.telemetry.alert,
+      bg: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FFF1F2',
+      border: isDark ? '#DC2626' : '#FECDD3',
+    },
+    {
+      id: 'OTHER',
+      label: '📝 Note / Other',
+      color: isDark ? '#E2E8F0' : '#475569',
+      bg: isDark ? '#1E293B' : colors.day.secondary,
+      border: isDark ? '#334155' : colors.day.secondaryBorder,
+    },
   ];
 
   const handleSubmit = async () => {
@@ -162,11 +192,11 @@ export default function AddExpenseScreen() {
                       paddingVertical: 9,
                       borderRadius: 12,
                       borderWidth: 1.5,
-                      borderColor: isSelected ? cat.color : themeColors.cardBorder,
-                      backgroundColor: isSelected ? (isDark ? 'rgba(232, 115, 42, 0.2)' : cat.bg) : (isDark ? '#161E2E' : colors.day.card),
+                      borderColor: isSelected ? cat.border : (isDark ? '#28354D' : themeColors.cardBorder),
+                      backgroundColor: isSelected ? cat.bg : (isDark ? '#141C2B' : colors.day.card),
                     }}
                   >
-                    <Text style={{ color: isSelected ? (isDark ? '#FDBA74' : cat.color) : themeColors.textSecondary, fontWeight: isSelected ? '900' : '700', fontSize: 12 }}>
+                    <Text style={{ color: isSelected ? cat.color : (isDark ? '#CBD5E1' : '#64748B'), fontWeight: isSelected ? '900' : '700', fontSize: 12.5 }}>
                       {cat.label}
                     </Text>
                   </TouchableOpacity>

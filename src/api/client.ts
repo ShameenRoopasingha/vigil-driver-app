@@ -30,8 +30,8 @@ apiClient.interceptors.response.use(
   async (error) => {
     // 1. Handle HTTP 401 Unauthorized (Expired or Revoked Token)
     if (error.response?.status === 401) {
-      console.warn('[API Client] Unauthorized request (401). Clearing driver session...');
       try {
+        console.warn('[API Client] Unauthorized request (401). Clearing driver session...');
         await AsyncStorage.multiRemove(['driverToken', 'driverUser', 'driverData']);
         if (navigationRef.isReady()) {
           navigationRef.reset({

@@ -22,9 +22,12 @@ export default function LoginScreen() {
   const navigation = useNavigation<LoginScreenNavigationProp>();
 
   const handleLogin = async () => {
-    const validation = DriverLoginInputSchema.safeParse({ email, password });
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    const validation = DriverLoginInputSchema.safeParse({ email: trimmedEmail, password: trimmedPassword });
     if (!validation.success) {
-      toast.warning('Validation Error', validation.error.issues[0]?.message || 'Invalid email or password');
+      toast.warning('Validation Error', validation.error.issues[0]?.message || 'Please enter your driver email and password');
       return;
     }
 

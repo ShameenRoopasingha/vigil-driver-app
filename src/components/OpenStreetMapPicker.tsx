@@ -1162,7 +1162,7 @@ export default function OpenStreetMapPicker({
           onMessage={onWebViewMessage}
           javaScriptEnabled={true}
           domStorageEnabled={true}
-          androidLayerType="hardware"
+          androidLayerType="software"
           onLoadEnd={() => {
             const payload = lastInjectedPayloadRef.current || (routeResult ? {
               origin: pickup,

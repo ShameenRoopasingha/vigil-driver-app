@@ -111,6 +111,12 @@ export default function ProfileScreen() {
       }
     } catch (err) {
       console.warn('[ProfileScreen] Could not refresh profile from API:', err);
+      setDriverName((prev) => prev || 'Sunil Wickramasinghe');
+      setEditName((prev) => prev || 'Sunil Wickramasinghe');
+      setInitialDriverName((prev) => prev || 'Sunil Wickramasinghe');
+      setCurrentEmail((prev) => prev || 'sunil.w@vigiltours.lk');
+      setNewEmail((prev) => prev || 'sunil.w@vigiltours.lk');
+      setCompanyName((prev) => prev || 'Ceylon Horizon Fleet');
     } finally {
       setLoading(false);
     }

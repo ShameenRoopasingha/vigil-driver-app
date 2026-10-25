@@ -141,8 +141,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
       if (saved === 'light' || saved === 'dark') {
         setThemeState(saved);
-      } else if (systemScheme === 'light') {
-        setThemeState('light');
       } else {
         setThemeState('dark');
       }

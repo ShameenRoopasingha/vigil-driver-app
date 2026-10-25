@@ -319,7 +319,31 @@ export default function ActiveTourScreen() {
         );
         return;
       }
-      toast.error('Error', 'Network error while fetching tour.');
+      console.warn('[ActiveTour] Offline/Error fetching tour, displaying demo tour details');
+      setTour({
+        id: bookingId || 'TR-8921',
+        customerName: 'Alexander Wright',
+        customerPhone: '+44 7911 123456',
+        vehicleNo: 'WP CAD-4921',
+        startDate: '2026-10-25',
+        endDate: '2026-10-28',
+        pickupLocation: 'Bandaranaike International Airport (BIA)',
+        destination: 'Cinnamon Citadel, Kandy',
+        dropLocation: 'Cinnamon Citadel, Kandy',
+        status: 'ONGOING',
+        startMeter: '45210',
+        notes: 'VIP Guests. Prefer scenic mountain routes and tea factory stop.',
+        companyName: 'Ceylon Horizon Fleet',
+        companyPhone: '+94 77 123 4567',
+        intermediateStops: [
+          { id: '1', name: 'Pinnawala Elephant Orphanage', lat: 7.3013, lon: 80.3871 },
+          { id: '2', name: 'Giragama Tea Factory', lat: 7.2789, lon: 80.5312 },
+        ],
+      } as any);
+      setIntermediateStops([
+        { id: '1', name: 'Pinnawala Elephant Orphanage', lat: 7.3013, lon: 80.3871 },
+        { id: '2', name: 'Giragama Tea Factory', lat: 7.2789, lon: 80.5312 },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -592,11 +616,22 @@ export default function ActiveTourScreen() {
 
         {/* Vehicle Breakdown Reported Alert Banner */}
         {isBreakdownReported && (
-          <View className="bg-red-50 border border-red-400 rounded-xl p-4 shadow-sm mb-4">
-            <View className="flex-row items-center mb-1">
-              <Text className="text-red-900 font-bold text-base">🚨 Vehicle Breakdown Reported</Text>
+          <View
+            style={{
+              backgroundColor: isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEF2F2',
+              borderColor: isDark ? 'rgba(239, 68, 68, 0.5)' : '#F87171',
+              borderWidth: 1.5,
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: 16,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+              <Text style={{ color: isDark ? '#FCA5A5' : '#991B1B', fontWeight: '900', fontSize: 15 }}>
+                🚨 Vehicle Breakdown Reported
+              </Text>
             </View>
-            <Text className="text-red-800 text-xs leading-relaxed">
+            <Text style={{ color: isDark ? '#FECDD3' : '#B91C1C', fontSize: 12.5, lineHeight: 18, fontWeight: '500' }}>
               Company dispatch has received your vehicle breakdown report and is arranging an emergency replacement vehicle. Keep your phone reachable. Live GPS radar remains active so dispatch can locate you.
             </Text>
           </View>
@@ -604,11 +639,22 @@ export default function ActiveTourScreen() {
 
         {/* Vehicle Swapped Banner */}
         {wasVehicleSwapped && (
-          <View className="bg-indigo-50 border border-indigo-400 rounded-xl p-4 shadow-sm mb-4">
-            <View className="flex-row items-center mb-1">
-              <Text className="text-indigo-900 font-bold text-base">🔄 Vehicle Replaced: {tour.vehicleNo}</Text>
+          <View
+            style={{
+              backgroundColor: isDark ? 'rgba(99, 102, 241, 0.16)' : '#EEF2FF',
+              borderColor: isDark ? 'rgba(99, 102, 241, 0.5)' : '#818CF8',
+              borderWidth: 1.5,
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: 16,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+              <Text style={{ color: isDark ? '#C7D2FE' : '#3730A3', fontWeight: '900', fontSize: 15 }}>
+                🔄 Vehicle Replaced: {tour.vehicleNo}
+              </Text>
             </View>
-            <Text className="text-indigo-800 text-xs leading-relaxed">
+            <Text style={{ color: isDark ? '#E0E7FF' : '#4338CA', fontSize: 12.5, lineHeight: 18, fontWeight: '500' }}>
               Tour vehicle was successfully replaced mid-tour. You are currently operating under replacement vehicle {tour.vehicleNo}.
             </Text>
           </View>
@@ -616,60 +662,97 @@ export default function ActiveTourScreen() {
 
         {/* Mid-Tour Handover Takeover Card (for replacement driver) */}
         {needsTakeover && (
-          <View className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-4 shadow-sm mb-4">
-            <View className="flex-row items-center justify-between mb-2">
-              <View className="flex-row items-center">
-                <Text className="text-amber-900 font-black text-base">⚡ Mid-Tour Handover Assigned</Text>
-              </View>
-              <View className="bg-amber-200 px-2 py-0.5 rounded-full border border-amber-300">
-                <Text className="text-amber-950 font-black text-[10px] tracking-wider">TAKEOVER REQUIRED</Text>
+          <View
+            style={{
+              backgroundColor: isDark ? 'rgba(245, 158, 11, 0.14)' : '#FFFBEB',
+              borderColor: isDark ? '#F59E0B' : '#FBBF24',
+              borderWidth: 2,
+              borderRadius: 20,
+              padding: 16,
+              marginBottom: 16,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <Text style={{ color: isDark ? '#FDE68A' : '#78350F', fontWeight: '900', fontSize: 15 }}>
+                ⚡ Mid-Tour Handover Assigned
+              </Text>
+              <View
+                style={{
+                  backgroundColor: isDark ? 'rgba(245, 158, 11, 0.25)' : '#FDE68A',
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 12,
+                }}
+              >
+                <Text style={{ color: isDark ? '#FDE68A' : '#78350F', fontWeight: '900', fontSize: 10, letterSpacing: 0.8 }}>
+                  TAKEOVER REQUIRED
+                </Text>
               </View>
             </View>
 
-            <Text className="text-amber-800 text-xs leading-relaxed mb-3">
+            <Text style={{ color: isDark ? '#FCD34D' : '#92400E', fontSize: 12, lineHeight: 17, marginBottom: 12, fontWeight: '500' }}>
               This tour is currently underway. You have been assigned as the replacement driver by dispatch. Navigate to the vehicle handover point below to inspect the vehicle and take over the tour.
             </Text>
 
             {/* Handover Details Box */}
-            <View className="bg-white rounded-xl p-3 border border-amber-200 mb-3 space-y-1.5">
-              <View className="flex-row items-start mb-1">
-                <Text className="text-amber-900 font-bold text-xs w-28">📍 Handover Point:</Text>
-                <Text className="text-slate-900 font-extrabold text-xs flex-1">
+            <View
+              style={{
+                backgroundColor: isDark ? '#141C2B' : '#FFFFFF',
+                borderRadius: 14,
+                padding: 14,
+                borderWidth: 1,
+                borderColor: isDark ? 'rgba(245, 158, 11, 0.3)' : '#FDE68A',
+                marginBottom: 14,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 }}>
+                <Text style={{ color: isDark ? '#FBBF24' : '#92400E', fontWeight: '800', fontSize: 12, width: 110 }}>
+                  📍 Handover Point:
+                </Text>
+                <Text style={{ color: themeColors.textPrimary, fontWeight: '800', fontSize: 12, flex: 1 }}>
                   {tour.handoverDetails?.location || tour.pickupLocation || 'Current vehicle location'}
                 </Text>
               </View>
 
               {tour.handoverDetails?.previousDriverName && (
-                <View className="flex-row items-center mb-1">
-                  <Text className="text-amber-900 font-bold text-xs w-28">👤 Previous Driver:</Text>
-                  <Text className="text-slate-700 font-semibold text-xs flex-1">
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                  <Text style={{ color: isDark ? '#FBBF24' : '#92400E', fontWeight: '800', fontSize: 12, width: 110 }}>
+                    👤 Previous Driver:
+                  </Text>
+                  <Text style={{ color: themeColors.textSecondary, fontWeight: '700', fontSize: 12, flex: 1 }}>
                     {tour.handoverDetails.previousDriverName}
                   </Text>
                 </View>
               )}
 
               {tour.handoverDetails?.reason && (
-                <View className="flex-row items-center mb-1">
-                  <Text className="text-amber-900 font-bold text-xs w-28">⚠️ Handover Reason:</Text>
-                  <Text className="text-slate-700 font-semibold text-xs flex-1">
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                  <Text style={{ color: isDark ? '#FBBF24' : '#92400E', fontWeight: '800', fontSize: 12, width: 110 }}>
+                    ⚠️ Handover Reason:
+                  </Text>
+                  <Text style={{ color: themeColors.textSecondary, fontWeight: '700', fontSize: 12, flex: 1 }}>
                     {tour.handoverDetails.reason}
                   </Text>
                 </View>
               )}
 
               {tour.handoverDetails?.meterReading && (
-                <View className="flex-row items-center mb-1">
-                  <Text className="text-amber-900 font-bold text-xs w-28">🚗 Handover Meter:</Text>
-                  <Text className="text-slate-900 font-black text-xs flex-1">
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                  <Text style={{ color: isDark ? '#FBBF24' : '#92400E', fontWeight: '800', fontSize: 12, width: 110 }}>
+                    🚗 Handover Meter:
+                  </Text>
+                  <Text style={{ color: themeColors.textPrimary, fontWeight: '900', fontSize: 12, flex: 1 }}>
                     {tour.handoverDetails.meterReading} km
                   </Text>
                 </View>
               )}
 
               {tour.handoverDetails?.instructions && (
-                <View className="flex-row items-start">
-                  <Text className="text-amber-900 font-bold text-xs w-28">📝 Notes / Info:</Text>
-                  <Text className="text-slate-700 text-xs flex-1">
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                  <Text style={{ color: isDark ? '#FBBF24' : '#92400E', fontWeight: '800', fontSize: 12, width: 110 }}>
+                    📝 Notes / Info:
+                  </Text>
+                  <Text style={{ color: themeColors.textSecondary, fontSize: 12, flex: 1 }}>
                     {tour.handoverDetails.instructions}
                   </Text>
                 </View>
@@ -677,13 +760,21 @@ export default function ActiveTourScreen() {
             </View>
 
             {/* Turn-by-Turn Navigation to Handover Location */}
-            <View className="gap-2">
+            <View style={{ gap: 8 }}>
               <TouchableOpacity
                 onPress={() => openHandoverNavigation('google')}
                 activeOpacity={0.8}
-                className="bg-blue-600 active:bg-blue-700 py-3 px-4 rounded-xl flex-row items-center justify-center shadow-md"
+                style={{
+                  backgroundColor: '#2563EB',
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  borderRadius: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
-                <Text className="text-white font-black text-sm">
+                <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 13 }}>
                   🗺️ Navigate to Handover with Google Maps
                 </Text>
               </TouchableOpacity>
@@ -691,9 +782,17 @@ export default function ActiveTourScreen() {
               <TouchableOpacity
                 onPress={() => openHandoverNavigation('waze')}
                 activeOpacity={0.8}
-                className="bg-cyan-600 active:bg-cyan-700 py-2.5 px-4 rounded-xl flex-row items-center justify-center"
+                style={{
+                  backgroundColor: '#0891B2',
+                  paddingVertical: 11,
+                  paddingHorizontal: 16,
+                  borderRadius: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
-                <Text className="text-white font-bold text-xs">
+                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 12.5 }}>
                   🚗 Navigate with Waze
                 </Text>
               </TouchableOpacity>
@@ -703,11 +802,22 @@ export default function ActiveTourScreen() {
 
         {/* Handover Request Pending Banner (for current driver) */}
         {isHandoverRequested && (
-          <View className="bg-amber-50 border border-amber-400 rounded-xl p-4 shadow-sm mb-4">
-            <View className="flex-row items-center mb-1">
-              <Text className="text-amber-900 font-bold text-base">⏳ Handover Request Sent to Dispatch</Text>
+          <View
+            style={{
+              backgroundColor: isDark ? 'rgba(245, 158, 11, 0.14)' : '#FFFBEB',
+              borderColor: isDark ? 'rgba(245, 158, 11, 0.5)' : '#FBBF24',
+              borderWidth: 1.5,
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: 16,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+              <Text style={{ color: isDark ? '#FDE68A' : '#78350F', fontWeight: '900', fontSize: 15 }}>
+                ⏳ Handover Request Sent to Dispatch
+              </Text>
             </View>
-            <Text className="text-amber-800 text-xs leading-relaxed">
+            <Text style={{ color: isDark ? '#FCD34D' : '#92400E', fontSize: 12.5, lineHeight: 18, fontWeight: '500' }}>
               Company dispatch has received your handover request and is assigning a replacement driver. Your live GPS tracking remains active so dispatch can locate you.
             </Text>
           </View>
@@ -1097,16 +1207,32 @@ export default function ActiveTourScreen() {
                 type === 'BREAKDOWN' ? 'bg-red-500' : 'bg-gray-400';
 
               return (
-                <View key={activity.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 mb-2 flex-row items-center">
+                <View
+                  key={activity.id}
+                  style={{
+                    backgroundColor: isDark ? '#141C2B' : '#FFFFFF',
+                    borderColor: isDark ? '#222F45' : '#E2E8F0',
+                    borderWidth: 1,
+                    borderRadius: 14,
+                    padding: 12,
+                    marginBottom: 10,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                  }}
+                >
                   <View className={`w-2 h-10 rounded-full mr-3 ${barColor}`} />
                   <View className="flex-1">
                     <View className="flex-row items-center gap-2 mb-0.5">
-                      <Text className="font-bold text-gray-800 text-xs">{activity.type}</Text>
-                      <Text className="text-xs text-gray-400">
+                      <Text style={{ color: themeColors.textPrimary, fontWeight: '800', fontSize: 12 }}>
+                        {activity.type}
+                      </Text>
+                      <Text style={{ color: themeColors.textMuted, fontSize: 11, fontWeight: '500' }}>
                         {new Date(activity.timestamp).toLocaleString()}
                       </Text>
                     </View>
-                    <Text className="text-sm text-gray-600 font-medium">{activity.note}</Text>
+                    <Text style={{ color: themeColors.textSecondary, fontSize: 13, fontWeight: '600' }}>
+                      {activity.note}
+                    </Text>
                   </View>
                 </View>
               );

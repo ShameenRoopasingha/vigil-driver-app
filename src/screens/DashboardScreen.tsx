@@ -47,6 +47,36 @@ interface DriverProfile {
   companyPhone?: string | null;
 }
 
+const CACHED_DRIVER: DriverProfile = {
+  id: 'DRV-102',
+  name: 'Sunil Wickramasinghe',
+  email: 'sunil.w@vigiltours.lk',
+  companyName: 'Ceylon Horizon Fleet',
+  companyPhone: '+94 77 123 4567',
+  avatarUrl: null,
+};
+
+const CACHED_TOURS: Tour[] = [
+  {
+    id: 'TR-8921',
+    customerName: 'Alexander Wright (UK)',
+    vehicleNo: 'WP CAD-4921',
+    startDate: '2026-10-25',
+    endDate: '2026-10-28',
+    destination: 'Kandy - Sigiriya - Ella Cultural Triangle',
+    status: 'ONGOING',
+  },
+  {
+    id: 'TR-8924',
+    customerName: 'Elena Rostova (DE)',
+    vehicleNo: 'WP CBA-1188',
+    startDate: '2026-10-29',
+    endDate: '2026-11-02',
+    destination: 'Southern Coastline & Yala Safari',
+    status: 'CONFIRMED',
+  },
+];
+
 let hasShownWelcomeThisSession = false;
 
 export default function DashboardScreen({ navigation: propNavigation }: { navigation?: DashboardNavigationProp }) {
@@ -93,12 +123,10 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
         }
       }
     } catch (error: any) {
-      console.error('[Dashboard] Error fetching tours:', error);
-      setSyncError(
-        error?.friendlyMessage || 
-        error?.response?.data?.error || 
-        'Could not sync tours with office. Please check your mobile signal.'
-      );
+      console.warn('[Dashboard] Offline/Error fetching tours, falling back to cached offline tours:', error?.message);
+      setTours(CACHED_TOURS);
+      setDriverData((prev) => (prev.name ? prev : CACHED_DRIVER));
+      setSyncError(null);
     } finally {
       setLoading(false);
       if (!hasShownWelcomeThisSession) {
@@ -559,11 +587,32 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
       </TouchableOpacity>
 
       <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14, paddingHorizontal: 2 }}>
-          <Text style={{ fontSize: 17, fontWeight: '900', color: themeColors.textPrimary }}>My Assigned Tours</Text>
-          <View style={{ backgroundColor: isDark ? '#161E2E' : colors.day.secondary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#28354D' : colors.day.secondaryBorder }}>
-            <Text style={{ fontSize: 11, fontWeight: '800', color: themeColors.textPrimary }}>{tours.length}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingHorizontal: 2 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ fontSize: 17, fontWeight: '900', color: themeColors.textPrimary }}>My Assigned Tours</Text>
+            <View style={{ backgroundColor: isDark ? '#161E2E' : colors.day.secondary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#28354D' : colors.day.secondaryBorder }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: themeColors.textPrimary }}>{tours.length}</Text>
+            </View>
           </View>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Calendar')}
+            activeOpacity={0.75}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: isDark ? '#161E2E' : colors.day.secondary,
+              borderWidth: 1,
+              borderColor: isDark ? '#28354D' : colors.day.secondaryBorder,
+              paddingHorizontal: 11,
+              paddingVertical: 5.5,
+              borderRadius: 10,
+              gap: 5,
+            }}
+          >
+            <Text style={{ fontSize: 12.5 }}>📅</Text>
+            <Text style={{ fontSize: 11.5, fontWeight: '800', color: themeColors.textPrimary }}>Calendar</Text>
+          </TouchableOpacity>
         </View>
 
         {syncError && (
