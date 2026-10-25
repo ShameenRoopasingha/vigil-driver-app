@@ -314,30 +314,30 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
 
         {/* Mid-Tour Handover Notification & Direct Navigation Card */}
         {item.needsTakeover && item.handoverDetails && (
-          <View style={{ backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A', borderRadius: 14, padding: 12, marginVertical: 8 }}>
+          <View style={{ backgroundColor: isDark ? 'rgba(245, 158, 11, 0.12)' : '#FFFBEB', borderWidth: 1, borderColor: isDark ? 'rgba(245, 158, 11, 0.4)' : '#FDE68A', borderRadius: 14, padding: 12, marginVertical: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.telemetry.idle, marginRight: 6 }} />
-                <Text style={{ color: '#92400E', fontWeight: '900', fontSize: 11, textTransform: 'uppercase' }}>
+                <Text style={{ color: isDark ? '#FDE68A' : '#92400E', fontWeight: '900', fontSize: 11, textTransform: 'uppercase' }}>
                   Mid-Tour Handover Assigned
                 </Text>
               </View>
-              <View style={{ backgroundColor: '#FDE68A', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                <Text style={{ color: '#78350F', fontSize: 9, fontWeight: '800' }}>ACTION REQUIRED</Text>
+              <View style={{ backgroundColor: isDark ? 'rgba(245, 158, 11, 0.25)' : '#FDE68A', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                <Text style={{ color: isDark ? '#FDE68A' : '#78350F', fontSize: 9, fontWeight: '800' }}>ACTION REQUIRED</Text>
               </View>
             </View>
 
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
-              <Text style={{ color: '#92400E', fontSize: 11, fontWeight: '700', width: 75 }}>📍 Location:</Text>
-              <Text style={{ color: colors.day.foreground, fontSize: 11, fontWeight: '600', flex: 1 }} numberOfLines={2}>
+              <Text style={{ color: isDark ? '#FDE68A' : '#92400E', fontSize: 11, fontWeight: '700', width: 75 }}>📍 Location:</Text>
+              <Text style={{ color: themeColors.textPrimary, fontSize: 11, fontWeight: '600', flex: 1 }} numberOfLines={2}>
                 {item.handoverDetails.location || 'Vehicle Handover Point'}
               </Text>
             </View>
 
             {item.handoverDetails.previousDriverName ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                <Text style={{ color: '#92400E', fontSize: 11, fontWeight: '700', width: 75 }}>👤 Driver:</Text>
-                <Text style={{ color: colors.day.mutedForeground, fontSize: 11, fontWeight: '500', flex: 1 }}>
+                <Text style={{ color: isDark ? '#FDE68A' : '#92400E', fontSize: 11, fontWeight: '700', width: 75 }}>👤 Driver:</Text>
+                <Text style={{ color: themeColors.textSecondary, fontSize: 11, fontWeight: '500', flex: 1 }}>
                   From {item.handoverDetails.previousDriverName} {item.handoverDetails.reason ? `(${item.handoverDetails.reason})` : ''}
                 </Text>
               </View>
@@ -345,8 +345,8 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
 
             {item.handoverDetails.meterReading ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                <Text style={{ color: '#92400E', fontSize: 11, fontWeight: '700', width: 75 }}>🚗 Odometer:</Text>
-                <Text style={{ color: colors.day.foreground, fontSize: 11, fontWeight: '700', fontFamily: 'monospace', flex: 1 }}>
+                <Text style={{ color: isDark ? '#FDE68A' : '#92400E', fontSize: 11, fontWeight: '700', width: 75 }}>🚗 Odometer:</Text>
+                <Text style={{ color: themeColors.textPrimary, fontSize: 11, fontWeight: '700', fontFamily: 'monospace', flex: 1 }}>
                   {item.handoverDetails.meterReading} km
                 </Text>
               </View>
@@ -370,7 +370,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
         
         {/* Vehicle Plate Row */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-          <Text style={{ color: colors.day.mutedForeground, fontSize: 12, width: 85, fontWeight: '600' }}>Vehicle:</Text>
+          <Text style={{ color: themeColors.textSecondary, fontSize: 12, width: 85, fontWeight: '600' }}>Vehicle:</Text>
           <View style={{ backgroundColor: colors.plate.bg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
             <Text style={{ color: colors.plate.text, fontSize: 11.5, fontWeight: '800', fontFamily: 'monospace', letterSpacing: 1 }}>
               {item.vehicleNo}
@@ -380,22 +380,22 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
         
         {/* Destination */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-          <Text style={{ color: colors.day.mutedForeground, fontSize: 12, width: 85, fontWeight: '600' }}>Destination:</Text>
-          <Text style={{ color: colors.day.foreground, fontSize: 12.5, fontWeight: '600', flex: 1 }} numberOfLines={1}>
+          <Text style={{ color: themeColors.textSecondary, fontSize: 12, width: 85, fontWeight: '600' }}>Destination:</Text>
+          <Text style={{ color: themeColors.textPrimary, fontSize: 12.5, fontWeight: '600', flex: 1 }} numberOfLines={1}>
             {item.destination || 'Not specified'}
           </Text>
         </View>
 
         {/* Dates */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-          <Text style={{ color: colors.day.mutedForeground, fontSize: 12, width: 85, fontWeight: '600' }}>Tour Date:</Text>
-          <Text style={{ color: colors.day.foreground, fontSize: 12, fontWeight: '600' }}>
+          <Text style={{ color: themeColors.textSecondary, fontSize: 12, width: 85, fontWeight: '600' }}>Tour Date:</Text>
+          <Text style={{ color: themeColors.textPrimary, fontSize: 12, fontWeight: '600' }}>
             {new Date(item.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
           </Text>
         </View>
 
         {/* Action Buttons */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.day.muted, gap: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 10, borderTopWidth: 1, borderTopColor: themeColors.cardBorder, gap: 8 }}>
           <TouchableOpacity 
             activeOpacity={0.85}
             style={{
@@ -531,7 +531,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
 
           <View style={{ flex: 1, minWidth: 0 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={{ fontSize: 11, fontWeight: '800', color: colors.primary[700], letterSpacing: 0.6, textTransform: 'uppercase' }} numberOfLines={1}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: isDark ? colors.primary[400] : colors.primary[700], letterSpacing: 0.6, textTransform: 'uppercase' }} numberOfLines={1}>
                 {driverData.companyName || 'Tour Transport Company'}
               </Text>
               {driverData.companyLogoUrl ? (
@@ -542,35 +542,35 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
                 />
               ) : null}
             </View>
-            <Text style={{ fontSize: 17, fontWeight: '900', color: colors.day.foreground, marginTop: 1 }} numberOfLines={1}>
+            <Text style={{ fontSize: 17, fontWeight: '900', color: themeColors.textPrimary, marginTop: 1 }} numberOfLines={1}>
               {getGreeting()}, {driverData.name || 'Driver'}! 👋
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
               <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.telemetry.moving, marginRight: 6 }} />
-              <Text style={{ fontSize: 11, color: colors.telemetry.movingDark, fontWeight: '700' }}>Live GPS Radar Synchronized</Text>
+              <Text style={{ fontSize: 11, color: isDark ? '#34D399' : colors.telemetry.movingDark, fontWeight: '700' }}>Live GPS Radar Synchronized</Text>
             </View>
           </View>
         </View>
 
-        <View style={themeStyles.btnSecondary}>
-          <Text style={themeStyles.btnSecondaryText}>Edit</Text>
-          <Text style={{ color: colors.day.mutedForeground, fontSize: 12, fontWeight: '900', marginLeft: 2 }}>›</Text>
+        <View style={isDark ? { backgroundColor: '#161E2E', borderWidth: 1, borderColor: '#28354D', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6, flexDirection: 'row', alignItems: 'center' } : themeStyles.btnSecondary}>
+          <Text style={{ fontSize: 12, fontWeight: '800', color: themeColors.textPrimary }}>Edit</Text>
+          <Text style={{ color: themeColors.textSecondary, fontSize: 12, fontWeight: '900', marginLeft: 2 }}>›</Text>
         </View>
       </TouchableOpacity>
 
       <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14, paddingHorizontal: 2 }}>
-          <Text style={{ fontSize: 17, fontWeight: '900', color: colors.day.foreground }}>My Assigned Tours</Text>
-          <View style={{ backgroundColor: colors.day.secondary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, borderWidth: 1, borderColor: colors.day.secondaryBorder }}>
-            <Text style={{ fontSize: 11, fontWeight: '800', color: colors.day.foreground }}>{tours.length}</Text>
+          <Text style={{ fontSize: 17, fontWeight: '900', color: themeColors.textPrimary }}>My Assigned Tours</Text>
+          <View style={{ backgroundColor: isDark ? '#161E2E' : colors.day.secondary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#28354D' : colors.day.secondaryBorder }}>
+            <Text style={{ fontSize: 11, fontWeight: '800', color: themeColors.textPrimary }}>{tours.length}</Text>
           </View>
         </View>
 
         {syncError && (
-          <View style={{ marginBottom: 12, backgroundColor: '#FFFBEB', borderColor: '#FDE68A', borderWidth: 1, borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ marginBottom: 12, backgroundColor: isDark ? 'rgba(245, 158, 11, 0.12)' : '#FFFBEB', borderColor: isDark ? 'rgba(245, 158, 11, 0.4)' : '#FDE68A', borderWidth: 1, borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flex: 1, marginRight: 8 }}>
-              <Text style={{ color: '#92400E', fontWeight: '800', fontSize: 12 }}>Sync Notice</Text>
-              <Text style={{ color: '#B45309', fontSize: 11, marginTop: 2 }}>{syncError}</Text>
+              <Text style={{ color: isDark ? '#FDE68A' : '#92400E', fontWeight: '800', fontSize: 12 }}>Sync Notice</Text>
+              <Text style={{ color: isDark ? '#CBD5E1' : '#B45309', fontSize: 11, marginTop: 2 }}>{syncError}</Text>
             </View>
             <TouchableOpacity 
               onPress={() => { setLoading(true); setSyncError(null); loadData(); }}
@@ -583,7 +583,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
         
         {loading ? (
           <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 60 }}>
-            <View style={{ backgroundColor: colors.day.card, padding: 14, borderRadius: 20, borderWidth: 1, borderColor: colors.day.cardBorder, marginBottom: 12, alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ backgroundColor: themeColors.card, padding: 14, borderRadius: 20, borderWidth: 1, borderColor: themeColors.cardBorder, marginBottom: 12, alignItems: 'center', justifyContent: 'center' }}>
               <Image 
                 source={require('../../assets/logo-icon.png')} 
                 style={{ width: 44, height: 44 }} 
@@ -591,7 +591,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
               />
             </View>
             <ActivityIndicator size="small" color={colors.primary[500]} style={{ marginBottom: 8 }} />
-            <Text style={{ color: colors.day.mutedForeground, fontSize: 12, fontWeight: '600' }}>Syncing tours with office radar...</Text>
+            <Text style={{ color: themeColors.textSecondary, fontSize: 12, fontWeight: '600' }}>Syncing tours with office radar...</Text>
           </View>
         ) : (
           <FlatList
@@ -601,14 +601,14 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
             contentContainerStyle={{ paddingBottom: 30 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary[500]} />}
             ListEmptyComponent={
-              <View style={{ borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.day.cardBorder, borderRadius: 20, padding: 32, alignItems: 'center', marginTop: 12, backgroundColor: colors.day.card }}>
-                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.day.secondary, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+              <View style={{ borderWidth: 1.5, borderStyle: 'dashed', borderColor: themeColors.cardBorder, borderRadius: 20, padding: 32, alignItems: 'center', marginTop: 12, backgroundColor: themeColors.card }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: isDark ? '#161E2E' : colors.day.secondary, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
                   <Text style={{ fontSize: 26 }}>🚗</Text>
                 </View>
-                <Text style={{ fontSize: 16, fontWeight: '900', color: colors.day.foreground, marginBottom: 4 }}>
+                <Text style={{ fontSize: 16, fontWeight: '900', color: themeColors.textPrimary, marginBottom: 4 }}>
                   No Active Tour
                 </Text>
-                <Text style={{ fontSize: 12, color: colors.day.mutedForeground, textAlign: 'center', lineHeight: 18, maxWidth: 260 }}>
+                <Text style={{ fontSize: 12, color: themeColors.textSecondary, textAlign: 'center', lineHeight: 18, maxWidth: 260 }}>
                   {syncError 
                     ? 'Could not connect to tour server. Tap Retry above to reconnect.' 
                     : "You don't have any active tours assigned right now. Your tour manager will dispatch tours here."}
@@ -626,19 +626,19 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
         animationType="fade"
         onRequestClose={() => setShowWelcomeIntro(false)}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(4, 5, 4, 0.75)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}>
-          <View style={{ backgroundColor: colors.day.card, borderRadius: 26, padding: 24, width: '100%', maxWidth: 360, alignItems: 'center', elevation: 12, shadowColor: colors.day.foreground, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, borderWidth: 1, borderColor: colors.day.cardBorder }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(4, 5, 4, 0.85)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}>
+          <View style={{ backgroundColor: themeColors.card, borderRadius: 26, padding: 24, width: '100%', maxWidth: 360, alignItems: 'center', elevation: 12, shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 16, borderWidth: 1, borderColor: themeColors.cardBorder }}>
             
             {/* Top Close Button */}
             <TouchableOpacity 
               onPress={() => setShowWelcomeIntro(false)}
-              style={{ position: 'absolute', top: 16, right: 16, width: 32, height: 32, borderRadius: 16, backgroundColor: colors.day.secondary, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.day.secondaryBorder }}
+              style={{ position: 'absolute', top: 16, right: 16, width: 32, height: 32, borderRadius: 16, backgroundColor: isDark ? '#161E2E' : colors.day.secondary, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: isDark ? '#28354D' : colors.day.secondaryBorder }}
             >
-              <Text style={{ color: colors.day.mutedForeground, fontSize: 14, fontWeight: '800' }}>✕</Text>
+              <Text style={{ color: themeColors.textSecondary, fontSize: 14, fontWeight: '800' }}>✕</Text>
             </TouchableOpacity>
 
             {/* Glowing Avatar Ring */}
-            <View style={{ marginTop: 8, marginBottom: 16, padding: 4, borderRadius: 9999, borderWidth: 3, borderColor: colors.primary[500], backgroundColor: colors.primary[50] }}>
+            <View style={{ marginTop: 8, marginBottom: 16, padding: 4, borderRadius: 9999, borderWidth: 3, borderColor: colors.primary[500], backgroundColor: isDark ? 'rgba(232, 115, 42, 0.15)' : colors.primary[50] }}>
               {driverData.avatarUrl ? (
                 <Image 
                   source={{ uri: driverData.avatarUrl }} 
@@ -655,33 +655,33 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
             </View>
 
             {/* Greeting Tag */}
-            <View style={{ backgroundColor: colors.primary[50], borderColor: colors.primary[300], borderWidth: 1, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, marginBottom: 10 }}>
-              <Text style={{ color: colors.primary[700], fontSize: 11, fontWeight: '900', letterSpacing: 1 }}>
+            <View style={{ backgroundColor: isDark ? 'rgba(232, 115, 42, 0.18)' : colors.primary[50], borderColor: colors.primary[400], borderWidth: 1, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, marginBottom: 10 }}>
+              <Text style={{ color: isDark ? '#FDBA74' : colors.primary[700], fontSize: 11, fontWeight: '900', letterSpacing: 1 }}>
                 AYUBOWAN • CHAUFFEUR PORTAL
               </Text>
             </View>
 
             {/* Welcome Heading */}
-            <Text style={{ fontSize: 22, fontWeight: '900', color: colors.day.foreground, textAlign: 'center', marginBottom: 4 }}>
+            <Text style={{ fontSize: 22, fontWeight: '900', color: themeColors.textPrimary, textAlign: 'center', marginBottom: 4 }}>
               Welcome, {driverData.name || 'Driver'}!
             </Text>
 
-            <Text style={{ fontSize: 12, color: colors.day.mutedForeground, textAlign: 'center', marginBottom: 18, lineHeight: 18 }}>
+            <Text style={{ fontSize: 12, color: themeColors.textSecondary, textAlign: 'center', marginBottom: 18, lineHeight: 18 }}>
               {driverData.companyName || 'Tour Transport Company'} fleet radar is active and synchronized with office dispatch.
             </Text>
 
             {/* Quick Status / Tours Summary */}
-            <View style={{ width: '100%', backgroundColor: colors.day.input, borderColor: colors.day.cardBorder, borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 20 }}>
+            <View style={{ width: '100%', backgroundColor: isDark ? '#141C2B' : colors.day.input, borderColor: themeColors.cardBorder, borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 20 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <Text style={{ fontSize: 12, color: colors.day.mutedForeground, fontWeight: '700' }}>Assigned Tours</Text>
-                <Text style={{ fontSize: 13, color: colors.day.foreground, fontWeight: '900' }}>
+                <Text style={{ fontSize: 12, color: themeColors.textSecondary, fontWeight: '700' }}>Assigned Tours</Text>
+                <Text style={{ fontSize: 13, color: themeColors.textPrimary, fontWeight: '900' }}>
                   {tours.length} Tour{tours.length === 1 ? '' : 's'}
                 </Text>
               </View>
 
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.telemetry.moving, marginRight: 6 }} />
-                <Text style={{ fontSize: 11, color: colors.telemetry.movingDark, fontWeight: '800' }}>
+                <Text style={{ fontSize: 11, color: isDark ? '#34D399' : colors.telemetry.movingDark, fontWeight: '800' }}>
                   GPS Telematics Online
                 </Text>
               </View>

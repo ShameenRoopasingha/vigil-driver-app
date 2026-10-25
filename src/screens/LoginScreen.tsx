@@ -9,10 +9,12 @@ import { RootStackParamList } from '../navigation/types';
 import { DriverLoginInputSchema } from '../validations';
 import { toast } from '../utils/toast';
 import { colors, themeStyles } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
 export default function LoginScreen() {
+  const { isDark, colors: themeColors } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -50,22 +52,22 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.day.background, justifyContent: 'center', paddingHorizontal: 24 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.background, justifyContent: 'center', paddingHorizontal: 24 }}>
       {/* Brand Header */}
       <View style={{ alignItems: 'center', marginBottom: 28 }}>
         <View
           style={{
-            backgroundColor: colors.day.card,
+            backgroundColor: themeColors.card,
             padding: 16,
             borderRadius: 26,
             borderWidth: 1.5,
-            borderColor: colors.day.cardBorder,
+            borderColor: themeColors.cardBorder,
             marginBottom: 14,
             alignItems: 'center',
             justifyContent: 'center',
-            shadowColor: colors.day.foreground,
+            shadowColor: '#000',
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.08,
+            shadowOpacity: 0.15,
             shadowRadius: 10,
             elevation: 4,
           }}
@@ -77,14 +79,14 @@ export default function LoginScreen() {
           />
         </View>
 
-        <Text style={{ fontSize: 32, fontWeight: '900', color: colors.day.foreground, letterSpacing: 2 }}>
+        <Text style={{ fontSize: 32, fontWeight: '900', color: themeColors.textPrimary, letterSpacing: 2 }}>
           VIGIL
         </Text>
 
         {/* Signature Matte Orange Pill Chip */}
         <View
           style={{
-            backgroundColor: colors.primary[50],
+            backgroundColor: isDark ? 'rgba(232, 115, 42, 0.18)' : colors.primary[50],
             borderWidth: 1.2,
             borderColor: colors.primary[400],
             paddingHorizontal: 12,
@@ -96,12 +98,12 @@ export default function LoginScreen() {
           }}
         >
           <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary[500], marginRight: 6 }} />
-          <Text style={{ color: colors.primary[600], fontSize: 10, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase' }}>
+          <Text style={{ color: isDark ? '#FDBA74' : colors.primary[700], fontSize: 10, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase' }}>
             Chauffeur & Fleet Portal
           </Text>
         </View>
 
-        <Text style={{ color: colors.day.mutedForeground, fontSize: 12, fontWeight: '600', marginTop: 6 }}>
+        <Text style={{ color: themeColors.textSecondary, fontSize: 12, fontWeight: '600', marginTop: 6 }}>
           Tour Operations & Telematics
         </Text>
       </View>
@@ -109,27 +111,27 @@ export default function LoginScreen() {
       {/* Login Card */}
       <View
         style={{
-          backgroundColor: colors.day.card,
+          backgroundColor: themeColors.card,
           padding: 24,
           borderRadius: 24,
           borderWidth: 1,
-          borderColor: colors.day.cardBorder,
-          shadowColor: colors.day.foreground,
+          borderColor: themeColors.cardBorder,
+          shadowColor: '#000',
           shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.07,
+          shadowOpacity: 0.15,
           shadowRadius: 16,
           elevation: 5,
         }}
       >
-        <Text style={{ fontSize: 20, fontWeight: '900', color: colors.day.foreground, marginBottom: 4, textAlign: 'center' }}>
+        <Text style={{ fontSize: 20, fontWeight: '900', color: themeColors.textPrimary, marginBottom: 4, textAlign: 'center' }}>
           Driver Sign In
         </Text>
-        <Text style={{ fontSize: 12, color: colors.day.mutedForeground, marginBottom: 22, textAlign: 'center' }}>
+        <Text style={{ fontSize: 12, color: themeColors.textSecondary, marginBottom: 22, textAlign: 'center' }}>
           Access your assigned tours & GPS radar
         </Text>
         
         {/* Email Field */}
-        <Text style={{ color: colors.day.foreground, marginBottom: 6, fontSize: 12.5, fontWeight: '800', letterSpacing: 0.3 }}>
+        <Text style={{ color: themeColors.textPrimary, marginBottom: 6, fontSize: 12.5, fontWeight: '800', letterSpacing: 0.3 }}>
           EMAIL ADDRESS
         </Text>
         <TextInput 
@@ -137,14 +139,15 @@ export default function LoginScreen() {
             themeStyles.input,
             {
               marginBottom: 16,
-              borderColor: focusedInput === 'email' ? colors.primary[500] : colors.day.cardBorder,
-              backgroundColor: focusedInput === 'email' ? '#FFFFFF' : colors.day.input,
+              borderColor: focusedInput === 'email' ? colors.primary[500] : themeColors.cardBorder,
+              backgroundColor: focusedInput === 'email' ? (isDark ? '#161E2E' : '#FFFFFF') : (isDark ? '#141C2B' : colors.day.input),
+              color: themeColors.textPrimary,
             },
           ]}
           onFocus={() => setFocusedInput('email')}
           onBlur={() => setFocusedInput(null)}
           placeholder="Enter your driver email"
-          placeholderTextColor={colors.day.mutedForeground}
+          placeholderTextColor={themeColors.textMuted}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -152,7 +155,7 @@ export default function LoginScreen() {
         />
 
         {/* Password Field */}
-        <Text style={{ color: colors.day.foreground, marginBottom: 6, fontSize: 12.5, fontWeight: '800', letterSpacing: 0.3 }}>
+        <Text style={{ color: themeColors.textPrimary, marginBottom: 6, fontSize: 12.5, fontWeight: '800', letterSpacing: 0.3 }}>
           PASSWORD
         </Text>
         <TextInput 
@@ -160,14 +163,15 @@ export default function LoginScreen() {
             themeStyles.input,
             {
               marginBottom: 24,
-              borderColor: focusedInput === 'password' ? colors.primary[500] : colors.day.cardBorder,
-              backgroundColor: focusedInput === 'password' ? '#FFFFFF' : colors.day.input,
+              borderColor: focusedInput === 'password' ? colors.primary[500] : themeColors.cardBorder,
+              backgroundColor: focusedInput === 'password' ? (isDark ? '#161E2E' : '#FFFFFF') : (isDark ? '#141C2B' : colors.day.input),
+              color: themeColors.textPrimary,
             },
           ]}
           onFocus={() => setFocusedInput('password')}
           onBlur={() => setFocusedInput(null)}
           placeholder="Enter your password"
-          placeholderTextColor={colors.day.mutedForeground}
+          placeholderTextColor={themeColors.textMuted}
           value={password}
           onChangeText={setPassword}
           secureTextEntry

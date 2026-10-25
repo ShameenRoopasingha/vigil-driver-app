@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import Toast, { ToastConfig, ToastConfigParams } from 'react-native-toast-message';
 import { colors } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -46,6 +47,7 @@ const THEME_CONFIG = {
 const CustomToastCard: React.FC<ToastCardProps> = ({ type, title, message, onClose }) => {
   const theme = THEME_CONFIG[type];
   const displayTitle = title || theme.defaultTitle;
+  const { isDark } = useTheme();
 
   return (
     <TouchableOpacity
@@ -55,22 +57,24 @@ const CustomToastCard: React.FC<ToastCardProps> = ({ type, title, message, onClo
         styles.cardContainer,
         {
           borderLeftColor: theme.accent,
+          backgroundColor: isDark ? '#111827' : colors.day.card,
+          borderColor: isDark ? '#28354D' : colors.day.cardBorder,
         },
       ]}
     >
       <View style={styles.cardInner}>
         {/* Leading Icon Badge */}
-        <View style={[styles.iconBadge, { backgroundColor: theme.iconBg }]}>
-          <Text style={[styles.iconText, { color: theme.iconColor }]}>{theme.icon}</Text>
+        <View style={[styles.iconBadge, { backgroundColor: isDark ? (type === 'info' ? 'rgba(232, 115, 42, 0.2)' : 'rgba(255, 255, 255, 0.1)') : theme.iconBg }]}>
+          <Text style={[styles.iconText, { color: isDark ? (type === 'info' ? '#FDBA74' : '#FFFFFF') : theme.iconColor }]}>{theme.icon}</Text>
         </View>
 
         {/* Text Content */}
         <View style={styles.textContainer}>
-          <Text style={styles.titleText} numberOfLines={2}>
+          <Text style={[styles.titleText, { color: isDark ? '#FFFFFF' : colors.day.foreground }]} numberOfLines={2}>
             {displayTitle}
           </Text>
           {message ? (
-            <Text style={styles.messageText} numberOfLines={3}>
+            <Text style={[styles.messageText, { color: isDark ? '#CBD5E1' : colors.day.mutedForeground }]} numberOfLines={3}>
               {message}
             </Text>
           ) : null}
@@ -82,7 +86,7 @@ const CustomToastCard: React.FC<ToastCardProps> = ({ type, title, message, onClo
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           style={styles.closeBtn}
         >
-          <Text style={styles.closeBtnText}>✕</Text>
+          <Text style={[styles.closeBtnText, { color: isDark ? '#94A3B8' : colors.day.mutedForeground }]}>✕</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>

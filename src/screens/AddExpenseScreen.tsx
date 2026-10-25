@@ -8,6 +8,7 @@ import { RootStackParamList } from '../navigation/types';
 import { DriverExpenseInputSchema } from '../validations';
 import { toast } from '../utils/toast';
 import { colors, themeStyles } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 type AddExpenseRouteProp = RouteProp<RootStackParamList, 'AddExpense'>;
 type AddExpenseNavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddExpense'>;
@@ -15,6 +16,7 @@ type AddExpenseNavigationProp = NativeStackNavigationProp<RootStackParamList, 'A
 export default function AddExpenseScreen() {
   const route = useRoute<AddExpenseRouteProp>();
   const navigation = useNavigation<AddExpenseNavigationProp>();
+  const { isDark, colors: themeColors } = useTheme();
   
   const { bookingId, vehicleNo: initialVehicleNo } = route.params || {};
 
@@ -88,17 +90,17 @@ export default function AddExpenseScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.day.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.background }}>
       {/* Top Header matching Admin Desktop App */}
-      <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.day.card, borderBottomWidth: 1, borderBottomColor: colors.day.cardBorder, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: themeColors.card, borderBottomWidth: 1, borderBottomColor: themeColors.cardBorder, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity 
             onPress={() => navigation.goBack()} 
-            style={[themeStyles.btnSecondary, { paddingHorizontal: 12, paddingVertical: 6, marginRight: 10 }]}
+            style={[themeStyles.btnSecondary, isDark && { backgroundColor: '#161E2E', borderColor: '#28354D' }, { paddingHorizontal: 12, paddingVertical: 6, marginRight: 10 }]}
           >
-            <Text style={themeStyles.btnSecondaryText}>← Back</Text>
+            <Text style={[themeStyles.btnSecondaryText, { color: themeColors.textPrimary }]}>← Back</Text>
           </TouchableOpacity>
-          <Text style={{ fontSize: 17, fontWeight: '900', color: colors.day.foreground }}>Add Trip Expense</Text>
+          <Text style={{ fontSize: 17, fontWeight: '900', color: themeColors.textPrimary }}>Add Trip Expense</Text>
         </View>
 
         {/* Space reserved for Top-Right Arc Nav Button */}
@@ -107,29 +109,37 @@ export default function AddExpenseScreen() {
 
       <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
         {/* Form Card */}
-        <View style={{ backgroundColor: colors.day.card, borderRadius: 20, borderWidth: 1, borderColor: colors.day.cardBorder, padding: 18, shadowColor: colors.day.foreground, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, marginBottom: 20 }}>
+        <View style={{ backgroundColor: themeColors.card, borderRadius: 20, borderWidth: 1, borderColor: themeColors.cardBorder, padding: 18, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2, marginBottom: 20 }}>
           
           <View style={{ marginBottom: 14 }}>
-            <Text style={{ color: colors.day.foreground, fontSize: 12.5, fontWeight: '800', marginBottom: 6, letterSpacing: 0.3 }}>
+            <Text style={{ color: themeColors.textPrimary, fontSize: 12.5, fontWeight: '800', marginBottom: 6, letterSpacing: 0.3 }}>
               VEHICLE LICENSE PLATE
             </Text>
             <TextInput
-              style={[themeStyles.input, { fontFamily: 'monospace', fontWeight: '800', fontSize: 14.5 }]}
+              style={[
+                themeStyles.input, 
+                isDark && { backgroundColor: '#141C2B', borderColor: '#28354D', color: themeColors.textPrimary },
+                { fontFamily: 'monospace', fontWeight: '800', fontSize: 14.5 }
+              ]}
               placeholder="e.g. WP CAB-1234"
-              placeholderTextColor={colors.day.mutedForeground}
+              placeholderTextColor={themeColors.textMuted}
               value={vehicleNo}
               onChangeText={setVehicleNo}
             />
           </View>
 
           <View style={{ marginBottom: 14 }}>
-            <Text style={{ color: colors.day.foreground, fontSize: 12.5, fontWeight: '800', marginBottom: 6, letterSpacing: 0.3 }}>
+            <Text style={{ color: themeColors.textPrimary, fontSize: 12.5, fontWeight: '800', marginBottom: 6, letterSpacing: 0.3 }}>
               AMOUNT (LKR / RS.)
             </Text>
             <TextInput
-              style={[themeStyles.input, { fontWeight: '900', fontSize: 16 }]}
+              style={[
+                themeStyles.input, 
+                isDark && { backgroundColor: '#141C2B', borderColor: '#28354D', color: themeColors.textPrimary },
+                { fontWeight: '900', fontSize: 16 }
+              ]}
               placeholder="0.00"
-              placeholderTextColor={colors.day.mutedForeground}
+              placeholderTextColor={themeColors.textMuted}
               keyboardType="numeric"
               value={amount}
               onChangeText={setAmount}
@@ -137,7 +147,7 @@ export default function AddExpenseScreen() {
           </View>
 
           <View style={{ marginBottom: 16 }}>
-            <Text style={{ color: colors.day.foreground, fontSize: 12.5, fontWeight: '800', marginBottom: 8, letterSpacing: 0.3 }}>
+            <Text style={{ color: themeColors.textPrimary, fontSize: 12.5, fontWeight: '800', marginBottom: 8, letterSpacing: 0.3 }}>
               EXPENSE CATEGORY
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -152,11 +162,11 @@ export default function AddExpenseScreen() {
                       paddingVertical: 9,
                       borderRadius: 12,
                       borderWidth: 1.5,
-                      borderColor: isSelected ? cat.color : colors.day.cardBorder,
-                      backgroundColor: isSelected ? cat.bg : colors.day.card,
+                      borderColor: isSelected ? cat.color : themeColors.cardBorder,
+                      backgroundColor: isSelected ? (isDark ? 'rgba(232, 115, 42, 0.2)' : cat.bg) : (isDark ? '#161E2E' : colors.day.card),
                     }}
                   >
-                    <Text style={{ color: isSelected ? cat.color : colors.day.foreground, fontWeight: isSelected ? '900' : '700', fontSize: 12 }}>
+                    <Text style={{ color: isSelected ? (isDark ? '#FDBA74' : cat.color) : themeColors.textSecondary, fontWeight: isSelected ? '900' : '700', fontSize: 12 }}>
                       {cat.label}
                     </Text>
                   </TouchableOpacity>
@@ -166,7 +176,7 @@ export default function AddExpenseScreen() {
           </View>
 
           <View style={{ marginBottom: 16 }}>
-            <Text style={{ color: colors.day.foreground, fontSize: 12.5, fontWeight: '800', marginBottom: 8, letterSpacing: 0.3 }}>
+            <Text style={{ color: themeColors.textPrimary, fontSize: 12.5, fontWeight: '800', marginBottom: 8, letterSpacing: 0.3 }}>
               PAID BY
             </Text>
             <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -177,12 +187,12 @@ export default function AddExpenseScreen() {
                   paddingVertical: 12,
                   borderRadius: 12,
                   borderWidth: 1.5,
-                  borderColor: expenseType === 'COMPANY' ? colors.primary[500] : colors.day.cardBorder,
-                  backgroundColor: expenseType === 'COMPANY' ? colors.primary[50] : colors.day.input,
+                  borderColor: expenseType === 'COMPANY' ? colors.primary[500] : themeColors.cardBorder,
+                  backgroundColor: expenseType === 'COMPANY' ? (isDark ? 'rgba(232, 115, 42, 0.2)' : colors.primary[50]) : (isDark ? '#141C2B' : colors.day.input),
                   alignItems: 'center',
                 }}
               >
-                <Text style={{ fontWeight: '800', color: expenseType === 'COMPANY' ? colors.primary[700] : colors.day.foreground, fontSize: 13 }}>
+                <Text style={{ fontWeight: '800', color: expenseType === 'COMPANY' ? (isDark ? '#FDBA74' : colors.primary[700]) : themeColors.textSecondary, fontSize: 13 }}>
                   🏢 Company Dispatched
                 </Text>
               </TouchableOpacity>
@@ -193,12 +203,12 @@ export default function AddExpenseScreen() {
                   paddingVertical: 12,
                   borderRadius: 12,
                   borderWidth: 1.5,
-                  borderColor: expenseType === 'CUSTOMER' ? colors.primary[500] : colors.day.cardBorder,
-                  backgroundColor: expenseType === 'CUSTOMER' ? colors.primary[50] : colors.day.input,
+                  borderColor: expenseType === 'CUSTOMER' ? colors.primary[500] : themeColors.cardBorder,
+                  backgroundColor: expenseType === 'CUSTOMER' ? (isDark ? 'rgba(232, 115, 42, 0.2)' : colors.primary[50]) : (isDark ? '#141C2B' : colors.day.input),
                   alignItems: 'center',
                 }}
               >
-                <Text style={{ fontWeight: '800', color: expenseType === 'CUSTOMER' ? colors.primary[700] : colors.day.foreground, fontSize: 13 }}>
+                <Text style={{ fontWeight: '800', color: expenseType === 'CUSTOMER' ? (isDark ? '#FDBA74' : colors.primary[700]) : themeColors.textSecondary, fontSize: 13 }}>
                   👤 Tourist / Customer
                 </Text>
               </TouchableOpacity>
@@ -206,13 +216,17 @@ export default function AddExpenseScreen() {
           </View>
 
           <View style={{ marginBottom: 20 }}>
-            <Text style={{ color: colors.day.foreground, fontSize: 12.5, fontWeight: '800', marginBottom: 6, letterSpacing: 0.3 }}>
+            <Text style={{ color: themeColors.textPrimary, fontSize: 12.5, fontWeight: '800', marginBottom: 6, letterSpacing: 0.3 }}>
               DESCRIPTION / RECEIPT NOTE
             </Text>
             <TextInput
-              style={[themeStyles.input, { minHeight: 70 }]}
+              style={[
+                themeStyles.input, 
+                isDark && { backgroundColor: '#141C2B', borderColor: '#28354D', color: themeColors.textPrimary },
+                { minHeight: 70 }
+              ]}
               placeholder="e.g. Fuel top-up at Ceypetco Kandy, expressway toll"
-              placeholderTextColor={colors.day.mutedForeground}
+              placeholderTextColor={themeColors.textMuted}
               multiline
               numberOfLines={3}
               textAlignVertical="top"

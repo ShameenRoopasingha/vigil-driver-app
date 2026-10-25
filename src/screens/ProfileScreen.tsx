@@ -472,7 +472,7 @@ export default function ProfileScreen() {
                     }}
                   >
                     <Text
-                      style={{ fontSize: 17, fontWeight: '900', color: colors.day.foreground, flex: 1, marginRight: 8 }}
+                      style={{ fontSize: 17, fontWeight: '900', color: themeColors.textPrimary, flex: 1, marginRight: 8 }}
                       numberOfLines={1}
                     >
                       {driverName || 'Chauffeur'}
@@ -490,11 +490,11 @@ export default function ProfileScreen() {
                     ) : (
                       <Text style={{ fontSize: 12, marginRight: 4 }}>🏢</Text>
                     )}
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: colors.day.mutedForeground, flex: 1 }} numberOfLines={1}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: themeColors.textSecondary, flex: 1 }} numberOfLines={1}>
                       {companyName || 'Tour Transport Company'}
                     </Text>
                   </View>
-                  <Text style={{ fontSize: 11, color: colors.day.mutedForeground, marginTop: 2 }} numberOfLines={1}>
+                  <Text style={{ fontSize: 11, color: themeColors.textSecondary, marginTop: 2 }} numberOfLines={1}>
                     ✉️ {currentEmail || 'Not configured'}
                   </Text>
                 </View>
@@ -504,13 +504,13 @@ export default function ProfileScreen() {
             {/* 2. Driver Name & Photo Card */}
             <View
               style={{
-                backgroundColor: colors.day.card,
+                backgroundColor: themeColors.card,
                 padding: 18,
                 borderRadius: 20,
                 borderWidth: 1,
-                borderColor: colors.day.cardBorder,
+                borderColor: themeColors.cardBorder,
                 marginBottom: 14,
-                shadowColor: colors.day.foreground,
+                shadowColor: '#000000',
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.04,
                 shadowRadius: 5,
@@ -518,26 +518,26 @@ export default function ProfileScreen() {
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                <Text style={{ fontSize: 15, fontWeight: '900', color: colors.day.foreground }}>Driver Name & Photo</Text>
+                <Text style={{ fontSize: 15, fontWeight: '900', color: themeColors.textPrimary }}>Driver Name & Photo</Text>
                 <View
                   style={{
-                    backgroundColor: colors.primary[50],
+                    backgroundColor: isDark ? 'rgba(232, 115, 42, 0.15)' : colors.primary[50],
                     paddingHorizontal: 8,
                     paddingVertical: 2,
                     borderRadius: 6,
                     borderWidth: 1,
-                    borderColor: colors.primary[200],
+                    borderColor: isDark ? 'rgba(232, 115, 42, 0.3)' : colors.primary[200],
                   }}
                 >
-                  <Text style={{ fontSize: 10, fontWeight: '800', color: colors.primary[600] }}>Public Profile</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: isDark ? '#FDBA74' : colors.primary[600] }}>Public Profile</Text>
                 </View>
               </View>
-              <Text style={{ fontSize: 11, color: colors.day.mutedForeground, marginBottom: 14, lineHeight: 16 }}>
+              <Text style={{ fontSize: 11, color: themeColors.textSecondary, marginBottom: 14, lineHeight: 16 }}>
                 This name and profile picture appear on passenger itineraries and welcome greeting.
               </Text>
 
               {/* Action Buttons: Browse Files & Take Photo */}
-              <Text style={{ fontSize: 11, fontWeight: '800', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: themeColors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
                 Profile Photo & Avatar
               </Text>
 
@@ -547,9 +547,9 @@ export default function ProfileScreen() {
                   onPress={handlePickFromFiles}
                   style={{
                     flex: 1,
-                    backgroundColor: colors.day.secondary,
+                    backgroundColor: isDark ? '#161E2E' : colors.day.secondary,
                     borderWidth: 1.5,
-                    borderColor: colors.day.secondaryBorder,
+                    borderColor: isDark ? '#28354D' : colors.day.secondaryBorder,
                     borderRadius: 14,
                     paddingVertical: 12,
                     paddingHorizontal: 8,
@@ -558,8 +558,8 @@ export default function ProfileScreen() {
                   }}
                 >
                   <Text style={{ fontSize: 22, marginBottom: 2 }}>📁</Text>
-                  <Text style={{ color: colors.day.foreground, fontWeight: '800', fontSize: 13 }}>Browse Files</Text>
-                  <Text style={{ color: colors.day.mutedForeground, fontSize: 10, fontWeight: '600', marginTop: 1 }}>
+                  <Text style={{ color: themeColors.textPrimary, fontWeight: '800', fontSize: 13 }}>Browse Files</Text>
+                  <Text style={{ color: themeColors.textSecondary, fontSize: 10, fontWeight: '600', marginTop: 1 }}>
                     Gallery & Device
                   </Text>
                 </TouchableOpacity>
@@ -569,9 +569,9 @@ export default function ProfileScreen() {
                   onPress={handleTakePhoto}
                   style={{
                     flex: 1,
-                    backgroundColor: colors.primary[50],
+                    backgroundColor: isDark ? 'rgba(232, 115, 42, 0.15)' : colors.primary[50],
                     borderWidth: 1.5,
-                    borderColor: colors.primary[300],
+                    borderColor: isDark ? 'rgba(232, 115, 42, 0.35)' : colors.primary[300],
                     borderRadius: 14,
                     paddingVertical: 12,
                     paddingHorizontal: 8,
@@ -580,8 +580,8 @@ export default function ProfileScreen() {
                   }}
                 >
                   <Text style={{ fontSize: 22, marginBottom: 2 }}>📷</Text>
-                  <Text style={{ color: colors.primary[700], fontWeight: '800', fontSize: 13 }}>Take Photo</Text>
-                  <Text style={{ color: colors.day.mutedForeground, fontSize: 10, fontWeight: '600', marginTop: 1 }}>
+                  <Text style={{ color: isDark ? '#FDBA74' : colors.primary[700], fontWeight: '800', fontSize: 13 }}>Take Photo</Text>
+                  <Text style={{ color: themeColors.textSecondary, fontSize: 10, fontWeight: '600', marginTop: 1 }}>
                     Use Camera
                   </Text>
                 </TouchableOpacity>
@@ -589,11 +589,11 @@ export default function ProfileScreen() {
 
               {/* Divider */}
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                <View style={{ flex: 1, height: 1, backgroundColor: colors.day.cardBorder }} />
-                <Text style={{ color: colors.day.mutedForeground, fontSize: 10, fontWeight: '800', marginHorizontal: 8, letterSpacing: 0.5 }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: themeColors.cardBorder }} />
+                <Text style={{ color: themeColors.textSecondary, fontSize: 10, fontWeight: '800', marginHorizontal: 8, letterSpacing: 0.5 }}>
                   OR SELECT AVATAR
                 </Text>
-                <View style={{ flex: 1, height: 1, backgroundColor: colors.day.cardBorder }} />
+                <View style={{ flex: 1, height: 1, backgroundColor: themeColors.cardBorder }} />
               </View>
 
               {/* Avatar Selector Row - Perfectly Sized & Always Visible */}
@@ -696,10 +696,10 @@ export default function ProfileScreen() {
                       width: 48,
                       height: 48,
                       borderRadius: 24,
-                      backgroundColor: '#f8fafc',
+                      backgroundColor: isDark ? '#141C2B' : '#f8fafc',
                       borderWidth: 1.5,
                       borderStyle: 'dashed',
-                      borderColor: '#94a3b8',
+                      borderColor: isDark ? '#3B4A65' : '#94a3b8',
                       alignItems: 'center',
                       justifyContent: 'center',
                       marginBottom: 4,
@@ -707,28 +707,28 @@ export default function ProfileScreen() {
                   >
                     <Text style={{ fontSize: 18 }}>🔗</Text>
                   </View>
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#64748b' }}>Web Link</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: themeColors.textSecondary }}>Web Link</Text>
                 </TouchableOpacity>
               </ScrollView>
 
               {/* Web Image Link Input Drawer */}
               {showCustomUrlInput && (
-                <View style={{ backgroundColor: '#f8fafc', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 14 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#475569', marginBottom: 6 }}>Paste Image URL</Text>
+                <View style={{ backgroundColor: isDark ? '#141C2B' : '#f8fafc', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: themeColors.cardBorder, marginBottom: 14 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: themeColors.textSecondary, marginBottom: 6 }}>Paste Image URL</Text>
                   <TextInput
                     style={{
-                      backgroundColor: '#ffffff',
+                      backgroundColor: isDark ? '#0E131F' : '#ffffff',
                       borderWidth: 1,
-                      borderColor: '#cbd5e1',
+                      borderColor: isDark ? '#2E3B52' : '#cbd5e1',
                       borderRadius: 10,
                       paddingHorizontal: 12,
                       paddingVertical: 8,
                       fontSize: 12,
-                      color: '#0f172a',
+                      color: themeColors.textPrimary,
                       marginBottom: 8,
                     }}
                     placeholder="https://example.com/photo.jpg"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={themeColors.textMuted}
                     value={customUrlInput}
                     onChangeText={setCustomUrlInput}
                     autoCapitalize="none"
@@ -737,13 +737,13 @@ export default function ProfileScreen() {
                   <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
                     <TouchableOpacity
                       onPress={() => setShowCustomUrlInput(false)}
-                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#e2e8f0' }}
+                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: isDark ? '#1E293B' : '#e2e8f0' }}
                     >
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569' }}>Cancel</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: themeColors.textSecondary }}>Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={handleApplyCustomUrl}
-                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#2563eb' }}
+                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.primary[500] }}
                     >
                       <Text style={{ fontSize: 11, fontWeight: '700', color: '#ffffff' }}>Apply Photo</Text>
                     </TouchableOpacity>
@@ -752,24 +752,24 @@ export default function ProfileScreen() {
               )}
 
               {/* Chauffeur Name Input */}
-              <Text style={{ fontSize: 11, fontWeight: '800', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: themeColors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
                 Chauffeur Full Name
               </Text>
               <TextInput
                 style={{
-                  backgroundColor: '#f8fafc',
+                  backgroundColor: isDark ? '#141C2B' : '#f8fafc',
                   borderWidth: 1.5,
-                  borderColor: isDetailsDirty ? '#3b82f6' : '#e2e8f0',
+                  borderColor: isDetailsDirty ? colors.primary[500] : themeColors.cardBorder,
                   borderRadius: 14,
                   paddingHorizontal: 14,
                   paddingVertical: 11,
                   fontSize: 14,
                   fontWeight: '600',
-                  color: '#0f172a',
+                  color: themeColors.textPrimary,
                   marginBottom: isDetailsDirty ? 12 : 6,
                 }}
                 placeholder="Enter full name"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={themeColors.textMuted}
                 value={editName}
                 onChangeText={setEditName}
                 autoCorrect={false}
@@ -910,11 +910,11 @@ export default function ProfileScreen() {
             {/* 3. Email Address Card */}
             <View
               style={{
-                backgroundColor: '#ffffff',
+                backgroundColor: themeColors.card,
                 padding: 18,
                 borderRadius: 20,
                 borderWidth: 1,
-                borderColor: '#e2e8f0',
+                borderColor: themeColors.cardBorder,
                 marginBottom: 14,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 2 },
@@ -924,42 +924,42 @@ export default function ProfileScreen() {
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                <Text style={{ fontSize: 15, fontWeight: '900', color: '#0f172a' }}>Email Address</Text>
+                <Text style={{ fontSize: 15, fontWeight: '900', color: themeColors.textPrimary }}>Email Address</Text>
                 <View
                   style={{
-                    backgroundColor: '#f0fdf4',
+                    backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#f0fdf4',
                     paddingHorizontal: 8,
                     paddingVertical: 2,
                     borderRadius: 6,
                     borderWidth: 1,
-                    borderColor: '#bbf7d0',
+                    borderColor: isDark ? 'rgba(16, 185, 129, 0.3)' : '#bbf7d0',
                   }}
                 >
-                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#16a34a' }}>Account Login</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: isDark ? '#34D399' : '#16a34a' }}>Account Login</Text>
                 </View>
               </View>
-              <Text style={{ fontSize: 11, color: '#64748b', marginBottom: 12, lineHeight: 16 }}>
+              <Text style={{ fontSize: 11, color: themeColors.textSecondary, marginBottom: 12, lineHeight: 16 }}>
                 Used to log into the driver mobile application and receive booking schedules.
               </Text>
 
-              <Text style={{ fontSize: 11, fontWeight: '800', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: themeColors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
                 Driver Email
               </Text>
               <TextInput
                 style={{
-                  backgroundColor: '#f8fafc',
+                  backgroundColor: isDark ? '#141C2B' : '#f8fafc',
                   borderWidth: 1.5,
-                  borderColor: isEmailDirty ? '#3b82f6' : '#e2e8f0',
+                  borderColor: isEmailDirty ? colors.primary[500] : themeColors.cardBorder,
                   borderRadius: 14,
                   paddingHorizontal: 14,
                   paddingVertical: 11,
                   fontSize: 14,
                   fontWeight: '600',
-                  color: '#0f172a',
+                  color: themeColors.textPrimary,
                   marginBottom: isEmailDirty ? 12 : 6,
                 }}
                 placeholder="driver@example.com"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={themeColors.textMuted}
                 value={newEmail}
                 onChangeText={setNewEmail}
                 autoCapitalize="none"
@@ -973,13 +973,13 @@ export default function ProfileScreen() {
                   disabled={emailSaving}
                   activeOpacity={0.8}
                   style={{
-                    backgroundColor: '#2563eb',
+                    backgroundColor: colors.primary[500],
                     paddingVertical: 12,
                     borderRadius: 14,
                     alignItems: 'center',
                     flexDirection: 'row',
                     justifyContent: 'center',
-                    shadowColor: '#2563eb',
+                    shadowColor: colors.primary[500],
                     shadowOffset: { width: 0, height: 2 },
                     shadowOpacity: 0.25,
                     shadowRadius: 4,
@@ -997,7 +997,7 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               ) : (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 4 }}>
-                  <Text style={{ color: '#16a34a', fontSize: 12, fontWeight: '700' }}>✓ Email is verified and active</Text>
+                  <Text style={{ color: isDark ? '#34D399' : '#16a34a', fontSize: 12, fontWeight: '700' }}>✓ Email is verified and active</Text>
                 </View>
               )}
             </View>
@@ -1005,11 +1005,11 @@ export default function ProfileScreen() {
             {/* 4. Change Password Card */}
             <View
               style={{
-                backgroundColor: '#ffffff',
+                backgroundColor: themeColors.card,
                 padding: 18,
                 borderRadius: 20,
                 borderWidth: 1,
-                borderColor: '#e2e8f0',
+                borderColor: themeColors.cardBorder,
                 marginBottom: 14,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 2 },
@@ -1019,44 +1019,44 @@ export default function ProfileScreen() {
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                <Text style={{ fontSize: 15, fontWeight: '900', color: '#0f172a' }}>Change Password</Text>
+                <Text style={{ fontSize: 15, fontWeight: '900', color: themeColors.textPrimary }}>Change Password</Text>
                 <View
                   style={{
-                    backgroundColor: '#fffbeb',
+                    backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#fffbeb',
                     paddingHorizontal: 8,
                     paddingVertical: 2,
                     borderRadius: 6,
                     borderWidth: 1,
-                    borderColor: '#fde68a',
+                    borderColor: isDark ? 'rgba(245, 158, 11, 0.3)' : '#fde68a',
                   }}
                 >
-                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#b45309' }}>Security</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: isDark ? '#FDE68A' : '#b45309' }}>Security</Text>
                 </View>
               </View>
-              <Text style={{ fontSize: 11, color: '#64748b', marginBottom: 14, lineHeight: 16 }}>
+              <Text style={{ fontSize: 11, color: themeColors.textSecondary, marginBottom: 14, lineHeight: 16 }}>
                 Enter your current password to authorize, then set your new password (minimum 6 characters).
               </Text>
 
               {/* Current Password */}
-              <Text style={{ fontSize: 11, fontWeight: '800', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: themeColors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }}>
                 Current Password
               </Text>
               <View
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  backgroundColor: '#f8fafc',
+                  backgroundColor: isDark ? '#141C2B' : '#f8fafc',
                   borderWidth: 1.5,
-                  borderColor: '#e2e8f0',
+                  borderColor: themeColors.cardBorder,
                   borderRadius: 14,
                   paddingHorizontal: 12,
                   marginBottom: 10,
                 }}
               >
                 <TextInput
-                  style={{ flex: 1, paddingVertical: 10, fontSize: 13, fontWeight: '600', color: '#0f172a' }}
+                  style={{ flex: 1, paddingVertical: 10, fontSize: 13, fontWeight: '600', color: themeColors.textPrimary }}
                   placeholder="Enter current password"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={themeColors.textMuted}
                   value={currentPassword}
                   onChangeText={setCurrentPassword}
                   secureTextEntry={!showCurrentPass}
@@ -1071,25 +1071,25 @@ export default function ProfileScreen() {
               </View>
 
               {/* New Password */}
-              <Text style={{ fontSize: 11, fontWeight: '800', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: themeColors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }}>
                 New Password
               </Text>
               <View
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  backgroundColor: '#f8fafc',
+                  backgroundColor: isDark ? '#141C2B' : '#f8fafc',
                   borderWidth: 1.5,
-                  borderColor: '#e2e8f0',
+                  borderColor: themeColors.cardBorder,
                   borderRadius: 14,
                   paddingHorizontal: 12,
                   marginBottom: 10,
                 }}
               >
                 <TextInput
-                  style={{ flex: 1, paddingVertical: 10, fontSize: 13, fontWeight: '600', color: '#0f172a' }}
+                  style={{ flex: 1, paddingVertical: 10, fontSize: 13, fontWeight: '600', color: themeColors.textPrimary }}
                   placeholder="Minimum 6 characters"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={themeColors.textMuted}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   secureTextEntry={!showNewPass}
@@ -1104,25 +1104,25 @@ export default function ProfileScreen() {
               </View>
 
               {/* Confirm New Password */}
-              <Text style={{ fontSize: 11, fontWeight: '800', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: themeColors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }}>
                 Confirm New Password
               </Text>
               <View
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  backgroundColor: '#f8fafc',
+                  backgroundColor: isDark ? '#141C2B' : '#f8fafc',
                   borderWidth: 1.5,
-                  borderColor: '#e2e8f0',
+                  borderColor: themeColors.cardBorder,
                   borderRadius: 14,
                   paddingHorizontal: 12,
                   marginBottom: 14,
                 }}
               >
                 <TextInput
-                  style={{ flex: 1, paddingVertical: 10, fontSize: 13, fontWeight: '600', color: '#0f172a' }}
+                  style={{ flex: 1, paddingVertical: 10, fontSize: 13, fontWeight: '600', color: themeColors.textPrimary }}
                   placeholder="Re-enter new password"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={themeColors.textMuted}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry={!showConfirmPass}
@@ -1141,9 +1141,9 @@ export default function ProfileScreen() {
                 disabled={passwordSaving || !isPasswordReady}
                 activeOpacity={0.8}
                 style={{
-                  backgroundColor: isPasswordReady ? '#10b981' : '#f1f5f9',
+                  backgroundColor: isPasswordReady ? '#10b981' : (isDark ? '#161E2E' : '#f1f5f9'),
                   borderWidth: 1,
-                  borderColor: isPasswordReady ? '#059669' : '#e2e8f0',
+                  borderColor: isPasswordReady ? '#059669' : (isDark ? '#28354D' : '#e2e8f0'),
                   paddingVertical: 12,
                   borderRadius: 14,
                   alignItems: 'center',
@@ -1161,7 +1161,7 @@ export default function ProfileScreen() {
                     style={{
                       fontWeight: '800',
                       fontSize: 13,
-                      color: isPasswordReady ? '#ffffff' : '#94a3b8',
+                      color: isPasswordReady ? '#ffffff' : themeColors.textMuted,
                     }}
                   >
                     Update Password
@@ -1173,10 +1173,10 @@ export default function ProfileScreen() {
             {/* 5. Account Session Card */}
             <View
               style={{
-                backgroundColor: '#ffffff',
+                backgroundColor: themeColors.card,
                 borderRadius: 20,
                 borderWidth: 1,
-                borderColor: '#e2e8f0',
+                borderColor: themeColors.cardBorder,
                 padding: 18,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 2 },
@@ -1185,10 +1185,10 @@ export default function ProfileScreen() {
                 elevation: 2,
               }}
             >
-              <Text style={{ fontSize: 14, fontWeight: '900', color: '#0f172a', marginBottom: 4 }}>
+              <Text style={{ fontSize: 14, fontWeight: '900', color: themeColors.textPrimary, marginBottom: 4 }}>
                 Account Session
               </Text>
-              <Text style={{ fontSize: 11, color: '#64748b', marginBottom: 14, lineHeight: 16 }}>
+              <Text style={{ fontSize: 11, color: themeColors.textSecondary, marginBottom: 14, lineHeight: 16 }}>
                 Sign out of this chauffeur account on this mobile device. You will need your login credentials to sign back in.
               </Text>
 
@@ -1196,9 +1196,9 @@ export default function ProfileScreen() {
                 onPress={handleLogout}
                 activeOpacity={0.8}
                 style={{
-                  backgroundColor: '#fef2f2',
+                  backgroundColor: isDark ? 'rgba(225, 29, 72, 0.12)' : '#fef2f2',
                   borderWidth: 1.5,
-                  borderColor: '#fecaca',
+                  borderColor: isDark ? 'rgba(225, 29, 72, 0.35)' : '#fecaca',
                   paddingVertical: 12,
                   borderRadius: 14,
                   alignItems: 'center',
@@ -1208,7 +1208,7 @@ export default function ProfileScreen() {
                 }}
               >
                 <Text style={{ fontSize: 15 }}>🔴</Text>
-                <Text style={{ color: '#dc2626', fontWeight: '900', fontSize: 13 }}>
+                <Text style={{ color: isDark ? '#FB7185' : '#dc2626', fontWeight: '900', fontSize: 13 }}>
                   Sign Out from this Device
                 </Text>
               </TouchableOpacity>

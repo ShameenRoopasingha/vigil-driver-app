@@ -19,6 +19,7 @@ import {
   type IntermediateStop,
 } from '../services/osmService';
 import { colors, themeStyles } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 type ActiveTourRouteProp = RouteProp<RootStackParamList, 'ActiveTour'>;
 type ActiveTourNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ActiveTour'>;
@@ -26,6 +27,7 @@ type ActiveTourNavigationProp = NativeStackNavigationProp<RootStackParamList, 'A
 export default function ActiveTourScreen() {
   const route = useRoute<ActiveTourRouteProp>();
   const navigation = useNavigation<ActiveTourNavigationProp>();
+  const { isDark, colors: themeColors } = useTheme();
   
   const { bookingId } = route.params;
 
@@ -465,16 +467,16 @@ export default function ActiveTourScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.day.background, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
-        <View style={{ backgroundColor: colors.day.card, padding: 16, borderRadius: 24, borderWidth: 1.5, borderColor: colors.day.cardBorder, marginBottom: 14, alignItems: 'center', justifyContent: 'center' }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.background, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+        <View style={{ backgroundColor: themeColors.card, padding: 16, borderRadius: 24, borderWidth: 1.5, borderColor: themeColors.cardBorder, marginBottom: 14, alignItems: 'center', justifyContent: 'center' }}>
           <Image 
             source={require('../../assets/logo-icon.png')} 
             style={{ width: 56, height: 56 }} 
             resizeMode="contain" 
           />
         </View>
-        <Text style={{ fontSize: 24, fontWeight: '900', color: colors.day.foreground, letterSpacing: 2 }}>VIGIL</Text>
-        <Text style={{ color: colors.primary[600], fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.2, marginTop: 4 }}>
+        <Text style={{ fontSize: 24, fontWeight: '900', color: themeColors.textPrimary, letterSpacing: 2 }}>VIGIL</Text>
+        <Text style={{ color: colors.primary[500], fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.2, marginTop: 4 }}>
           Loading Tour & GPS Radar...
         </Text>
         <ActivityIndicator size="small" color={colors.primary[500]} style={{ marginTop: 16 }} />
@@ -484,8 +486,8 @@ export default function ActiveTourScreen() {
 
   if (!tour) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.day.background, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
-        <Text style={{ color: colors.day.mutedForeground, fontSize: 14, fontWeight: '600' }}>Tour not found.</Text>
+      <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.background, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+        <Text style={{ color: themeColors.textSecondary, fontSize: 14, fontWeight: '600' }}>Tour not found.</Text>
         <TouchableOpacity onPress={() => navigation.goBack()} style={[themeStyles.btnPrimary, { marginTop: 16, paddingHorizontal: 24 }]}>
           <Text style={themeStyles.btnPrimaryText}>Go Back</Text>
         </TouchableOpacity>
@@ -529,16 +531,16 @@ export default function ActiveTourScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.day.background }}>
-      <View style={{ backgroundColor: colors.day.card, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.day.cardBorder, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={[themeStyles.btnSecondary, { paddingHorizontal: 12, paddingVertical: 6, marginRight: 10 }]}>
-          <Text style={themeStyles.btnSecondaryText}>← Back</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.background }}>
+      <View style={{ backgroundColor: themeColors.card, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: themeColors.cardBorder, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[themeStyles.btnSecondary, isDark && { backgroundColor: '#161E2E', borderColor: '#28354D' }, { paddingHorizontal: 12, paddingVertical: 6, marginRight: 10 }]}>
+          <Text style={[themeStyles.btnSecondaryText, { color: themeColors.textPrimary }]}>← Back</Text>
         </TouchableOpacity>
 
         {/* Center / Right: Tour Company Badge (56px right padding leaves clean clearance for ArcNavbar button) */}
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'flex-end', minWidth: 0, paddingRight: 56 }}>
           {tour?.company?.logoUrl ? (
-            <View style={{ width: 32, height: 32, backgroundColor: colors.day.card, borderRadius: 8, borderWidth: 1, borderColor: colors.day.cardBorder, padding: 2, marginRight: 8, alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ width: 32, height: 32, backgroundColor: themeColors.card, borderRadius: 8, borderWidth: 1, borderColor: themeColors.cardBorder, padding: 2, marginRight: 8, alignItems: 'center', justifyContent: 'center' }}>
               <Image 
                 source={{ uri: tour.company.logoUrl }} 
                 style={{ width: 24, height: 24 }} 
@@ -547,7 +549,7 @@ export default function ActiveTourScreen() {
             </View>
           ) : null}
           <View style={{ alignItems: 'flex-end', minWidth: 0 }}>
-            <Text style={{ fontSize: 12, fontWeight: '800', color: colors.day.foreground }} numberOfLines={1}>
+            <Text style={{ fontSize: 12, fontWeight: '800', color: themeColors.textPrimary }} numberOfLines={1}>
               {tour?.company?.companyName || 'Tour'}
             </Text>
             <View style={{ backgroundColor: colors.plate.bg, paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 4, marginTop: 2 }}>
@@ -562,9 +564,9 @@ export default function ActiveTourScreen() {
       <ScrollView className="flex-1 px-4 pt-4">
         {/* Operating Company Header Banner */}
         {tour?.company?.companyName && (
-          <View className="bg-white rounded-xl p-3 shadow-sm border border-gray-200 mb-4 flex-row items-center">
+          <View style={{ backgroundColor: themeColors.card, borderColor: themeColors.cardBorder, borderWidth: 1 }} className="rounded-xl p-3 shadow-sm mb-4 flex-row items-center">
             {tour.company.logoUrl ? (
-              <View className="w-11 h-11 bg-white rounded-lg border border-gray-200 p-1 items-center justify-center mr-3">
+              <View style={{ backgroundColor: themeColors.card, borderColor: themeColors.cardBorder }} className="w-11 h-11 rounded-lg border p-1 items-center justify-center mr-3">
                 <Image 
                   source={{ uri: tour.company.logoUrl }} 
                   style={{ width: 36, height: 36 }} 
@@ -579,10 +581,10 @@ export default function ActiveTourScreen() {
               </View>
             )}
             <View className="flex-1 min-w-0">
-              <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Transport Company</Text>
-              <Text className="text-sm font-bold text-gray-900 truncate">{tour.company.companyName}</Text>
+              <Text style={{ color: themeColors.textSecondary }} className="text-[10px] font-bold uppercase tracking-wider">Transport Company</Text>
+              <Text style={{ color: themeColors.textPrimary }} className="text-sm font-bold truncate">{tour.company.companyName}</Text>
               {tour.company.phone ? (
-                <Text className="text-xs text-gray-500">Dispatch: {tour.company.phone}</Text>
+                <Text style={{ color: themeColors.textSecondary }} className="text-xs">Dispatch: {tour.company.phone}</Text>
               ) : null}
             </View>
           </View>
@@ -758,20 +760,20 @@ export default function ActiveTourScreen() {
 
         {/* Turn-by-Turn Navigation Quick Action Card */}
         {primaryDestination ? (
-          <View className="bg-white rounded-xl p-4 shadow-sm border border-blue-100 mb-4">
-            <Text className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Turn-by-Turn Navigation</Text>
+          <View style={{ backgroundColor: themeColors.card, borderColor: themeColors.cardBorder, borderWidth: 1 }} className="rounded-xl p-4 shadow-sm mb-4">
+            <Text style={{ color: themeColors.textSecondary }} className="text-xs font-bold uppercase tracking-wider mb-2">Turn-by-Turn Navigation</Text>
             <View className="flex-row items-center mb-3">
-              <Text className="text-blue-900 font-bold text-base flex-1" numberOfLines={1}>
+              <Text style={{ color: themeColors.textPrimary }} className="font-bold text-base flex-1" numberOfLines={1}>
                 📍 {primaryDestination}
               </Text>
             </View>
             
             {/* Active Intermediate Stops List Card */}
             {activeIntermediateStops.length > 0 ? (
-              <View className="bg-indigo-50 border border-indigo-200 rounded-xl p-3.5 mb-3.5 shadow-xs">
+              <View style={{ backgroundColor: isDark ? '#141C2B' : '#EEF2FF', borderColor: isDark ? '#28354D' : '#C7D2FE', borderWidth: 1 }} className="rounded-xl p-3.5 mb-3.5 shadow-xs">
                 <View className="flex-row items-center justify-between mb-2">
                   <View className="flex-row items-center gap-1.5">
-                    <Text className="text-indigo-900 font-black text-xs uppercase tracking-wide">
+                    <Text style={{ color: isDark ? '#C7D2FE' : '#312E81' }} className="font-black text-xs uppercase tracking-wide">
                       📍 Intermediate Tour Stops ({activeIntermediateStops.length})
                     </Text>
                   </View>
@@ -781,12 +783,12 @@ export default function ActiveTourScreen() {
                 </View>
 
                 {activeIntermediateStops.map((stopName, idx) => (
-                  <View key={idx} className="bg-white rounded-lg p-2.5 border border-indigo-100 mb-2 shadow-2xs">
+                  <View key={idx} style={{ backgroundColor: isDark ? '#0E131F' : '#FFFFFF', borderColor: isDark ? '#28354D' : '#E0E7FF' }} className="rounded-lg p-2.5 border mb-2 shadow-2xs">
                     <View className="flex-row items-center gap-2 mb-1.5">
                       <View className="w-5 h-5 rounded-full bg-indigo-600 items-center justify-center">
                         <Text className="text-white text-[10px] font-black">{idx + 1}</Text>
                       </View>
-                      <Text className="text-gray-900 font-bold text-xs flex-1" numberOfLines={1}>
+                      <Text style={{ color: themeColors.textPrimary }} className="font-bold text-xs flex-1" numberOfLines={1}>
                         {stopName}
                       </Text>
                     </View>
@@ -810,16 +812,16 @@ export default function ActiveTourScreen() {
                 ))}
               </View>
             ) : latestRouteChange ? (
-              <View className="bg-indigo-50 border border-indigo-200 rounded-lg p-2.5 mb-3">
+              <View style={{ backgroundColor: isDark ? '#141C2B' : '#EEF2FF', borderColor: isDark ? '#28354D' : '#C7D2FE' }} className="border rounded-lg p-2.5 mb-3">
                 <View className="flex-row items-center justify-between mb-0.5">
-                  <Text className="text-indigo-900 font-black text-[11px] uppercase tracking-wide">
+                  <Text style={{ color: isDark ? '#C7D2FE' : '#312E81' }} className="font-black text-[11px] uppercase tracking-wide">
                     🗺️ Route Alteration Logged
                   </Text>
                   <View className="bg-indigo-200 px-1.5 py-0.5 rounded">
                     <Text className="text-indigo-900 text-[9px] font-black">LOGGED</Text>
                   </View>
                 </View>
-                <Text className="text-indigo-950 text-xs font-semibold" numberOfLines={2}>
+                <Text style={{ color: themeColors.textPrimary }} className="text-xs font-semibold" numberOfLines={2}>
                   {latestRouteChange.note}
                 </Text>
               </View>
@@ -828,7 +830,7 @@ export default function ActiveTourScreen() {
             {/* Final Tour Destination Navigation */}
             <View className={activeIntermediateStops.length > 0 ? "border-t border-gray-100 pt-3" : ""}>
               {activeIntermediateStops.length > 0 && (
-                <Text className="text-gray-500 text-[11px] font-bold uppercase tracking-wider mb-2">
+                <Text style={{ color: themeColors.textSecondary }} className="text-[11px] font-bold uppercase tracking-wider mb-2">
                   🏁 Final Tour Destination ({primaryDestination})
                 </Text>
               )}
@@ -852,9 +854,10 @@ export default function ActiveTourScreen() {
             <TouchableOpacity
               onPress={() => setShowRouteChangeModal(true)}
               activeOpacity={0.8}
-              className="mt-2.5 bg-indigo-50 border border-indigo-200 py-2 rounded-lg flex-row items-center justify-center gap-1.5"
+              style={{ backgroundColor: isDark ? '#141C2B' : '#EEF2FF', borderColor: isDark ? '#28354D' : '#C7D2FE' }}
+              className="mt-2.5 border py-2 rounded-lg flex-row items-center justify-center gap-1.5"
             >
-              <Text className="text-indigo-800 font-bold text-xs">
+              <Text style={{ color: isDark ? '#93C5FD' : '#3730A3' }} className="font-bold text-xs">
                 ✏️ Edit Pickup, Stops & Destination
               </Text>
             </TouchableOpacity>
@@ -862,16 +865,16 @@ export default function ActiveTourScreen() {
         ) : null}
 
         {/* Customer & Route Details Card */}
-        <View className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-4">
-          <Text className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Customer Details</Text>
-          <Text className="text-xl font-bold text-gray-800 mb-1">{tour.customerName}</Text>
+        <View style={{ backgroundColor: themeColors.card, borderColor: themeColors.cardBorder, borderWidth: 1 }} className="rounded-xl p-4 shadow-sm mb-4">
+          <Text style={{ color: themeColors.textSecondary }} className="text-xs font-bold uppercase tracking-wider mb-2">Customer Details</Text>
+          <Text style={{ color: themeColors.textPrimary }} className="text-xl font-bold mb-1">{tour.customerName}</Text>
           {tour.pickupLocation && (
-            <Text className="text-gray-600 text-xs mb-1">
-              <Text className="font-semibold text-gray-700">Pickup:</Text> {tour.pickupLocation}
+            <Text style={{ color: themeColors.textSecondary }} className="text-xs mb-1">
+              <Text style={{ color: themeColors.textPrimary }} className="font-semibold">Pickup:</Text> {tour.pickupLocation}
             </Text>
           )}
-          <Text className="text-gray-600 text-xs mb-2">
-            <Text className="font-semibold text-gray-700">Destination:</Text> {tour.destination || 'Not specified'}
+          <Text style={{ color: themeColors.textSecondary }} className="text-xs mb-2">
+            <Text style={{ color: themeColors.textPrimary }} className="font-semibold">Destination:</Text> {tour.destination || 'Not specified'}
           </Text>
 
           {tour.customerPhone && (
@@ -879,8 +882,8 @@ export default function ActiveTourScreen() {
               onPress={() => Linking.openURL(`tel:${tour.customerPhone}`)}
               className="flex-row items-center mt-1 py-1"
             >
-              <Text className="text-blue-600 font-bold text-sm">📞 {tour.customerPhone}</Text>
-              <Text className="text-xs text-gray-400 ml-2">(Tap to call customer)</Text>
+              <Text className="text-blue-500 font-bold text-sm">📞 {tour.customerPhone}</Text>
+              <Text style={{ color: themeColors.textMuted }} className="text-xs ml-2">(Tap to call customer)</Text>
             </TouchableOpacity>
           )}
 
@@ -889,32 +892,33 @@ export default function ActiveTourScreen() {
               onPress={() => Linking.openURL(`mailto:${tour.customerEmail}`)}
               className="flex-row items-center mt-0.5 py-0.5"
             >
-              <Text className="text-blue-600 text-xs">✉️ {tour.customerEmail}</Text>
+              <Text className="text-blue-400 text-xs">✉️ {tour.customerEmail}</Text>
             </TouchableOpacity>
           )}
           
-          <View className="bg-blue-50 p-3 rounded-lg mt-2">
-            <Text className="text-blue-800 text-sm">{tour.notes || 'No special notes.'}</Text>
+          <View style={{ backgroundColor: isDark ? '#141C2B' : '#EFF6FF', borderColor: isDark ? '#28354D' : '#BFDBFE', borderWidth: 1 }} className="p-3 rounded-lg mt-2">
+            <Text style={{ color: isDark ? '#93C5FD' : '#1E40AF' }} className="text-sm">{tour.notes || 'No special notes.'}</Text>
           </View>
         </View>
 
         {/* Itinerary Day-by-Day Stops (if available from quotation schedule) */}
         {tour.itineraryDays && tour.itineraryDays.length > 0 && (
-          <View className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-4">
-            <Text className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Tour Itinerary Stops</Text>
+          <View style={{ backgroundColor: themeColors.card, borderColor: themeColors.cardBorder, borderWidth: 1 }} className="rounded-xl p-4 shadow-sm mb-4">
+            <Text style={{ color: themeColors.textSecondary }} className="text-xs font-bold uppercase tracking-wider mb-2">Tour Itinerary Stops</Text>
             {tour.itineraryDays.map((item: any, idx: number) => (
-              <View key={idx} className="py-2 border-b border-gray-100 flex-row items-center justify-between">
+              <View key={idx} style={{ borderBottomColor: themeColors.cardBorder }} className="py-2 border-b flex-row items-center justify-between">
                 <View className="flex-1 pr-2">
-                  <Text className="text-sm font-bold text-gray-800">Day {item.day}: {item.title}</Text>
+                  <Text style={{ color: themeColors.textPrimary }} className="text-sm font-bold">Day {item.day}: {item.title}</Text>
                   {item.description && (
-                    <Text className="text-xs text-gray-500" numberOfLines={1}>{item.description}</Text>
+                    <Text style={{ color: themeColors.textSecondary }} className="text-xs" numberOfLines={1}>{item.description}</Text>
                   )}
                 </View>
                 <TouchableOpacity
                   onPress={() => openNavigation('google', item.title)}
-                  className="bg-gray-100 px-2.5 py-1.5 rounded border border-gray-200"
+                  style={{ backgroundColor: isDark ? '#161E2E' : '#F3F4F6', borderColor: themeColors.cardBorder }}
+                  className="px-2.5 py-1.5 rounded border"
                 >
-                  <Text className="text-xs text-blue-600 font-semibold">Navigate</Text>
+                  <Text className="text-xs text-blue-500 font-semibold">Navigate</Text>
                 </TouchableOpacity>
               </View>
             ))}
@@ -922,8 +926,8 @@ export default function ActiveTourScreen() {
         )}
 
         {/* Status & Actions Card */}
-        <View className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-4">
-          <Text className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Trip Status</Text>
+        <View style={{ backgroundColor: themeColors.card, borderColor: themeColors.cardBorder, borderWidth: 1 }} className="rounded-xl p-4 shadow-sm mb-4">
+          <Text style={{ color: themeColors.textSecondary }} className="text-xs font-bold uppercase tracking-wider mb-2">Trip Status</Text>
           
           <View className={`px-3 py-1 rounded-full self-start mb-4 ${isCompleted ? 'bg-gray-100' : isStarted ? 'bg-green-100' : 'bg-blue-100'}`}>
             <Text className={`font-bold ${isCompleted ? 'text-gray-600' : isStarted ? 'text-green-700' : 'text-blue-700'}`}>
@@ -932,9 +936,9 @@ export default function ActiveTourScreen() {
           </View>
 
           {!isCompleted && (
-            <View className="bg-gray-50 p-3.5 rounded-xl border border-gray-200 mb-4">
+            <View style={{ backgroundColor: isDark ? '#141C2B' : '#F9FAFB', borderColor: themeColors.cardBorder }} className="p-3.5 rounded-xl border mb-4">
               <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-gray-800 font-bold text-sm">
+                <Text style={{ color: themeColors.textPrimary }} className="font-bold text-sm">
                   {needsTakeover ? 'Takeover Meter Reading (KM):' : 'Dashboard Meter Reading (KM):'}
                 </Text>
                 {needsTakeover && tour.handoverDetails?.meterReading ? (
@@ -950,8 +954,10 @@ export default function ActiveTourScreen() {
                 ) : null}
               </View>
               <TextInput
-                className="bg-white border border-gray-300 rounded-lg px-3.5 py-2.5 text-gray-900 font-semibold text-base"
+                style={{ backgroundColor: isDark ? '#0E131F' : '#FFFFFF', borderColor: themeColors.cardBorder, color: themeColors.textPrimary }}
+                className="border rounded-lg px-3.5 py-2.5 font-semibold text-base"
                 placeholder={needsTakeover && tour.handoverDetails?.meterReading ? tour.handoverDetails.meterReading : "e.g. 45500"}
+                placeholderTextColor={themeColors.textMuted}
                 keyboardType="numeric"
                 value={meterReading}
                 onChangeText={setMeterReading}
@@ -1119,67 +1125,121 @@ export default function ActiveTourScreen() {
         onRequestClose={() => setShowHandoverModal(false)}
       >
         <View className="flex-1 justify-end bg-black/60">
-          <View className="bg-white rounded-t-3xl p-6 shadow-xl">
+          <View style={{ backgroundColor: isDark ? '#0E131F' : '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, borderWidth: 1, borderColor: isDark ? '#222F45' : '#E2DDD4' }}>
             <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-xl font-bold text-gray-800">Request Mid-Tour Handover</Text>
+              <Text style={{ fontSize: 20, fontWeight: '900', color: themeColors.textPrimary }}>Request Mid-Tour Handover</Text>
               <TouchableOpacity onPress={() => setShowHandoverModal(false)} className="p-1">
-                <Text className="text-gray-400 font-bold text-lg">✕</Text>
+                <Text style={{ color: themeColors.textMuted, fontWeight: '700', fontSize: 18 }}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            <Text className="text-gray-500 text-xs mb-4">
+            <Text style={{ color: themeColors.textSecondary, fontSize: 12, marginBottom: 16 }}>
               If you cannot continue driving due to sickness, fatigue, or emergency, notify dispatch immediately.
             </Text>
 
-            <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">Reason for Handover</Text>
+            <Text style={{ color: themeColors.textSecondary, fontWeight: '700', fontSize: 12, marginBottom: 6, textTransform: 'uppercase' }}>Reason for Handover</Text>
             <View className="flex-row flex-wrap gap-2 mb-4">
-              {['Medical / Sickness', 'Family Emergency', 'Vehicle Issue', 'Shift End / Fatigue', 'Other'].map((r) => (
-                <TouchableOpacity
-                  key={r}
-                  onPress={() => setHandoverReason(r)}
-                  className={`px-3 py-1.5 rounded-full border ${handoverReason === r ? 'bg-amber-100 border-amber-600' : 'bg-gray-50 border-gray-200'}`}
-                >
-                  <Text className={`text-xs font-semibold ${handoverReason === r ? 'text-amber-900' : 'text-gray-600'}`}>{r}</Text>
-                </TouchableOpacity>
-              ))}
+              {['Medical / Sickness', 'Family Emergency', 'Vehicle Issue', 'Shift End / Fatigue', 'Other'].map((r) => {
+                const isSelected = handoverReason === r;
+                return (
+                  <TouchableOpacity
+                    key={r}
+                    onPress={() => setHandoverReason(r)}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 20,
+                      borderWidth: 1,
+                      backgroundColor: isSelected ? (isDark ? 'rgba(245, 158, 11, 0.25)' : '#FEF3C7') : (isDark ? '#141C2B' : '#F9FAFB'),
+                      borderColor: isSelected ? '#F59E0B' : themeColors.cardBorder,
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: isSelected ? '#FBBF24' : themeColors.textSecondary }}>{r}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
-            <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">
-              Current Odometer Reading (KM) <Text className="text-red-600 font-bold">* (Required)</Text>
+            <Text style={{ color: themeColors.textSecondary, fontWeight: '700', fontSize: 12, marginBottom: 4, textTransform: 'uppercase' }}>
+              Current Odometer Reading (KM) <Text style={{ color: '#EF4444', fontWeight: '900' }}>* (Required)</Text>
             </Text>
             <TextInput
-              className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-800 mb-4"
+              style={{
+                backgroundColor: isDark ? '#141C2B' : '#F9FAFB',
+                borderWidth: 1,
+                borderColor: themeColors.cardBorder,
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                color: themeColors.textPrimary,
+                marginBottom: 16,
+                fontWeight: '600',
+              }}
               placeholder="e.g. 45350"
+              placeholderTextColor={themeColors.textMuted}
               keyboardType="numeric"
               value={handoverMeter}
               onChangeText={setHandoverMeter}
             />
 
             <View className="flex-row justify-between items-center mb-1">
-              <Text className="text-gray-700 font-semibold text-xs uppercase">Current Location (Auto-detected from GPS)</Text>
+              <Text style={{ color: themeColors.textSecondary, fontWeight: '700', fontSize: 12, textTransform: 'uppercase' }}>Current Location (Auto-detected from GPS)</Text>
               <TouchableOpacity
                 onPress={() => autoDetectLocation('handover')}
                 disabled={isDetectingLocation}
-                className="flex-row items-center gap-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-300"
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF3C7',
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: 6,
+                  borderWidth: 1,
+                  borderColor: isDark ? 'rgba(245, 158, 11, 0.4)' : '#FCD34D',
+                }}
               >
                 {isDetectingLocation ? (
-                  <ActivityIndicator size="small" color="#d97706" />
+                  <ActivityIndicator size="small" color="#F59E0B" />
                 ) : (
-                  <Text className="text-[10px] font-bold text-amber-800">🔄 GPS Sync</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '900', color: isDark ? '#FBBF24' : '#B45309' }}>🔄 GPS Sync</Text>
                 )}
               </TouchableOpacity>
             </View>
             <TextInput
-              className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-800 mb-4 text-xs font-medium"
+              style={{
+                backgroundColor: isDark ? '#141C2B' : '#F9FAFB',
+                borderWidth: 1,
+                borderColor: themeColors.cardBorder,
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                color: themeColors.textPrimary,
+                marginBottom: 16,
+                fontSize: 12,
+                fontWeight: '600',
+              }}
               placeholder={isDetectingLocation ? '📍 Detecting GPS location...' : 'Current location (auto-filled from GPS)'}
+              placeholderTextColor={themeColors.textMuted}
               value={handoverLocation}
               onChangeText={setHandoverLocation}
             />
 
-            <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">Additional Notes / Situation</Text>
+            <Text style={{ color: themeColors.textSecondary, fontWeight: '700', fontSize: 12, marginBottom: 4, textTransform: 'uppercase' }}>Additional Notes / Situation</Text>
             <TextInput
-              className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-800 mb-6"
+              style={{
+                backgroundColor: isDark ? '#141C2B' : '#F9FAFB',
+                borderWidth: 1,
+                borderColor: themeColors.cardBorder,
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                color: themeColors.textPrimary,
+                marginBottom: 20,
+                fontSize: 12,
+                fontWeight: '600',
+              }}
               placeholder="e.g. Resting at Ambepussa, doctor advised 2 days rest"
+              placeholderTextColor={themeColors.textMuted}
               value={handoverNote}
               onChangeText={setHandoverNote}
             />
@@ -1187,19 +1247,35 @@ export default function ActiveTourScreen() {
             <View className="flex-row gap-3">
               <TouchableOpacity
                 onPress={() => setShowHandoverModal(false)}
-                className="flex-1 bg-gray-100 py-3 rounded-xl items-center"
+                style={{
+                  flex: 1,
+                  backgroundColor: isDark ? '#161E2E' : '#F3F4F6',
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: themeColors.cardBorder,
+                }}
               >
-                <Text className="text-gray-700 font-bold">Cancel</Text>
+                <Text style={{ color: themeColors.textPrimary, fontWeight: '700' }}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={submitHandoverRequest}
                 disabled={handoverSubmitting}
-                className="flex-1 bg-amber-600 py-3 rounded-xl items-center flex-row justify-center"
+                style={{
+                  flex: 1,
+                  backgroundColor: '#D97706',
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                }}
               >
                 {handoverSubmitting ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text className="text-white font-bold">Send to Dispatch</Text>
+                  <Text style={{ color: '#FFFFFF', fontWeight: '900' }}>Send to Dispatch</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -1215,20 +1291,20 @@ export default function ActiveTourScreen() {
         onRequestClose={() => setShowBreakdownModal(false)}
       >
         <View className="flex-1 justify-end bg-black/60">
-          <View className="bg-white rounded-t-3xl p-6 shadow-xl max-h-[85%]">
+          <View style={{ backgroundColor: isDark ? '#0E131F' : '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, borderWidth: 1, borderColor: isDark ? '#222F45' : '#E2DDD4', maxHeight: '85%' }}>
             <ScrollView showsVerticalScrollIndicator={false}>
               <View className="flex-row justify-between items-center mb-3">
-                <Text className="text-xl font-bold text-red-600">🚨 Report Vehicle Breakdown</Text>
+                <Text style={{ fontSize: 20, fontWeight: '900', color: '#EF4444' }}>🚨 Report Vehicle Breakdown</Text>
                 <TouchableOpacity onPress={() => setShowBreakdownModal(false)} className="p-1">
-                  <Text className="text-gray-400 font-bold text-lg">✕</Text>
+                  <Text style={{ color: themeColors.textMuted, fontWeight: '700', fontSize: 18 }}>✕</Text>
                 </TouchableOpacity>
               </View>
 
-              <Text className="text-gray-500 text-xs mb-4">
+              <Text style={{ color: themeColors.textSecondary, fontSize: 12, marginBottom: 16 }}>
                 If the tour vehicle ({tour.vehicleNo}) suffers a mechanical defect or cannot proceed, alert dispatch immediately with your odometer reading.
               </Text>
 
-              <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">Defect / Issue Type</Text>
+              <Text style={{ color: themeColors.textSecondary, fontWeight: '700', fontSize: 12, marginBottom: 6, textTransform: 'uppercase' }}>Defect / Issue Type</Text>
               <View className="flex-row flex-wrap gap-2 mb-4">
                 {[
                   'Engine / Overheating',
@@ -1238,53 +1314,107 @@ export default function ActiveTourScreen() {
                   'Electrical / Battery',
                   'Accident / Collision',
                   'Other Mechanical Issue',
-                ].map((r) => (
-                  <TouchableOpacity
-                    key={r}
-                    onPress={() => setBreakdownReason(r)}
-                    className={`px-3 py-1.5 rounded-full border ${breakdownReason === r ? 'bg-red-100 border-red-600' : 'bg-gray-50 border-gray-200'}`}
-                  >
-                    <Text className={`text-xs font-semibold ${breakdownReason === r ? 'text-red-900' : 'text-gray-600'}`}>{r}</Text>
-                  </TouchableOpacity>
-                ))}
+                ].map((r) => {
+                  const isSelected = breakdownReason === r;
+                  return (
+                    <TouchableOpacity
+                      key={r}
+                      onPress={() => setBreakdownReason(r)}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 20,
+                        borderWidth: 1,
+                        backgroundColor: isSelected ? (isDark ? 'rgba(239, 68, 68, 0.25)' : '#FEE2E2') : (isDark ? '#141C2B' : '#F9FAFB'),
+                        borderColor: isSelected ? '#EF4444' : themeColors.cardBorder,
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: isSelected ? '#F87171' : themeColors.textSecondary }}>{r}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
-              <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">
-                Current Odometer Reading (KM) <Text className="text-red-600 font-bold">* (Required)</Text>
+              <Text style={{ color: themeColors.textSecondary, fontWeight: '700', fontSize: 12, marginBottom: 4, textTransform: 'uppercase' }}>
+                Current Odometer Reading (KM) <Text style={{ color: '#EF4444', fontWeight: '900' }}>* (Required)</Text>
               </Text>
               <TextInput
-                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-800 mb-4"
+                style={{
+                  backgroundColor: isDark ? '#141C2B' : '#F9FAFB',
+                  borderWidth: 1,
+                  borderColor: themeColors.cardBorder,
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  color: themeColors.textPrimary,
+                  marginBottom: 16,
+                  fontWeight: '600',
+                }}
                 placeholder="e.g. 45820"
+                placeholderTextColor={themeColors.textMuted}
                 keyboardType="numeric"
                 value={breakdownMeter}
                 onChangeText={setBreakdownMeter}
               />
 
               <View className="flex-row justify-between items-center mb-1">
-                <Text className="text-gray-700 font-semibold text-xs uppercase">Current Breakdown Location (Auto-detected from GPS)</Text>
+                <Text style={{ color: themeColors.textSecondary, fontWeight: '700', fontSize: 12, textTransform: 'uppercase' }}>Current Breakdown Location (Auto-detected from GPS)</Text>
                 <TouchableOpacity
                   onPress={() => autoDetectLocation('breakdown')}
                   disabled={isDetectingLocation}
-                  className="flex-row items-center gap-1 bg-red-50 px-2 py-0.5 rounded border border-red-300"
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2',
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 6,
+                    borderWidth: 1,
+                    borderColor: isDark ? 'rgba(239, 68, 68, 0.4)' : '#FCA5A5',
+                  }}
                 >
                   {isDetectingLocation ? (
-                    <ActivityIndicator size="small" color="#dc2626" />
+                    <ActivityIndicator size="small" color="#EF4444" />
                   ) : (
-                    <Text className="text-[10px] font-bold text-red-800">🔄 GPS Sync</Text>
+                    <Text style={{ fontSize: 10, fontWeight: '900', color: isDark ? '#F87171' : '#B91C1C' }}>🔄 GPS Sync</Text>
                   )}
                 </TouchableOpacity>
               </View>
               <TextInput
-                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-800 mb-4 text-xs font-medium"
+                style={{
+                  backgroundColor: isDark ? '#141C2B' : '#F9FAFB',
+                  borderWidth: 1,
+                  borderColor: themeColors.cardBorder,
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  color: themeColors.textPrimary,
+                  marginBottom: 16,
+                  fontSize: 12,
+                  fontWeight: '600',
+                }}
                 placeholder={isDetectingLocation ? '📍 Detecting GPS location...' : 'Current location (auto-filled from GPS)'}
+                placeholderTextColor={themeColors.textMuted}
                 value={breakdownLocation}
                 onChangeText={setBreakdownLocation}
               />
 
-              <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">Description / Passenger Situation</Text>
+              <Text style={{ color: themeColors.textSecondary, fontWeight: '700', fontSize: 12, marginBottom: 4, textTransform: 'uppercase' }}>Description / Passenger Situation</Text>
               <TextInput
-                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-800 mb-6"
+                style={{
+                  backgroundColor: isDark ? '#141C2B' : '#F9FAFB',
+                  borderWidth: 1,
+                  borderColor: themeColors.cardBorder,
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  color: themeColors.textPrimary,
+                  marginBottom: 20,
+                  fontSize: 12,
+                  fontWeight: '600',
+                }}
                 placeholder="e.g. Radiator hose leaked, passengers waiting safely at roadside café"
+                placeholderTextColor={themeColors.textMuted}
                 multiline
                 numberOfLines={2}
                 value={breakdownNote}
@@ -1294,19 +1424,35 @@ export default function ActiveTourScreen() {
               <View className="flex-row gap-3 mb-2">
                 <TouchableOpacity
                   onPress={() => setShowBreakdownModal(false)}
-                  className="flex-1 bg-gray-100 py-3 rounded-xl items-center"
+                  style={{
+                    flex: 1,
+                    backgroundColor: isDark ? '#161E2E' : '#F3F4F6',
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: themeColors.cardBorder,
+                  }}
                 >
-                  <Text className="text-gray-700 font-bold">Cancel</Text>
+                  <Text style={{ color: themeColors.textPrimary, fontWeight: '700' }}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={submitBreakdownReport}
                   disabled={breakdownSubmitting}
-                  className="flex-1 bg-red-600 py-3 rounded-xl items-center flex-row justify-center"
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#DC2626',
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    alignItems: 'center',
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                  }}
                 >
                   {breakdownSubmitting ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text className="text-white font-bold">Report to Dispatch</Text>
+                    <Text style={{ color: '#FFFFFF', fontWeight: '900' }}>Report to Dispatch</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -1323,15 +1469,15 @@ export default function ActiveTourScreen() {
         onRequestClose={() => setShowRouteChangeModal(false)}
       >
         <View className="flex-1 justify-end bg-black/60">
-          <View className="bg-white rounded-t-3xl p-6 shadow-xl max-h-[90%]">
+          <View style={{ backgroundColor: isDark ? '#0E131F' : '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, borderWidth: 1, borderColor: isDark ? '#222F45' : '#E2DDD4', maxHeight: '90%' }}>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <View className="flex-row justify-between items-center mb-2">
                 <View>
-                  <Text className="text-xl font-black text-gray-900">Tour Itinerary Planner</Text>
-                  <Text className="text-gray-500 text-xs mt-0.5">Edit pickup, add/remove stops, or change destination</Text>
+                  <Text style={{ fontSize: 20, fontWeight: '900', color: themeColors.textPrimary }}>Tour Itinerary Planner</Text>
+                  <Text style={{ fontSize: 12, color: themeColors.textSecondary, marginTop: 2 }}>Edit pickup, add/remove stops, or change destination</Text>
                 </View>
                 <TouchableOpacity onPress={() => setShowRouteChangeModal(false)} className="p-1">
-                  <Text className="text-gray-400 font-bold text-lg">✕</Text>
+                  <Text style={{ color: themeColors.textMuted, fontWeight: '700', fontSize: 18 }}>✕</Text>
                 </TouchableOpacity>
               </View>
 
@@ -1361,25 +1507,37 @@ export default function ActiveTourScreen() {
 
               {/* Estimated Extra KM (auto-calculated via OSRM, editable) */}
               <View className="flex-row items-center justify-between mb-1 mt-2">
-                <Text className="text-gray-700 font-semibold text-xs uppercase">
+                <Text style={{ color: themeColors.textSecondary, fontWeight: '700', fontSize: 12, textTransform: 'uppercase' }}>
                   Estimated Extra Distance (KM)
                 </Text>
                 {extraKmInput ? (
-                  <Text className="text-[11px] font-bold text-emerald-700">
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: isDark ? '#34D399' : '#047857' }}>
                     ✓ Auto-Calculated via OSM
                   </Text>
                 ) : null}
               </View>
               <TextInput
-                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 mb-2 text-sm font-medium"
+                style={{
+                  backgroundColor: isDark ? '#141C2B' : '#F9FAFB',
+                  borderWidth: 1,
+                  borderColor: themeColors.cardBorder,
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  color: themeColors.textPrimary,
+                  marginBottom: 12,
+                  fontSize: 14,
+                  fontWeight: '600',
+                }}
                 placeholder="e.g. 25"
+                placeholderTextColor={themeColors.textMuted}
                 keyboardType="numeric"
                 value={extraKmInput}
                 onChangeText={setExtraKmInput}
               />
 
               {/* Reason Selector */}
-              <Text className="text-gray-700 font-semibold text-xs mb-1.5 uppercase">
+              <Text style={{ color: themeColors.textSecondary, fontWeight: '700', fontSize: 12, marginBottom: 6, textTransform: 'uppercase' }}>
                 Reason for Route Alteration
               </Text>
               <View className="flex-row flex-wrap gap-2 mb-3">
@@ -1389,39 +1547,82 @@ export default function ActiveTourScreen() {
                   'Weather / Road Block Bypass',
                   'Flight / Timing Reschedule',
                   'Other',
-                ].map((reason) => (
-                  <TouchableOpacity
-                    key={reason}
-                    onPress={() => setRouteChangeReason(reason)}
-                    className={`px-3 py-1.5 rounded-full border ${routeChangeReason === reason ? 'bg-indigo-100 border-indigo-600' : 'bg-gray-50 border-gray-200'}`}
-                  >
-                    <Text className={`text-xs font-medium ${routeChangeReason === reason ? 'text-indigo-900 font-bold' : 'text-gray-600'}`}>
-                      {reason}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                ].map((reason) => {
+                  const isSelected = routeChangeReason === reason;
+                  return (
+                    <TouchableOpacity
+                      key={reason}
+                      onPress={() => setRouteChangeReason(reason)}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 20,
+                        borderWidth: 1,
+                        backgroundColor: isSelected ? (isDark ? 'rgba(99, 102, 241, 0.25)' : '#EEF2FF') : (isDark ? '#141C2B' : '#F9FAFB'),
+                        borderColor: isSelected ? '#6366F1' : themeColors.cardBorder,
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: isSelected ? (isDark ? '#A5B4FC' : '#312E81') : themeColors.textSecondary }}>
+                        {reason}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
               {/* Passenger Agreement Toggle */}
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={() => setCustomerAgreed(!customerAgreed)}
-                className="flex-row items-center bg-indigo-50 border border-indigo-200 p-3 rounded-xl mb-4"
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: isDark ? '#161E2E' : '#EEF2FF',
+                  borderWidth: 1,
+                  borderColor: isDark ? '#28354D' : '#C7D2FE',
+                  padding: 12,
+                  borderRadius: 14,
+                  marginBottom: 16,
+                }}
               >
-                <View className={`w-5 h-5 rounded border items-center justify-center mr-2.5 ${customerAgreed ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-400'}`}>
-                  {customerAgreed && <Text className="text-white text-xs font-bold">✓</Text>}
+                <View
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 6,
+                    borderWidth: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 10,
+                    backgroundColor: customerAgreed ? '#6366F1' : (isDark ? '#101623' : '#FFFFFF'),
+                    borderColor: customerAgreed ? '#6366F1' : themeColors.cardBorder,
+                  }}
+                >
+                  {customerAgreed && <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '900' }}>✓</Text>}
                 </View>
                 <View className="flex-1">
-                  <Text className="text-xs font-bold text-indigo-950">Passengers Requested & Agreed</Text>
-                  <Text className="text-[11px] text-indigo-700">Extra km and detour route authorized by guests</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: themeColors.textPrimary }}>Passengers Requested & Agreed</Text>
+                  <Text style={{ fontSize: 11, color: isDark ? '#818CF8' : '#4338CA', marginTop: 1 }}>Extra km and detour route authorized by guests</Text>
                 </View>
               </TouchableOpacity>
 
               {/* Notes */}
-              <Text className="text-gray-700 font-semibold text-xs mb-1 uppercase">Notes / Dispatch Memo</Text>
+              <Text style={{ color: themeColors.textSecondary, fontWeight: '700', fontSize: 12, marginBottom: 4, textTransform: 'uppercase' }}>Notes / Dispatch Memo</Text>
               <TextInput
-                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 mb-5 text-xs font-medium"
+                style={{
+                  backgroundColor: isDark ? '#141C2B' : '#F9FAFB',
+                  borderWidth: 1,
+                  borderColor: themeColors.cardBorder,
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  color: themeColors.textPrimary,
+                  marginBottom: 20,
+                  fontSize: 12,
+                  fontWeight: '600',
+                }}
                 placeholder="e.g. Guests wanted to stop for 1.5 hours to watch elephant bathing"
+                placeholderTextColor={themeColors.textMuted}
                 value={routeChangeNote}
                 onChangeText={setRouteChangeNote}
               />
@@ -1429,19 +1630,35 @@ export default function ActiveTourScreen() {
               <View className="flex-row gap-3 pb-4">
                 <TouchableOpacity
                   onPress={() => setShowRouteChangeModal(false)}
-                  className="flex-1 bg-gray-100 py-3 rounded-xl items-center"
+                  style={{
+                    flex: 1,
+                    backgroundColor: isDark ? '#161E2E' : '#F3F4F6',
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: themeColors.cardBorder,
+                  }}
                 >
-                  <Text className="text-gray-700 font-bold">Cancel</Text>
+                  <Text style={{ color: themeColors.textPrimary, fontWeight: '700' }}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={submitRouteChange}
                   disabled={routeChangeSubmitting}
-                  className={`flex-1 py-3 rounded-xl items-center flex-row justify-center ${'bg-indigo-600 shadow-sm'}`}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#4F46E5',
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    alignItems: 'center',
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                  }}
                 >
                   {routeChangeSubmitting ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text className="text-white font-bold">Confirm & Save Itinerary</Text>
+                    <Text style={{ color: '#FFFFFF', fontWeight: '900' }}>Confirm & Save Itinerary</Text>
                   )}
                 </TouchableOpacity>
               </View>

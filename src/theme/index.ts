@@ -43,18 +43,22 @@ export const colors = {
     accentForeground: '#994716',
   },
 
-  // Night Theme (Midnight Obsidian Abyss)
+  // Night Theme (Midnight Obsidian Abyss - High Contrast Telematics)
   night: {
     background: '#040504',      // Deep midnight void
     backgroundAlt: '#0D0D0D',   // Secondary dark void
-    foreground: '#F5F0EB',      // Soft off-white
-    card: '#080C14',            // Translucent dark glass
-    cardBorder: '#1F1F1F',      // Ultra-subtle hairline slate
-    secondary: '#222B3A',       // Secondary dark surface
-    secondaryBorder: '#2E384D',
-    muted: '#141A24',           // Muted wells
-    mutedForeground: '#94A3B8', // Secondary supporting text
+    foreground: '#FFFFFF',      // Crisp high-contrast titanium white
+    card: '#0E131F',            // Distinct card surface lifted from void
+    cardBorder: '#222F45',      // Precision milled hairline separation
+    secondary: '#161E2E',       // Tactical keycap fill
+    secondaryForeground: '#F8FAFC',
+    secondaryBorder: '#28354D', // Hairline keycap border
+    muted: '#141C2B',           // Recessed wells
+    mutedForeground: '#94A3B8', // Crisp readable secondary labels (Slate 400)
+    input: '#101623',           // Input surface
+    borderSpecular: 'rgba(255, 255, 255, 0.12)',
     accent: '#3A2316',          // Warm obsidian amber tint
+    accentForeground: '#EC8353',
   },
 
   // Telemetry & Hardware Indicators

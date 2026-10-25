@@ -7,11 +7,13 @@ import { apiClient } from '../api/client';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors, themeStyles } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 type CalendarNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Calendar'>;
 
 export default function CalendarScreen() {
   const navigation = useNavigation<CalendarNavigationProp>();
+  const { isDark, colors: themeColors } = useTheme();
   const [markedDates, setMarkedDates] = useState<any>({});
   const [loading, setLoading] = useState(true);
 
@@ -55,17 +57,17 @@ export default function CalendarScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.day.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.background }}>
       {/* Top Header matching Admin App */}
-      <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.day.card, borderBottomWidth: 1, borderBottomColor: colors.day.cardBorder, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: themeColors.card, borderBottomWidth: 1, borderBottomColor: themeColors.cardBorder, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity 
             onPress={() => navigation.goBack()} 
-            style={[themeStyles.btnSecondary, { paddingHorizontal: 12, paddingVertical: 6, marginRight: 10 }]}
+            style={[themeStyles.btnSecondary, isDark && { backgroundColor: '#161E2E', borderColor: '#28354D' }, { paddingHorizontal: 12, paddingVertical: 6, marginRight: 10 }]}
           >
-            <Text style={themeStyles.btnSecondaryText}>← Back</Text>
+            <Text style={[themeStyles.btnSecondaryText, { color: themeColors.textPrimary }]}>← Back</Text>
           </TouchableOpacity>
-          <Text style={{ fontSize: 17, fontWeight: '900', color: colors.day.foreground }}>Tour Calendar</Text>
+          <Text style={{ fontSize: 17, fontWeight: '900', color: themeColors.textPrimary }}>Tour Calendar</Text>
         </View>
 
         {/* Space reserved for Top-Right Arc Nav Button */}
@@ -76,16 +78,17 @@ export default function CalendarScreen() {
         {loading ? (
           <ActivityIndicator size="large" color={colors.primary[500]} style={{ marginTop: 40 }} />
         ) : (
-          <View style={{ backgroundColor: colors.day.card, borderRadius: 22, borderWidth: 1, borderColor: colors.day.cardBorder, overflow: 'hidden', shadowColor: colors.day.foreground, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 }}>
+          <View style={{ backgroundColor: themeColors.card, borderRadius: 22, borderWidth: 1, borderColor: themeColors.cardBorder, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3 }}>
             <Calendar
               markedDates={markedDates}
               theme={{
-                calendarBackground: colors.day.card,
+                calendarBackground: themeColors.card,
                 todayTextColor: colors.primary[500],
                 arrowColor: colors.primary[500],
-                monthTextColor: colors.day.foreground,
-                dayTextColor: colors.day.foreground,
-                textSectionTitleColor: colors.day.mutedForeground,
+                monthTextColor: themeColors.textPrimary,
+                dayTextColor: themeColors.textPrimary,
+                textSectionTitleColor: themeColors.textSecondary,
+                textDisabledColor: isDark ? '#475569' : '#cbd5e1',
                 textMonthFontWeight: '900',
                 textDayHeaderFontWeight: '800',
                 textDayFontWeight: '600',
@@ -99,18 +102,18 @@ export default function CalendarScreen() {
               }}
             />
             
-            <View style={{ padding: 14, borderTopWidth: 1, borderTopColor: colors.day.cardBorder, backgroundColor: colors.day.input, flexDirection: 'row', justifyContent: 'space-around' }}>
+            <View style={{ padding: 14, borderTopWidth: 1, borderTopColor: themeColors.cardBorder, backgroundColor: isDark ? '#141C2B' : colors.day.input, flexDirection: 'row', justifyContent: 'space-around' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary[500], marginRight: 6 }} />
-                <Text style={{ fontSize: 11.5, color: colors.day.foreground, fontWeight: '800' }}>Confirmed</Text>
+                <Text style={{ fontSize: 11.5, color: themeColors.textPrimary, fontWeight: '800' }}>Confirmed</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.telemetry.moving, marginRight: 6 }} />
-                <Text style={{ fontSize: 11.5, color: colors.day.foreground, fontWeight: '800' }}>Ongoing</Text>
+                <Text style={{ fontSize: 11.5, color: themeColors.textPrimary, fontWeight: '800' }}>Ongoing</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.telemetry.idle, marginRight: 6 }} />
-                <Text style={{ fontSize: 11.5, color: colors.day.foreground, fontWeight: '800' }}>Pending</Text>
+                <Text style={{ fontSize: 11.5, color: themeColors.textPrimary, fontWeight: '800' }}>Pending</Text>
               </View>
             </View>
           </View>
