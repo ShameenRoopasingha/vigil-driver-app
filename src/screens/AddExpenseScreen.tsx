@@ -212,35 +212,55 @@ export default function AddExpenseScreen() {
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <TouchableOpacity
                 onPress={() => setExpenseType('COMPANY')}
+                activeOpacity={0.75}
                 style={{
                   flex: 1,
                   paddingVertical: 12,
+                  paddingHorizontal: 10,
                   borderRadius: 12,
                   borderWidth: 1.5,
-                  borderColor: expenseType === 'COMPANY' ? colors.primary[500] : themeColors.cardBorder,
+                  borderColor: expenseType === 'COMPANY' ? colors.primary[500] : (isDark ? '#28354D' : themeColors.cardBorder),
                   backgroundColor: expenseType === 'COMPANY' ? (isDark ? 'rgba(232, 115, 42, 0.2)' : colors.primary[50]) : (isDark ? '#141C2B' : colors.day.input),
+                  flexDirection: 'row',
                   alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
-                <Text style={{ fontWeight: '800', color: expenseType === 'COMPANY' ? (isDark ? '#FDBA74' : colors.primary[700]) : themeColors.textSecondary, fontSize: 13 }}>
-                  🏢 Company Dispatched
-                </Text>
+                <Text style={{ fontSize: 18, marginRight: 8 }}>🏢</Text>
+                <View style={{ flexShrink: 1 }}>
+                  <Text numberOfLines={1} style={{ fontWeight: '800', color: expenseType === 'COMPANY' ? (isDark ? '#FDBA74' : colors.primary[700]) : themeColors.textPrimary, fontSize: 13 }}>
+                    Company
+                  </Text>
+                  <Text numberOfLines={1} style={{ fontSize: 10.5, fontWeight: '600', color: expenseType === 'COMPANY' ? (isDark ? '#FDBA74' : colors.primary[600]) : themeColors.textMuted }}>
+                    Fleet / Office
+                  </Text>
+                </View>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setExpenseType('CUSTOMER')}
+                activeOpacity={0.75}
                 style={{
                   flex: 1,
                   paddingVertical: 12,
+                  paddingHorizontal: 10,
                   borderRadius: 12,
                   borderWidth: 1.5,
-                  borderColor: expenseType === 'CUSTOMER' ? colors.primary[500] : themeColors.cardBorder,
+                  borderColor: expenseType === 'CUSTOMER' ? colors.primary[500] : (isDark ? '#28354D' : themeColors.cardBorder),
                   backgroundColor: expenseType === 'CUSTOMER' ? (isDark ? 'rgba(232, 115, 42, 0.2)' : colors.primary[50]) : (isDark ? '#141C2B' : colors.day.input),
+                  flexDirection: 'row',
                   alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
-                <Text style={{ fontWeight: '800', color: expenseType === 'CUSTOMER' ? (isDark ? '#FDBA74' : colors.primary[700]) : themeColors.textSecondary, fontSize: 13 }}>
-                  👤 Tourist / Customer
-                </Text>
+                <Text style={{ fontSize: 18, marginRight: 8 }}>👤</Text>
+                <View style={{ flexShrink: 1 }}>
+                  <Text numberOfLines={1} style={{ fontWeight: '800', color: expenseType === 'CUSTOMER' ? (isDark ? '#FDBA74' : colors.primary[700]) : themeColors.textPrimary, fontSize: 13 }}>
+                    Customer
+                  </Text>
+                  <Text numberOfLines={1} style={{ fontSize: 10.5, fontWeight: '600', color: expenseType === 'CUSTOMER' ? (isDark ? '#FDBA74' : colors.primary[600]) : themeColors.textMuted }}>
+                    Tourist / Guest
+                  </Text>
+                </View>
               </TouchableOpacity>
             </View>
           </View>
