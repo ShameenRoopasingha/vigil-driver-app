@@ -442,16 +442,15 @@ export async function searchPhotonKomootOnline(
   const lat = userCoords?.lat || 7.8731; // Centered on Sri Lanka
   const lon = userCoords?.lon || 80.7718;
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3500);
 
+  try {
     const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(
       trimmed
     )}&lat=${lat}&lon=${lon}&limit=10`;
 
     const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeout);
 
     if (res.ok) {
       const data = await res.json();
@@ -512,6 +511,8 @@ export async function searchPhotonKomootOnline(
     if (err?.name !== 'AbortError') {
       console.warn('Photon search error:', err);
     }
+  } finally {
+    clearTimeout(timeout);
   }
 
   return [];
@@ -527,10 +528,10 @@ export async function searchNominatimOnline(
 ): Promise<PlaceSuggestion[]> {
   if (!query || query.trim().length < 2) return [];
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3500);
 
+  try {
     const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
       query.trim()
     )}&countrycodes=lk&limit=6&addressdetails=1`;
@@ -542,8 +543,6 @@ export async function searchNominatimOnline(
       },
       signal: controller.signal,
     });
-
-    clearTimeout(timeout);
 
     if (res.ok) {
       const json = await res.json();
@@ -578,6 +577,8 @@ export async function searchNominatimOnline(
     if (err?.name !== 'AbortError') {
       console.warn('Nominatim search failed:', err);
     }
+  } finally {
+    clearTimeout(timeout);
   }
 
   return [];
@@ -768,11 +769,10 @@ export async function calculateDirectRouteOSRM(
   ];
 
   for (const url of endpoints) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 7500);
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 7500);
       const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeout);
 
       if (res.ok) {
         const data = await res.json();
@@ -796,6 +796,8 @@ export async function calculateDirectRouteOSRM(
       }
     } catch (err) {
       // Continue to next mirror
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
@@ -1054,11 +1056,10 @@ export async function calculateMultiStopRouteOSRM(
 
     let multiJson: any = null;
     for (const url of endpoints) {
+      const c = new AbortController();
+      const t = setTimeout(() => c.abort(), 7500);
       try {
-        const c = new AbortController();
-        const t = setTimeout(() => c.abort(), 7500);
         const res = await fetch(url, { signal: c.signal });
-        clearTimeout(t);
         if (res.ok) {
           const json = await res.json();
           if (json.code === 'Ok' && json.routes?.[0]) {
@@ -1068,6 +1069,8 @@ export async function calculateMultiStopRouteOSRM(
         }
       } catch (e) {
         // try mirror
+      } finally {
+        clearTimeout(t);
       }
     }
 
@@ -1181,14 +1184,13 @@ export async function calculateRoadDistanceOSRM(
   origin: { lat: number; lon: number },
   destination: { lat: number; lon: number }
 ): Promise<OSRMRouteInfo | null> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500); // 3.5s fast timeout
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3500); // 3.5s fast timeout
 
+  try {
     const headers = { 'User-Agent': 'VigilDriverApp/1.0.4 (support@vigil.app)' };
     const url = `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}?overview=false`;
     const res = await fetch(url, { headers, signal: controller.signal });
-    clearTimeout(timeout);
 
     if (res.ok) {
       const data = await res.json();
@@ -1212,6 +1214,8 @@ export async function calculateRoadDistanceOSRM(
     if (err?.name !== 'AbortError') {
       console.warn('OSRM route calculation error:', err);
     }
+  } finally {
+    clearTimeout(timeout);
   }
 
   // Fallback: Estimate ~1.35x haversine road winding factor if OSRM is unreachable or timed out

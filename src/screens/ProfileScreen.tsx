@@ -19,6 +19,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
+import { locationService } from '../services/locationService';
 import {
   DriverProfileDetailsSchema,
   DriverEmailUpdateSchema,
@@ -338,6 +339,9 @@ export default function ProfileScreen() {
         text: 'Sign Out',
         style: 'destructive',
         onPress: async () => {
+          try {
+            await locationService.stopTripTracking();
+          } catch {}
           await AsyncStorage.clear();
           navigation.reset({
             index: 0,

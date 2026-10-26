@@ -32,6 +32,10 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       try {
         console.warn('[API Client] Unauthorized request (401). Clearing driver session...');
+        try {
+          const { locationService } = await import('../services/locationService');
+          await locationService.stopTripTracking();
+        } catch {}
         await AsyncStorage.multiRemove(['driverToken', 'driverUser', 'driverData']);
         if (navigationRef.isReady()) {
           navigationRef.reset({

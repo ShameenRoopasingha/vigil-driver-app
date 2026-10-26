@@ -246,9 +246,15 @@ export default function OpenStreetMapPicker({
     [pickup, stops, dropoff, onItineraryChanged, onSelectPlace, onRouteCalculated]
   );
 
-  // Initial Route Load
+  // Initial Route Load & unmount timer cleanup
   useEffect(() => {
     triggerRecalculate(pickup, stops, dropoff);
+    return () => {
+      if (recalcDebounceRef.current) clearTimeout(recalcDebounceRef.current);
+      if (pickupDebounceRef.current) clearTimeout(pickupDebounceRef.current);
+      if (dropoffDebounceRef.current) clearTimeout(dropoffDebounceRef.current);
+      if (stopDebounceRef.current) clearTimeout(stopDebounceRef.current);
+    };
   }, []);
 
   // Synchronize when destinationLocation prop resolves or changes
