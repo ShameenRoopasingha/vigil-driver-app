@@ -160,16 +160,6 @@ export default function ArcNavbar() {
       subtitle: 'Name, Avatar & Fleet Info',
     },
     {
-      id: 'theme',
-      name: isDark ? 'Mode: Night Cockpit' : 'Mode: Day Alabaster',
-      icon: isDark ? '🌙' : '☀️',
-      color: isDark ? '#38bdf8' : '#ea580c',
-      bgColor: isDark ? 'rgba(56, 189, 248, 0.2)' : 'rgba(234, 88, 12, 0.18)',
-      badge: isDark ? 'NIGHT' : 'DAY',
-      subtitle: isDark ? 'Switch to Light Alabaster Mode' : 'Switch to Dark Obsidian Cockpit',
-      isAction: true,
-    },
-    {
       id: 'duty',
       name: onDuty ? 'Status: ON DUTY' : 'Status: RESTING',
       icon: onDuty ? '🟢' : '☕',
@@ -227,8 +217,8 @@ export default function ArcNavbar() {
     },
   ];
 
-  const TOTAL_ITEMS = items.length; // 12 items
-  const ANGLE_STEP = 360 / TOTAL_ITEMS; // Exactly 30° per item
+  const TOTAL_ITEMS = items.length;
+  const ANGLE_STEP = 360 / TOTAL_ITEMS;
 
   // Animations
   const [animMenu] = useState(() => new Animated.Value(0));
@@ -363,16 +353,6 @@ export default function ArcNavbar() {
   };
 
   const executeItemAction = (item: ArcNavItem) => {
-    if (item.id === 'theme') {
-      playTickSound();
-      Vibration.vibrate(12);
-      toggleTheme();
-      toast.info(
-        isDark ? '☀️ Day Theme Active' : '🌙 Night Theme Active',
-        isDark ? 'Alabaster Ceramic daylight theme activated.' : 'Obsidian Cockpit night vision activated.'
-      );
-      return;
-    }
     if (item.id === 'sos') {
       closeMenu(() => setShowSosModal(true));
       return;
@@ -913,7 +893,7 @@ export default function ArcNavbar() {
                       {items[activeIndex].subtitle}
                     </Text>
                     <Text style={[styles.detailActionText, { color: isDark ? '#34d399' : '#059669' }]}>
-                      {items[activeIndex].id === 'theme' ? 'TAP TO SWITCH THEME' : 'TAP TO OPEN'}
+                      TAP TO OPEN
                     </Text>
                   </View>
                 </TouchableOpacity>
