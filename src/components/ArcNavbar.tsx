@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { WebView } from 'react-native-webview';
 import { navigationRef } from '../navigation/navigationRef';
 import { locationService } from '../services/locationService';
 import { toast } from '../utils/toast';
@@ -31,6 +32,64 @@ export interface ArcNavItem {
   badge?: string;
   isAction?: boolean;
 }
+
+// Crisp mechanical watch ratchet "tiki-tiki" sound synthesizer (identical to Admin App ArcSpinnerNavbar)
+const AUDIO_HTML = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  var audioCtx = null;
+  function getAudioCtx() {
+    try {
+      if (!audioCtx) {
+        var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) audioCtx = new AudioContextClass();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    } catch(e) {}
+    return audioCtx;
+  }
+  window.playTick = function() {
+    try {
+      var ctx = getAudioCtx();
+      if (!ctx) return;
+      var now = ctx.currentTime;
+      var osc1 = ctx.createOscillator();
+      var gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(4800, now);
+      osc1.frequency.exponentialRampToValueAtTime(3200, now + 0.007);
+      gain1.gain.setValueAtTime(0.09, now);
+      gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.007);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.008);
+
+      var osc2 = ctx.createOscillator();
+      var gain2 = ctx.createGain();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(6500, now + 0.003);
+      osc2.frequency.exponentialRampToValueAtTime(4400, now + 0.009);
+      gain2.gain.setValueAtTime(0, now);
+      gain2.gain.setValueAtTime(0.06, now + 0.003);
+      gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.009);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.003);
+      osc2.stop(now + 0.010);
+    } catch(e) {}
+  };
+  document.addEventListener('touchstart', function() { getAudioCtx(); }, { once: true });
+</script>
+</head>
+<body style="background:transparent;margin:0;padding:0;"></body>
+</html>
+`;
 
 export default function ArcNavbar() {
   const insets = useSafeAreaInsets();
@@ -52,7 +111,7 @@ export default function ArcNavbar() {
   const RADIUS = 210;   // Radial distance of icons
   const FOCAL_ANGLE = 135; // 135 degrees = 45 degrees down-left into phone thumb zone
 
-  // 12 Items = 30° per step with Day/Night Theme toggle item
+  // 12 Items = exactly 30° per step for seamless 360° wheel (matching Admin App)
   const items: ArcNavItem[] = [
     {
       id: 'dashboard',
@@ -72,16 +131,6 @@ export default function ArcNavbar() {
       bgColor: 'rgba(16, 185, 129, 0.2)',
       badge: locationService.isTripTrackingActive() ? 'LIVE' : undefined,
       subtitle: 'Live Radar & GPS Route',
-    },
-    {
-      id: 'theme',
-      name: isDark ? 'Mode: Night Cockpit' : 'Mode: Day Alabaster',
-      icon: isDark ? '🌙' : '☀️',
-      color: isDark ? '#38bdf8' : '#ea580c',
-      bgColor: isDark ? 'rgba(56, 189, 248, 0.2)' : 'rgba(234, 88, 12, 0.18)',
-      badge: isDark ? 'NIGHT' : 'DAY',
-      subtitle: isDark ? 'Switch to Light Alabaster Mode' : 'Switch to Dark Obsidian Cockpit',
-      isAction: true,
     },
     {
       id: 'calendar',
@@ -111,13 +160,13 @@ export default function ArcNavbar() {
       subtitle: 'Name, Avatar & Fleet Info',
     },
     {
-      id: 'sos',
-      name: 'Emergency SOS',
-      icon: '🚨',
-      color: '#fb7185',
-      bgColor: 'rgba(251, 113, 133, 0.2)',
-      badge: 'SOS',
-      subtitle: 'Roadside & Hotline Dispatch',
+      id: 'theme',
+      name: isDark ? 'Mode: Night Cockpit' : 'Mode: Day Alabaster',
+      icon: isDark ? '🌙' : '☀️',
+      color: isDark ? '#38bdf8' : '#ea580c',
+      bgColor: isDark ? 'rgba(56, 189, 248, 0.2)' : 'rgba(234, 88, 12, 0.18)',
+      badge: isDark ? 'NIGHT' : 'DAY',
+      subtitle: isDark ? 'Switch to Light Alabaster Mode' : 'Switch to Dark Obsidian Cockpit',
       isAction: true,
     },
     {
@@ -128,6 +177,16 @@ export default function ArcNavbar() {
       bgColor: onDuty ? 'rgba(52, 211, 153, 0.2)' : 'rgba(248, 113, 113, 0.2)',
       badge: onDuty ? 'ON' : 'REST',
       subtitle: onDuty ? 'Available for Transfers' : 'Shift Resting / Break',
+      isAction: true,
+    },
+    {
+      id: 'sos',
+      name: 'Emergency SOS',
+      icon: '🚨',
+      color: '#fb7185',
+      bgColor: 'rgba(251, 113, 133, 0.2)',
+      badge: 'SOS',
+      subtitle: 'Roadside & Hotline Dispatch',
       isAction: true,
     },
     {
@@ -174,6 +233,7 @@ export default function ArcNavbar() {
   // Animations
   const [animMenu] = useState(() => new Animated.Value(0));
   const [animOffset] = useState(() => new Animated.Value(0));
+  const audioWebviewRef = useRef<WebView>(null);
   const lastStepRef = useRef(0);
   const isDraggingRef = useRef(false);
   const startTouchAngleRef = useRef(0);
@@ -183,16 +243,24 @@ export default function ArcNavbar() {
   const lastTimeRef = useRef(0);
   const offsetValueRef = useRef(0);
 
-  // Haptic feedback & active step update
+  // Play mechanical watch ratchet "tiki-tiki" sound (identical to Admin App)
+  const playTickSound = useCallback(() => {
+    try {
+      audioWebviewRef.current?.injectJavaScript('window.playTick && window.playTick(); true;');
+    } catch {}
+  }, []);
+
+  // Update step, active index, sound and haptic vibration
   const updateActiveStep = useCallback((offset: number) => {
     const currentStep = Math.round(-offset / ANGLE_STEP);
     if (currentStep !== lastStepRef.current) {
       lastStepRef.current = currentStep;
       const wrappedIdx = ((currentStep % TOTAL_ITEMS) + TOTAL_ITEMS) % TOTAL_ITEMS;
       setActiveIndex(wrappedIdx);
+      playTickSound();
       Vibration.vibrate(8);
     }
-  }, [ANGLE_STEP, TOTAL_ITEMS]);
+  }, [ANGLE_STEP, TOTAL_ITEMS, playTickSound]);
 
   // Sync animOffset with state & step calculations
   useEffect(() => {
@@ -239,6 +307,7 @@ export default function ArcNavbar() {
 
   const toggleDuty = async () => {
     try {
+      playTickSound();
       Vibration.vibrate(12);
       const nextDuty = !onDuty;
       setOnDuty(nextDuty);
@@ -253,7 +322,10 @@ export default function ArcNavbar() {
   };
 
   const openMenu = () => {
+    playTickSound();
     Vibration.vibrate(10);
+
+    // Auto-center current route on opening along shortest circular path (Admin App parity)
     const currentIdx = items.findIndex((item) => item.screen === currentRoute);
     if (currentIdx !== -1) {
       const currentStep = Math.round(-offsetValueRef.current / ANGLE_STEP);
@@ -265,8 +337,10 @@ export default function ArcNavbar() {
       const targetOffset = -(currentStep + diffSteps) * ANGLE_STEP;
       lastStepRef.current = Math.round(-targetOffset / ANGLE_STEP);
       animOffset.setValue(targetOffset);
+      setRotationOffset(targetOffset);
       setActiveIndex(currentIdx);
     }
+
     setIsOpen(true);
     Animated.spring(animMenu, {
       toValue: 1,
@@ -279,7 +353,7 @@ export default function ArcNavbar() {
   const closeMenu = (callback?: () => void) => {
     Animated.timing(animMenu, {
       toValue: 0,
-      duration: 200,
+      duration: 220,
       easing: Easing.in(Easing.cubic),
       useNativeDriver: true,
     }).start(() => {
@@ -290,6 +364,7 @@ export default function ArcNavbar() {
 
   const executeItemAction = (item: ArcNavItem) => {
     if (item.id === 'theme') {
+      playTickSound();
       Vibration.vibrate(12);
       toggleTheme();
       toast.info(
@@ -346,9 +421,11 @@ export default function ArcNavbar() {
     }
   };
 
-  // Direct snap to item on click
+  // Direct snap to item on click along shortest circular path (Admin App parity)
   const handleItemClick = (idx: number, item: ArcNavItem) => {
+    playTickSound();
     Vibration.vibrate(10);
+
     let diff = (idx * ANGLE_STEP + offsetValueRef.current) % 360;
     if (diff > 180) diff -= 360;
     if (diff < -180) diff += 360;
@@ -357,11 +434,13 @@ export default function ArcNavbar() {
 
     Animated.timing(animOffset, {
       toValue: targetOffset,
-      duration: 240,
+      duration: 260,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start(() => {
-      executeItemAction(item);
+      closeMenu(() => {
+        executeItemAction(item);
+      });
     });
   };
 
@@ -379,10 +458,17 @@ export default function ArcNavbar() {
   };
 
   // PanResponder for smooth rotary dragging & low-friction inertia glide
+  // Configured to allow child clicks to pass through without being blocked!
   const [panResponder] = useState(() =>
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        return Math.abs(gestureState.dx) > 6 || Math.abs(gestureState.dy) > 6;
+      },
+      onMoveShouldSetPanResponderCapture: (evt, gestureState) => {
+        return Math.abs(gestureState.dx) > 6 || Math.abs(gestureState.dy) > 6;
+      },
       onPanResponderGrant: (evt) => {
         isDraggingRef.current = true;
         const currentAngle = getAngleFromTouch(evt.nativeEvent.pageX, evt.nativeEvent.pageY);
@@ -414,12 +500,42 @@ export default function ArcNavbar() {
 
         animOffset.setValue(newOffset);
       },
-      onPanResponderRelease: () => {
+      onPanResponderRelease: (evt, gestureState) => {
         if (!isDraggingRef.current) return;
         isDraggingRef.current = false;
 
-        // Inertia glide calculation
-        const inertiaDistance = velocityRef.current * 260;
+        // Direct tap detection on the radial wheel
+        const totalMovement = Math.hypot(gestureState.dx, gestureState.dy);
+        if (totalMovement < 8) {
+          const touchAngle = getAngleFromTouch(evt.nativeEvent.pageX, evt.nativeEvent.pageY);
+          const screenWidth = Dimensions.get('window').width;
+          const cornerX = screenWidth;
+          const cornerY = insets.top;
+          const dist = Math.hypot(evt.nativeEvent.pageX - cornerX, evt.nativeEvent.pageY - cornerY);
+
+          if (dist >= RADIUS - 50 && dist <= RADIUS + 50) {
+            let closestIdx = -1;
+            let minDiff = Infinity;
+            for (let i = 0; i < TOTAL_ITEMS; i++) {
+              let diff = (i * ANGLE_STEP + offsetValueRef.current) % 360;
+              if (diff > 180) diff -= 360;
+              if (diff < -180) diff += 360;
+              const itemAngle = FOCAL_ANGLE + diff;
+              const angleDiff = Math.abs(((itemAngle - touchAngle + 180) % 360) - 180);
+              if (angleDiff < minDiff) {
+                minDiff = angleDiff;
+                closestIdx = i;
+              }
+            }
+            if (closestIdx !== -1 && minDiff < ANGLE_STEP * 0.75) {
+              handleItemClick(closestIdx, items[closestIdx]);
+              return;
+            }
+          }
+        }
+
+        // Low-friction inertia glide calculation (Admin App parity: velocity * 280)
+        const inertiaDistance = velocityRef.current * 280;
         const projectedOffset = offsetValueRef.current + inertiaDistance;
 
         const currentStep = Math.round(-offsetValueRef.current / ANGLE_STEP);
@@ -427,7 +543,7 @@ export default function ArcNavbar() {
         const finalTargetOffset = -targetStep * ANGLE_STEP;
 
         const stepsToTravel = Math.abs(targetStep - currentStep);
-        const duration = Math.min(950, Math.max(450, 350 + stepsToTravel * 80));
+        const duration = Math.min(1000, Math.max(450, 350 + stepsToTravel * 90));
 
         Animated.timing(animOffset, {
           toValue: finalTargetOffset,
@@ -493,6 +609,19 @@ export default function ArcNavbar() {
 
   return (
     <>
+      {/* Hidden Web Audio Ratchet Synthesizer (Zero overhead, instant mechanical click) */}
+      <View style={{ width: 0, height: 0, opacity: 0, position: 'absolute' }}>
+        <WebView
+          ref={audioWebviewRef}
+          originWhitelist={['*']}
+          source={{ html: AUDIO_HTML }}
+          javaScriptEnabled
+          domStorageEnabled
+          scrollEnabled={false}
+          androidLayerType="software"
+        />
+      </View>
+
       {/* Sleek Top-Right Corner Trigger Button with Day/Night Theming */}
       {!isOpen && (
         <View style={[styles.triggerWrapper, { top: insets.top + 10, right: 16 }]}>
@@ -530,7 +659,7 @@ export default function ArcNavbar() {
       {/* Fullscreen Modal Overlay for the Arc Dial */}
       {isOpen && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 10002, elevation: 25 }]} pointerEvents="box-none">
-          {/* Frosted Backdrop */}
+          {/* Frosted Backdrop (Tapping closes menu) */}
           <Animated.View
             style={[
               StyleSheet.absoluteFill,
@@ -568,26 +697,26 @@ export default function ArcNavbar() {
                   {
                     translateX: animMenu.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [CONTAINER_SIZE * 0.4, 0],
+                      outputRange: [CONTAINER_SIZE * 0.35, 0],
                     }),
                   },
                   {
                     translateY: animMenu.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [-CONTAINER_SIZE * 0.4, 0],
+                      outputRange: [-CONTAINER_SIZE * 0.35, 0],
                     }),
                   },
                   {
                     scale: animMenu.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [0.6, 1],
+                      outputRange: [0.3, 1],
                     }),
                   },
                 ],
               },
             ]}
           >
-            {/* Concentric Guide Arcs (Radius 210 and 150) */}
+            {/* Concentric Guide Arcs (Outer Radius 210 dashed, Inner Radius 150) */}
             <View
               pointerEvents="none"
               style={[
@@ -604,7 +733,7 @@ export default function ArcNavbar() {
             />
 
             {/* Top-Right Corner Hub: Brand, Quick 1-Tap Day/Night Switcher & Close Button */}
-            <View style={[styles.cornerHub, { top: insets.top > 0 ? 12 : 8 }]}>
+            <View style={[styles.cornerHub, { top: 10 }]}>
               <View style={styles.hubBrand}>
                 <Text style={[styles.hubBrandTitle, { color: isDark ? '#34d399' : '#065f46' }]}>VIGIL DIAL</Text>
                 <Text style={[styles.hubBrandSubtitle, { color: isDark ? '#94a3b8' : '#64748b' }]}>
@@ -616,6 +745,7 @@ export default function ArcNavbar() {
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => {
+                  playTickSound();
                   Vibration.vibrate(10);
                   toggleTheme();
                   toast.info(
@@ -657,15 +787,15 @@ export default function ArcNavbar() {
               style={[
                 styles.focalIndicator,
                 {
-                  left: focalX - 22,
-                  top: focalY - 22,
+                  left: focalX - 20,
+                  top: focalY - 20,
                   borderColor: colors.accent,
                   backgroundColor: colors.accentGlow,
                 },
               ]}
             />
 
-            {/* Rotary Spinnable Items along the 360° Arc */}
+            {/* Rotary Spinnable Items along the 360° Infinite Arc */}
             {items.map((item, idx) => {
               let diff = (idx * ANGLE_STEP + rotationOffset) % 360;
               if (diff > 180) diff -= 360;
@@ -680,8 +810,8 @@ export default function ArcNavbar() {
               const isFocused = idx === activeIndex;
               const isVisible = angleDeg >= 60 && angleDeg <= 210;
               const distFromCenter = Math.abs(diff);
-              const scale = isFocused ? 1.25 : Math.max(0.74, 1 - distFromCenter / 150);
-              const opacity = isVisible ? Math.max(0, 1 - Math.max(0, distFromCenter - 30) / 45) : 0;
+              const scale = isFocused ? 1.25 : Math.max(0.76, 1 - distFromCenter / 145);
+              const opacity = isVisible ? Math.max(0, 1 - Math.max(0, distFromCenter - 28) / 45) : 0;
               const isActiveRoute = item.screen === currentRoute;
 
               if (!isVisible || opacity <= 0.05) return null;
@@ -701,8 +831,9 @@ export default function ArcNavbar() {
                   ]}
                 >
                   <TouchableOpacity
-                    activeOpacity={0.8}
+                    activeOpacity={0.7}
                     onPress={() => handleItemClick(idx, item)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     style={[
                       styles.itemSquircle,
                       {
@@ -725,7 +856,9 @@ export default function ArcNavbar() {
                       ],
                     ]}
                   >
-                    <Text style={styles.itemIconText}>{item.icon}</Text>
+                    <Text style={[styles.itemIconText, isFocused && { color: '#ffffff' }]}>
+                      {item.icon}
+                    </Text>
                     {item.badge && (
                       <View style={[styles.itemBadge, { backgroundColor: item.badge === 'LIVE' ? '#10b981' : colors.primary }]}>
                         <Text style={styles.itemBadgeText}>{item.badge}</Text>
@@ -735,70 +868,58 @@ export default function ArcNavbar() {
                 </View>
               );
             })}
-          </Animated.View>
 
-          {/* Active Item Floating Detail Card (Positioned directly below the arc, fully unclipped) */}
-          {items[activeIndex] && (
-            <Animated.View
-              style={[
-                styles.detailCardWrapper,
-                {
-                  top: insets.top + 285,
-                  opacity: animMenu,
-                  transform: [
-                    {
-                      translateY: animMenu.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [20, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => executeItemAction(items[activeIndex])}
-                style={[
-                  styles.detailCard,
-                  {
-                    backgroundColor: colors.detailCardBg,
-                    borderColor: colors.detailCardBorder,
-                    shadowColor: isDark ? '#000000' : '#0f172a',
-                  },
-                ]}
-              >
-                <View
+            {/* Active Item Floating Detail Card (Positioned at bottom-left corner of Arc, Admin App Parity) */}
+            {items[activeIndex] && (
+              <View style={styles.detailCardContainer} pointerEvents="box-none">
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    closeMenu(() => {
+                      executeItemAction(items[activeIndex]);
+                    });
+                  }}
                   style={[
-                    styles.detailIconSquircle,
-                    { backgroundColor: items[activeIndex].bgColor },
+                    styles.detailCard,
+                    {
+                      backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.96)',
+                      borderColor: isDark ? 'rgba(16, 185, 129, 0.45)' : 'rgba(16, 185, 129, 0.45)',
+                      shadowColor: isDark ? '#000000' : '#0f172a',
+                    },
                   ]}
                 >
-                  <Text style={styles.detailIconText}>{items[activeIndex].icon}</Text>
-                </View>
-                <View style={styles.detailTextWrapper}>
-                  <View style={styles.detailTitleRow}>
+                  <View
+                    style={[
+                      styles.detailIconSquircle,
+                      { backgroundColor: items[activeIndex].bgColor },
+                    ]}
+                  >
+                    <Text style={styles.detailIconText}>{items[activeIndex].icon}</Text>
+                  </View>
+                  <View style={styles.detailTextWrapper}>
+                    <View style={styles.detailTitleRow}>
+                      <Text
+                        style={[styles.detailTitleText, { color: colors.textPrimary }]}
+                        numberOfLines={1}
+                      >
+                        {items[activeIndex].name}
+                      </Text>
+                      <Text style={[styles.detailChevronText, { color: isDark ? '#34d399' : '#059669' }]}>›</Text>
+                    </View>
                     <Text
-                      style={[styles.detailTitleText, { color: colors.textPrimary }]}
+                      style={[styles.detailSubtitleText, { color: colors.textSecondary }]}
                       numberOfLines={1}
                     >
-                      {items[activeIndex].name}
+                      {items[activeIndex].subtitle}
                     </Text>
-                    <Text style={[styles.detailChevronText, { color: isDark ? '#34d399' : '#059669' }]}>›</Text>
+                    <Text style={[styles.detailActionText, { color: isDark ? '#34d399' : '#059669' }]}>
+                      {items[activeIndex].id === 'theme' ? 'TAP TO SWITCH THEME' : 'TAP TO OPEN'}
+                    </Text>
                   </View>
-                  <Text
-                    style={[styles.detailSubtitleText, { color: colors.textSecondary }]}
-                    numberOfLines={1}
-                  >
-                    {items[activeIndex].subtitle}
-                  </Text>
-                  <Text style={[styles.detailActionText, { color: colors.accent }]}>
-                    {items[activeIndex].id === 'theme' ? 'TAP TO SWITCH THEME' : 'TAP TO OPEN'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </Animated.View>
-          )}
+                </TouchableOpacity>
+              </View>
+            )}
+          </Animated.View>
         </View>
       )}
 
@@ -1044,15 +1165,15 @@ const styles = StyleSheet.create({
   // Focal Point Indicator (Center of Thumb Arc at 135°)
   focalIndicator: {
     position: 'absolute',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 2,
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 10,
+    elevation: 6,
     zIndex: 10,
   },
 
@@ -1080,8 +1201,8 @@ const styles = StyleSheet.create({
   itemSquircleFocused: {
     borderWidth: 1.8,
     shadowColor: '#10b981',
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
     elevation: 8,
   },
   itemSquircleActiveRoute: {
@@ -1104,24 +1225,25 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
-  // Active Item Floating Detail Card (Positioned below the arc)
-  detailCardWrapper: {
+  // Active Item Floating Detail Card (Positioned at bottom-left corner of Arc, Admin App Parity)
+  detailCardContainer: {
     position: 'absolute',
-    right: 18,
-    width: 250,
-    zIndex: 10005,
-    elevation: 28,
+    left: 18,
+    bottom: 18,
+    width: 255,
+    zIndex: 40,
+    elevation: 26,
   },
   detailCard: {
     borderRadius: 18,
     borderWidth: 1.5,
-    padding: 12,
+    padding: 11,
     flexDirection: 'row',
     alignItems: 'center',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
     shadowRadius: 16,
-    elevation: 8,
+    elevation: 10,
   },
   detailIconSquircle: {
     width: 42,
