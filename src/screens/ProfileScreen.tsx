@@ -872,13 +872,27 @@ export default function ProfileScreen() {
                       key={item.code}
                       activeOpacity={0.8}
                       onPress={() => {
-                        Vibration.vibrate(10);
-                        setLanguage(item.code);
-                        toast.success(
-                          item.nativeName,
-                          item.code === 'si'
-                            ? 'යෙදුමේ භාෂාව සිංහල භාෂාවට සාර්ථකව මාරු විය!'
-                            : `App language set to ${item.englishName}.`
+                        if (item.code === language) return;
+                        Alert.alert(
+                          t('confirmLanguageChange'),
+                          t('confirmLanguageDesc', { lang: `${item.flag} ${item.nativeName}` }),
+                          [
+                            { text: t('cancel'), style: 'cancel' },
+                            {
+                              text: t('confirm'),
+                              style: 'default',
+                              onPress: () => {
+                                Vibration.vibrate(10);
+                                setLanguage(item.code);
+                                toast.success(
+                                  item.nativeName,
+                                  item.code === 'si'
+                                    ? 'යෙදුමේ භාෂාව සිංහල භාෂාවට සාර්ථකව මාරු විය!'
+                                    : `App language set to ${item.englishName}.`
+                                );
+                              },
+                            },
+                          ]
                         );
                       }}
                       style={{
@@ -998,9 +1012,23 @@ export default function ProfileScreen() {
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => {
-                    Vibration.vibrate(10);
-                    setTheme('light');
-                    toast.info('☀️ Day Mode Active', 'Alabaster daylight theme activated.');
+                    if (!isDark) return;
+                    Alert.alert(
+                      t('confirmThemeChange'),
+                      t('confirmThemeDesc', { theme: t('dayMode') }),
+                      [
+                        { text: t('cancel'), style: 'cancel' },
+                        {
+                          text: t('confirm'),
+                          style: 'default',
+                          onPress: () => {
+                            Vibration.vibrate(10);
+                            setTheme('light');
+                            toast.info('☀️ Day Mode Active', 'Alabaster daylight theme activated.');
+                          },
+                        },
+                      ]
+                    );
                   }}
                   style={{
                     flex: 1,
@@ -1025,9 +1053,23 @@ export default function ProfileScreen() {
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => {
-                    Vibration.vibrate(10);
-                    setTheme('dark');
-                    toast.info('🌙 Night Mode Active', 'Obsidian cockpit night vision activated.');
+                    if (isDark) return;
+                    Alert.alert(
+                      t('confirmThemeChange'),
+                      t('confirmThemeDesc', { theme: t('nightMode') }),
+                      [
+                        { text: t('cancel'), style: 'cancel' },
+                        {
+                          text: t('confirm'),
+                          style: 'default',
+                          onPress: () => {
+                            Vibration.vibrate(10);
+                            setTheme('dark');
+                            toast.info('🌙 Night Mode Active', 'Obsidian cockpit night vision activated.');
+                          },
+                        },
+                      ]
+                    );
                   }}
                   style={{
                     flex: 1,

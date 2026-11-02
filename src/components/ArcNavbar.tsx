@@ -297,20 +297,34 @@ export default function ArcNavbar() {
     return () => clearInterval(interval);
   }, []);
 
-  const toggleDuty = async () => {
-    try {
-      playTickSound();
-      Vibration.vibrate(12);
-      const nextDuty = !onDuty;
-      setOnDuty(nextDuty);
-      await AsyncStorage.setItem('driver_duty_status', String(nextDuty));
-      toast.success(
-        nextDuty ? 'Status: On Duty' : 'Status: Resting',
-        nextDuty
-          ? 'You are active and ready for passenger pickups & scheduled tours.'
-          : 'You are marked as resting. Take your break safely!'
-      );
-    } catch {}
+  const toggleDuty = () => {
+    const nextDuty = !onDuty;
+    const targetStatus = nextDuty ? t('onDutyText') : t('restingText');
+    Alert.alert(
+      t('confirmDutyChange'),
+      t('confirmDutyDesc', { status: targetStatus }),
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('confirm'),
+          style: 'default',
+          onPress: async () => {
+            try {
+              playTickSound();
+              Vibration.vibrate(12);
+              setOnDuty(nextDuty);
+              await AsyncStorage.setItem('driver_duty_status', String(nextDuty));
+              toast.success(
+                nextDuty ? 'Status: On Duty' : 'Status: Resting',
+                nextDuty
+                  ? 'You are active and ready for passenger pickups & scheduled tours.'
+                  : 'You are marked as resting. Take your break safely!'
+              );
+            } catch {}
+          },
+        },
+      ]
+    );
   };
 
   const openMenu = () => {
