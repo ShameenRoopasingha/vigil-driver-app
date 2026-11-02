@@ -103,6 +103,11 @@ export const translations = {
     destination: 'Destination',
     notSpecified: 'Not specified',
     letsGo: "LET'S GO / START SHIFT 🚀",
+    chauffeurPortalTag: 'VIGIL • CHAUFFEUR PORTAL',
+    welcomeDriver: 'Welcome, {name}!',
+    fleetRadarActive: '{company} fleet radar is active and synchronized with office dispatch.',
+    assignedTours: 'Assigned Tours',
+    chauffeurBadge: 'CHAUFFEUR',
 
     // Calendar
     tourCalendar: 'Tour Calendar',
@@ -158,6 +163,7 @@ export const translations = {
     signOut: 'Sign Out of Fleet App',
     signOutConfirm: 'Are you sure you want to log out of Vigil Driver Cockpit?',
     profileUpdated: 'Profile Updated',
+    profileUpToDate: '✓ Profile is up to date',
     confirm: 'Confirm',
     confirmLanguageChange: 'Change App Language?',
     confirmLanguageDesc: 'Switch interface and alert typography to {lang}?',
@@ -238,6 +244,11 @@ export const translations = {
     destination: 'ගමනාන්තය',
     notSpecified: 'සඳහන් කර නැත',
     letsGo: 'ආරම්භ කරමු / සේවයට එක්වන්න 🚀',
+    chauffeurPortalTag: 'ආයුබෝවන් • රියදුරු පද්ධතිය',
+    welcomeDriver: 'සාදරයෙන් පිළිගනිමු, {name}!',
+    fleetRadarActive: '{company} ප්‍රවාහන රේඩාර් පද්ධතිය සක්‍රීය අතර කාර්යාලය සමඟ සම්බන්ධ වී ඇත.',
+    assignedTours: 'පවරා ඇති චාරිකා',
+    chauffeurBadge: 'රියදුරු',
 
     // Calendar
     tourCalendar: 'චාරිකා දින දර්ශනය',
@@ -293,6 +304,7 @@ export const translations = {
     signOut: 'යෙදුමෙන් ඉවත් වන්න (Sign Out)',
     signOutConfirm: 'ඔබට Vigil රියදුරු යෙදුමෙන් ඉවත් වීමට අවශ්‍ය බව සහතිකද?',
     profileUpdated: 'ගිණුම් තොරතුරු යාවත්කාලීන විය',
+    profileUpToDate: '✓ ගිණුම් තොරතුරු යාවත්කාලීනයි',
     confirm: 'තහවුරු කරන්න',
     confirmLanguageChange: 'යෙදුමේ භාෂාව වෙනස් කරන්නද?',
     confirmLanguageDesc: 'අතුරුමුහුණත සහ දැනුම්දීම් {lang} වෙත මාරු කිරීමට අවශ්‍ය බව තහවුරු කරන්නද?',
@@ -373,6 +385,11 @@ export const translations = {
     destination: 'இலக்கு',
     notSpecified: 'குறிப்பிடப்படவில்லை',
     letsGo: 'தொடங்குவோம் / ஷிப்ட் தொடங்கவும் 🚀',
+    chauffeurPortalTag: 'வணக்கம் • சாரதி பயன்பாடு',
+    welcomeDriver: 'வரவேற்கிறோம், {name}!',
+    fleetRadarActive: '{company} வாகனக் கண்காணிப்பு இயங்குகிறது மற்றும் அலுவலகத்துடன் இணைக்கப்பட்டுள்ளது.',
+    assignedTours: 'ஒதுக்கப்பட்ட பயணங்கள்',
+    chauffeurBadge: 'சாரதி',
 
     // Calendar
     tourCalendar: 'பயண நாள்காட்டி',
@@ -428,6 +445,7 @@ export const translations = {
     signOut: 'வெளியேறு (Sign Out)',
     signOutConfirm: 'நிச்சயமாக வெளியேற விரும்புகிறீர்களா?',
     profileUpdated: 'சுயவிவரம் புதுப்பிக்கப்பட்டது',
+    profileUpToDate: '✓ சுயவிவரம் புதுப்பித்த நிலையில் உள்ளது',
     confirm: 'உறுதிப்படுத்து',
     confirmLanguageChange: 'பயன்பாட்டு மொழியை மாற்றவா?',
     confirmLanguageDesc: 'இடைமுகம் மற்றும் எச்சரிக்கைகளை {lang} மொழிக்கு மாற்ற உறுதிப்படுத்துகிறீர்களா?',
@@ -508,6 +526,11 @@ export const translations = {
     destination: 'Zielort',
     notSpecified: 'Nicht angegeben',
     letsGo: 'LOS GEHTS / SCHICHT STARTEN 🚀',
+    chauffeurPortalTag: 'WILLKOMMEN • CHAUFFEUR-PORTAL',
+    welcomeDriver: 'Willkommen, {name}!',
+    fleetRadarActive: '{company} Flottenradar ist aktiv und mit der Disposition synchronisiert.',
+    assignedTours: 'Zugewiesene Touren',
+    chauffeurBadge: 'CHAUFFEUR',
 
     // Calendar
     tourCalendar: 'Tourenkalender',
@@ -563,6 +586,7 @@ export const translations = {
     signOut: 'Abmelden',
     signOutConfirm: 'Möchten Sie sich wirklich aus dem Fahrer-Cockpit abmelden?',
     profileUpdated: 'Profil aktualisiert',
+    profileUpToDate: '✓ Profil ist auf dem neuesten Stand',
     confirm: 'Bestätigen',
     confirmLanguageChange: 'App-Sprache ändern?',
     confirmLanguageDesc: 'Benutzeroberfläche und Warnhinweise auf {lang} umstellen?',
@@ -643,6 +667,11 @@ export const translations = {
     destination: 'Destination',
     notSpecified: 'Non spécifié',
     letsGo: "C'EST PARTI / COMMENCER LE SERVICE 🚀",
+    chauffeurPortalTag: 'BIENVENUE • PORTAIL CHAUFFEUR',
+    welcomeDriver: 'Bienvenue, {name} !',
+    fleetRadarActive: 'Le radar de flotte {company} est actif et synchronisé avec le dispatch.',
+    assignedTours: 'Circuits assignés',
+    chauffeurBadge: 'CHAUFFEUR',
 
     // Calendar
     tourCalendar: 'Calendrier des circuits',
@@ -698,6 +727,7 @@ export const translations = {
     signOut: 'Se déconnecter',
     signOutConfirm: 'Voulez-vous vraiment vous déconnecter de Vigil Driver ?',
     profileUpdated: 'Profil mis à jour',
+    profileUpToDate: '✓ Le profil est à jour',
     confirm: 'Confirmer',
     confirmLanguageChange: "Changer la langue de l'application ?",
     confirmLanguageDesc: "Basculer l'interface et les alertes en {lang} ?",
@@ -778,6 +808,11 @@ export const translations = {
     destination: 'Пункт назначения',
     notSpecified: 'Не указано',
     letsGo: 'ПОЕХАЛИ / НАЧАТЬ СМЕНУ 🚀',
+    chauffeurPortalTag: 'ДОБРО ПОЖАЛОВАТЬ • ПОРТАЛ ВОДИТЕЛЯ',
+    welcomeDriver: 'Добро пожаловать, {name}!',
+    fleetRadarActive: 'Радар автопарка {company} активен и синхронизирован с диспетчером.',
+    assignedTours: 'Назначенные туры',
+    chauffeurBadge: 'ВОДИТЕЛЬ',
 
     // Calendar
     tourCalendar: 'Календарь туров',
@@ -833,6 +868,7 @@ export const translations = {
     signOut: 'Выйти из аккаунта',
     signOutConfirm: 'Вы уверены, что хотите выйти из приложения водителя?',
     profileUpdated: 'Профиль обновлен',
+    profileUpToDate: '✓ Данные профиля актуальны',
     confirm: 'Подтвердить',
     confirmLanguageChange: 'Сменить язык приложения?',
     confirmLanguageDesc: 'Переключить интерфейс и оповещения на {lang}?',
@@ -913,6 +949,11 @@ export const translations = {
     destination: '目的地',
     notSpecified: '未指定',
     letsGo: '出发 / 开始出车 🚀',
+    chauffeurPortalTag: '欢迎 • 司机服务终端',
+    welcomeDriver: '欢迎，{name}！',
+    fleetRadarActive: '{company} 车队雷达已激活并与调度中心保持同步。',
+    assignedTours: '已分配行程',
+    chauffeurBadge: '职业司机',
 
     // Calendar
     tourCalendar: '行程日历',
@@ -968,6 +1009,7 @@ export const translations = {
     signOut: '退出车队账号 (Sign Out)',
     signOutConfirm: '您确定要退出 Vigil 司机端吗？',
     profileUpdated: '资料已成功更新',
+    profileUpToDate: '✓ 资料已是最新',
     confirm: '确认',
     confirmLanguageChange: '更改应用语言？',
     confirmLanguageDesc: '确认将界面与系统通知切换为 {lang}？',

@@ -493,7 +493,7 @@ export default function ProfileScreen() {
                     </Text>
                     <View style={themeStyles.brandBadge}>
                       <Text style={themeStyles.brandBadgeText}>
-                        CHAUFFEUR
+                        {t('chauffeurBadge')}
                       </Text>
                     </View>
                   </View>
@@ -532,7 +532,7 @@ export default function ProfileScreen() {
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                <Text style={{ fontSize: 15, fontWeight: '900', color: themeColors.textPrimary }}>Driver Name & Photo</Text>
+                <Text style={{ fontSize: 15, fontWeight: '900', color: themeColors.textPrimary }}>{t('driverNamePhoto')}</Text>
                 <View
                   style={{
                     backgroundColor: isDark ? 'rgba(232, 115, 42, 0.15)' : colors.primary[50],
@@ -543,7 +543,7 @@ export default function ProfileScreen() {
                     borderColor: isDark ? 'rgba(232, 115, 42, 0.3)' : colors.primary[200],
                   }}
                 >
-                  <Text style={{ fontSize: 10, fontWeight: '800', color: isDark ? '#FDBA74' : colors.primary[600] }}>Public Profile</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: isDark ? '#FDBA74' : colors.primary[600] }}>{t('publicProfile')}</Text>
                 </View>
               </View>
               <Text style={{ fontSize: 11, color: themeColors.textSecondary, marginBottom: 14, lineHeight: 16 }}>
@@ -572,7 +572,7 @@ export default function ProfileScreen() {
                   }}
                 >
                   <Text style={{ fontSize: 22, marginBottom: 2 }}>📁</Text>
-                  <Text style={{ color: themeColors.textPrimary, fontWeight: '800', fontSize: 13 }}>Browse Files</Text>
+                  <Text style={{ color: themeColors.textPrimary, fontWeight: '800', fontSize: 13 }}>{t('browseFiles')}</Text>
                   <Text style={{ color: themeColors.textSecondary, fontSize: 10, fontWeight: '600', marginTop: 1 }}>
                     Gallery & Device
                   </Text>
@@ -594,7 +594,7 @@ export default function ProfileScreen() {
                   }}
                 >
                   <Text style={{ fontSize: 22, marginBottom: 2 }}>📷</Text>
-                  <Text style={{ color: isDark ? '#FDBA74' : colors.primary[700], fontWeight: '800', fontSize: 13 }}>Take Photo</Text>
+                  <Text style={{ color: isDark ? '#FDBA74' : colors.primary[700], fontWeight: '800', fontSize: 13 }}>{t('takePhoto')}</Text>
                   <Text style={{ color: themeColors.textSecondary, fontSize: 10, fontWeight: '600', marginTop: 1 }}>
                     Use Camera
                   </Text>
@@ -605,7 +605,7 @@ export default function ProfileScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                 <View style={{ flex: 1, height: 1, backgroundColor: themeColors.cardBorder }} />
                 <Text style={{ color: themeColors.textSecondary, fontSize: 10, fontWeight: '800', marginHorizontal: 8, letterSpacing: 0.5 }}>
-                  OR SELECT AVATAR
+                  {t('orSelectAvatar')}
                 </Text>
                 <View style={{ flex: 1, height: 1, backgroundColor: themeColors.cardBorder }} />
               </View>
@@ -767,7 +767,7 @@ export default function ProfileScreen() {
 
               {/* Chauffeur Name Input */}
               <Text style={{ fontSize: 11, fontWeight: '800', color: themeColors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
-                Chauffeur Full Name
+                {t('chauffeurFullName')}
               </Text>
               <TextInput
                 style={{
@@ -820,7 +820,7 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               ) : (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 4 }}>
-                  <Text style={{ color: '#16a34a', fontSize: 12, fontWeight: '700' }}>✓ Profile is up to date</Text>
+                  <Text style={{ color: '#16a34a', fontSize: 12, fontWeight: '700' }}>{t('profileUpToDate')}</Text>
                 </View>
               )}
             </View>
@@ -1394,7 +1394,7 @@ export default function ProfileScreen() {
               >
                 <Text style={{ fontSize: 15 }}>🔴</Text>
                 <Text style={{ color: isDark ? '#FB7185' : '#dc2626', fontWeight: '900', fontSize: 13 }}>
-                  Sign Out from this Device
+                  {t('signOut')}
                 </Text>
               </TouchableOpacity>
             </View>

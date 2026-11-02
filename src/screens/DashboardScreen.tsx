@@ -700,24 +700,24 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
 
             {/* Greeting Tag */}
             <View style={{ backgroundColor: isDark ? 'rgba(232, 115, 42, 0.18)' : colors.primary[50], borderColor: colors.primary[400], borderWidth: 1, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, marginBottom: 10 }}>
-              <Text style={{ color: isDark ? '#FDBA74' : colors.primary[700], fontSize: 11, fontWeight: '900', letterSpacing: 1 }}>
-                AYUBOWAN • CHAUFFEUR PORTAL
+              <Text style={{ color: isDark ? '#FDBA74' : colors.primary[700], fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
+                {t('chauffeurPortalTag')}
               </Text>
             </View>
 
             {/* Welcome Heading */}
             <Text style={{ fontSize: 22, fontWeight: '900', color: themeColors.textPrimary, textAlign: 'center', marginBottom: 4 }}>
-              Welcome, {driverData.name || 'Driver'}!
+              {t('welcomeDriver', { name: driverData.name || 'Driver' })}
             </Text>
 
             <Text style={{ fontSize: 12, color: themeColors.textSecondary, textAlign: 'center', marginBottom: 18, lineHeight: 18 }}>
-              {driverData.companyName || 'Tour Transport Company'} fleet radar is active and synchronized with office dispatch.
+              {t('fleetRadarActive', { company: driverData.companyName || 'Tour Transport Company' })}
             </Text>
 
             {/* Quick Status / Tours Summary */}
             <View style={{ width: '100%', backgroundColor: isDark ? '#141C2B' : colors.day.input, borderColor: themeColors.cardBorder, borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 20 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <Text style={{ fontSize: 12, color: themeColors.textSecondary, fontWeight: '700' }}>Assigned Tours</Text>
+                <Text style={{ fontSize: 12, color: themeColors.textSecondary, fontWeight: '700' }}>{t('assignedTours')}</Text>
                 <Text style={{ fontSize: 13, color: themeColors.textPrimary, fontWeight: '900' }}>
                   {tours.length} Tour{tours.length === 1 ? '' : 's'}
                 </Text>
@@ -726,7 +726,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.telemetry.moving, marginRight: 6 }} />
                 <Text style={{ fontSize: 11, color: isDark ? '#34D399' : colors.telemetry.movingDark, fontWeight: '800' }}>
-                  GPS Telematics Online
+                  {t('gpsOnline')}
                 </Text>
               </View>
             </View>
