@@ -28,6 +28,7 @@ import {
 import { toast } from '../utils/toast';
 import { colors, themeStyles } from '../theme';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { ProfileSkeleton } from '../components/Skeleton';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
@@ -47,6 +48,7 @@ const AVATAR_PRESETS = [
 export default function ProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
   const { isDark, colors: themeColors, setTheme } = useTheme();
+  const { language, setLanguage, t, languages, currentLanguageOption } = useLanguage();
 
   const [loading, setLoading] = useState(true);
   const [driverName, setDriverName] = useState('');
@@ -391,9 +393,9 @@ export default function ProfileScreen() {
               ]}
               activeOpacity={0.7}
             >
-              <Text style={[themeStyles.btnSecondaryText, { color: themeColors.textPrimary }]}>‹ Back</Text>
+              <Text style={[themeStyles.btnSecondaryText, { color: themeColors.textPrimary }]}>{t('backShort')}</Text>
             </TouchableOpacity>
-            <Text style={{ fontSize: 18, fontWeight: '900', color: themeColors.textPrimary }}>Settings & Profile</Text>
+            <Text style={{ fontSize: 18, fontWeight: '900', color: themeColors.textPrimary }}>{t('settingsProfile')}</Text>
           </View>
 
           {/* Reserved space for top-right Arc Nav button */}
@@ -823,6 +825,135 @@ export default function ProfileScreen() {
               )}
             </View>
 
+            {/* App Language & Native Typography Card */}
+            <View
+              style={{
+                backgroundColor: themeColors.card,
+                padding: 18,
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: themeColors.cardBorder,
+                marginBottom: 14,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.04,
+                shadowRadius: 5,
+                elevation: 2,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                <Text style={{ fontSize: 15, fontWeight: '900', color: themeColors.textPrimary }}>
+                  {t('appLanguage')}
+                </Text>
+                <View
+                  style={{
+                    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                    borderRadius: 6,
+                    borderWidth: 1,
+                    borderColor: 'rgba(16, 185, 129, 0.3)',
+                  }}
+                >
+                  <Text style={{ fontSize: 10, fontWeight: '900', color: '#10b981' }}>
+                    {currentLanguageOption.flag} {currentLanguageOption.nativeName}
+                  </Text>
+                </View>
+              </View>
+              <Text style={{ fontSize: 11, color: themeColors.textSecondary, marginBottom: 12, lineHeight: 16 }}>
+                {t('appLanguageSubtitle')}
+              </Text>
+
+              <View style={{ gap: 8 }}>
+                {languages.map((item) => {
+                  const isSelected = language === item.code;
+                  return (
+                    <TouchableOpacity
+                      key={item.code}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        Vibration.vibrate(10);
+                        setLanguage(item.code);
+                        toast.success(
+                          item.nativeName,
+                          item.code === 'si'
+                            ? 'යෙදුමේ භාෂාව සිංහල භාෂාවට සාර්ථකව මාරු විය!'
+                            : `App language set to ${item.englishName}.`
+                        );
+                      }}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: isSelected
+                          ? (isDark ? 'rgba(232, 115, 42, 0.18)' : '#FFFBEB')
+                          : (isDark ? '#111827' : '#F8FAFC'),
+                        borderWidth: isSelected ? 1.8 : 1,
+                        borderColor: isSelected
+                          ? '#E8732A'
+                          : (isDark ? '#28354D' : '#E2E8F0'),
+                        borderRadius: 14,
+                        paddingVertical: 10,
+                        paddingHorizontal: 14,
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                        <Text style={{ fontSize: 22 }}>{item.flag}</Text>
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text
+                              style={{
+                                fontSize: 14,
+                                fontWeight: '900',
+                                color: isSelected ? '#E8732A' : themeColors.textPrimary,
+                              }}
+                            >
+                              {item.nativeName}
+                            </Text>
+                            <Text
+                              style={{
+                                fontSize: 11,
+                                fontWeight: '600',
+                                color: themeColors.textMuted,
+                              }}
+                            >
+                              ({item.englishName})
+                            </Text>
+                          </View>
+                          <Text
+                            style={{
+                              fontSize: 10,
+                              color: isSelected
+                                ? (isDark ? '#FDBA74' : '#C2410C')
+                                : themeColors.textSecondary,
+                              marginTop: 1,
+                            }}
+                          >
+                            {item.sublabel}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {isSelected && (
+                        <View
+                          style={{
+                            width: 22,
+                            height: 22,
+                            borderRadius: 11,
+                            backgroundColor: '#E8732A',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '900' }}>✓</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
             {/* Theme & Cockpit Appearance Card */}
             <View
               style={{
@@ -841,7 +972,7 @@ export default function ProfileScreen() {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
                 <Text style={{ fontSize: 15, fontWeight: '900', color: themeColors.textPrimary }}>
-                  Cockpit Theme
+                  {t('cockpitTheme')}
                 </Text>
                 <View
                   style={{
@@ -859,7 +990,7 @@ export default function ProfileScreen() {
                 </View>
               </View>
               <Text style={{ fontSize: 11, color: themeColors.textSecondary, marginBottom: 12, lineHeight: 16 }}>
-                Switch between Alabaster daylight contrast and Midnight Obsidian cockpit night vision for road safety.
+                {t('cockpitThemeSubtitle')}
               </Text>
 
               <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -883,10 +1014,10 @@ export default function ProfileScreen() {
                 >
                   <Text style={{ fontSize: 24, marginBottom: 4 }}>☀️</Text>
                   <Text style={{ fontSize: 12, fontWeight: '900', color: !isDark ? '#9A3412' : '#94A3B8' }}>
-                    Day Mode
+                    {t('dayMode')}
                   </Text>
                   <Text style={{ fontSize: 9.5, color: !isDark ? '#C2410C' : '#64748B', marginTop: 2 }}>
-                    Alabaster Ceramic
+                    {t('alabasterCeramic')}
                   </Text>
                 </TouchableOpacity>
 
@@ -910,10 +1041,10 @@ export default function ProfileScreen() {
                 >
                   <Text style={{ fontSize: 24, marginBottom: 4 }}>🌙</Text>
                   <Text style={{ fontSize: 12, fontWeight: '900', color: isDark ? '#F8FAFC' : '#64748B' }}>
-                    Night Mode
+                    {t('nightMode')}
                   </Text>
                   <Text style={{ fontSize: 9.5, color: isDark ? '#38BDF8' : '#94A3B8', marginTop: 2 }}>
-                    Obsidian Cockpit
+                    {t('obsidianCockpit')}
                   </Text>
                 </TouchableOpacity>
               </View>

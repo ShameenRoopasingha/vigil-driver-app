@@ -9,6 +9,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors, themeStyles } from '../theme';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { DashboardSkeleton } from '../components/Skeleton';
 
 type DashboardNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Dashboard'>;
@@ -82,6 +83,7 @@ let hasShownWelcomeThisSession = false;
 
 export default function DashboardScreen({ navigation: propNavigation }: { navigation?: DashboardNavigationProp }) {
   const { isDark, colors: themeColors } = useTheme();
+  const { t } = useLanguage();
   const [driverData, setDriverData] = useState<DriverProfile>({});
   const [showWelcomeIntro, setShowWelcomeIntro] = useState(false);
   const [tours, setTours] = useState<Tour[]>([]);
@@ -162,9 +164,9 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
+    if (hour < 12) return t('greetingMorning');
+    if (hour < 17) return t('greetingAfternoon');
+    return t('greetingEvening');
   };
 
   const renderTour = ({ item }: { item: Tour }) => {
@@ -205,7 +207,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
             >
               <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.telemetry.moving, marginRight: 6 }} />
               <Text style={{ color: colors.telemetry.moving, fontSize: 11, fontWeight: '900', letterSpacing: 0.8 }}>
-                ACTIVE TOUR • LIVE RADAR
+                {t('activeTourBadge')}
               </Text>
             </View>
 
@@ -226,7 +228,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
             <Text style={{ fontSize: 13, marginRight: 6 }}>📍</Text>
             <Text style={{ color: '#CBD5E1', fontSize: 13, fontWeight: '600', flex: 1 }} numberOfLines={1}>
-              {item.destination || 'Destination not specified'}
+              {item.destination || t('notSpecified')}
             </Text>
           </View>
 
@@ -235,7 +237,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
             <Text style={{ fontSize: 13, marginRight: 6 }}>📅</Text>
             <Text style={{ color: colors.night.mutedForeground, fontSize: 12, fontWeight: '500' }}>
               Started {new Date(item.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-              {item.endDate ? ` → ${new Date(item.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ' → Ongoing'}
+              {item.endDate ? ` → ${new Date(item.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ` → ${t('ongoing')}`}
             </Text>
           </View>
 
@@ -259,7 +261,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
               onPress={() => navigation.navigate('ActiveTour', { bookingId: item.id })}
             >
               <Text style={{ color: '#FFFFFF', fontSize: 13.5, fontWeight: '900', letterSpacing: 0.5 }}>
-                ⚡ View Live Tour & GPS
+                ⚡ {t('viewLiveTourGps')}
               </Text>
             </TouchableOpacity>
 
@@ -278,7 +280,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
               onPress={() => navigation.navigate('AddExpense', { bookingId: item.id, vehicleNo: item.vehicleNo })}
             >
               <Text style={{ color: '#F8FAFC', fontSize: 12.5, fontWeight: '800' }}>
-                + Add Expense
+                {t('addExpenseBtn')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -336,7 +338,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
                   : themeColors.textMuted,
               }}
             >
-              {item.needsTakeover ? '⚡ TAKEOVER' : item.status}
+              {item.needsTakeover ? t('takeoverCapsule') : item.status}
             </Text>
           </View>
         </View>
@@ -348,11 +350,11 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.telemetry.idle, marginRight: 6 }} />
                 <Text style={{ color: isDark ? '#FDE68A' : '#92400E', fontWeight: '900', fontSize: 11, textTransform: 'uppercase' }}>
-                  Mid-Tour Handover Assigned
+                  {t('midTourHandover')}
                 </Text>
               </View>
               <View style={{ backgroundColor: isDark ? 'rgba(245, 158, 11, 0.25)' : '#FDE68A', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                <Text style={{ color: isDark ? '#FDE68A' : '#78350F', fontSize: 9, fontWeight: '800' }}>ACTION REQUIRED</Text>
+                <Text style={{ color: isDark ? '#FDE68A' : '#78350F', fontSize: 9, fontWeight: '800' }}>{t('actionRequired')}</Text>
               </View>
             </View>
 
@@ -399,7 +401,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
         
         {/* Vehicle Plate Row */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-          <Text style={{ color: themeColors.textSecondary, fontSize: 12, width: 85, fontWeight: '600' }}>Vehicle:</Text>
+          <Text style={{ color: themeColors.textSecondary, fontSize: 12, width: 85, fontWeight: '600' }}>{t('vehicle')}:</Text>
           <View style={{ backgroundColor: colors.plate.bg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
             <Text style={{ color: colors.plate.text, fontSize: 11.5, fontWeight: '800', fontFamily: 'monospace', letterSpacing: 1 }}>
               {item.vehicleNo}
@@ -409,15 +411,15 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
         
         {/* Destination */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-          <Text style={{ color: themeColors.textSecondary, fontSize: 12, width: 85, fontWeight: '600' }}>Destination:</Text>
+          <Text style={{ color: themeColors.textSecondary, fontSize: 12, width: 85, fontWeight: '600' }}>{t('destination')}:</Text>
           <Text style={{ color: themeColors.textPrimary, fontSize: 12.5, fontWeight: '600', flex: 1 }} numberOfLines={1}>
-            {item.destination || 'Not specified'}
+            {item.destination || t('notSpecified')}
           </Text>
         </View>
 
         {/* Dates */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-          <Text style={{ color: themeColors.textSecondary, fontSize: 12, width: 85, fontWeight: '600' }}>Tour Date:</Text>
+          <Text style={{ color: themeColors.textSecondary, fontSize: 12, width: 85, fontWeight: '600' }}>{t('tourDate')}:</Text>
           <Text style={{ color: themeColors.textPrimary, fontSize: 12, fontWeight: '600' }}>
             {new Date(item.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
           </Text>
@@ -442,7 +444,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
             onPress={() => navigation.navigate('ActiveTour', { bookingId: item.id })}
           >
             <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 12.5, letterSpacing: 0.3 }}>
-              {item.needsTakeover ? '⚡ Take Over Tour' : 'Start / View Tour'}
+              {item.needsTakeover ? t('takeOverTour') : t('startViewTour')}
             </Text>
           </TouchableOpacity>
 
@@ -459,7 +461,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
             }}
             onPress={() => navigation.navigate('AddExpense', { bookingId: item.id, vehicleNo: item.vehicleNo })}
           >
-            <Text style={{ color: themeColors.textPrimary, fontWeight: '800', fontSize: 12 }}>+ Expense</Text>
+            <Text style={{ color: themeColors.textPrimary, fontWeight: '800', fontSize: 12 }}>{t('addExpenseBtn')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -576,13 +578,13 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
               <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.telemetry.moving, marginRight: 6 }} />
-              <Text style={{ fontSize: 11, color: isDark ? '#34D399' : colors.telemetry.movingDark, fontWeight: '700' }}>Live GPS Radar Synchronized</Text>
+              <Text style={{ fontSize: 11, color: isDark ? '#34D399' : colors.telemetry.movingDark, fontWeight: '700' }}>{t('liveGpsRadar')}</Text>
             </View>
           </View>
         </View>
 
         <View style={isDark ? { backgroundColor: '#161E2E', borderWidth: 1, borderColor: '#28354D', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6, flexDirection: 'row', alignItems: 'center' } : themeStyles.btnSecondary}>
-          <Text style={{ fontSize: 12, fontWeight: '800', color: themeColors.textPrimary }}>Edit</Text>
+          <Text style={{ fontSize: 12, fontWeight: '800', color: themeColors.textPrimary }}>{t('edit')}</Text>
           <Text style={{ color: themeColors.textSecondary, fontSize: 12, fontWeight: '900', marginLeft: 2 }}>›</Text>
         </View>
       </TouchableOpacity>
@@ -590,7 +592,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
       <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingHorizontal: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={{ fontSize: 17, fontWeight: '900', color: themeColors.textPrimary }}>My Assigned Tours</Text>
+            <Text style={{ fontSize: 17, fontWeight: '900', color: themeColors.textPrimary }}>{t('myAssignedTours')}</Text>
             <View style={{ backgroundColor: isDark ? '#161E2E' : colors.day.secondary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#28354D' : colors.day.secondaryBorder }}>
               <Text style={{ fontSize: 11, fontWeight: '800', color: themeColors.textPrimary }}>{tours.length}</Text>
             </View>
@@ -612,21 +614,21 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
             }}
           >
             <Text style={{ fontSize: 12.5 }}>📅</Text>
-            <Text style={{ fontSize: 11.5, fontWeight: '800', color: themeColors.textPrimary }}>Calendar</Text>
+            <Text style={{ fontSize: 11.5, fontWeight: '800', color: themeColors.textPrimary }}>{t('calendarBtn')}</Text>
           </TouchableOpacity>
         </View>
 
         {syncError && (
           <View style={{ marginBottom: 12, backgroundColor: isDark ? 'rgba(245, 158, 11, 0.12)' : '#FFFBEB', borderColor: isDark ? 'rgba(245, 158, 11, 0.4)' : '#FDE68A', borderWidth: 1, borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flex: 1, marginRight: 8 }}>
-              <Text style={{ color: isDark ? '#FDE68A' : '#92400E', fontWeight: '800', fontSize: 12 }}>Sync Notice</Text>
+              <Text style={{ color: isDark ? '#FDE68A' : '#92400E', fontWeight: '800', fontSize: 12 }}>{t('syncNotice')}</Text>
               <Text style={{ color: isDark ? '#CBD5E1' : '#B45309', fontSize: 11, marginTop: 2 }}>{syncError}</Text>
             </View>
             <TouchableOpacity 
               onPress={() => { setLoading(true); setSyncError(null); loadData(); }}
               style={{ backgroundColor: colors.primary[500], paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 }}
             >
-              <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>Retry</Text>
+              <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>{t('retry')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -648,12 +650,12 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
                   <Text style={{ fontSize: 26 }}>🚗</Text>
                 </View>
                 <Text style={{ fontSize: 16, fontWeight: '900', color: themeColors.textPrimary, marginBottom: 4 }}>
-                  No Active Tour
+                  {t('noActiveTour')}
                 </Text>
                 <Text style={{ fontSize: 12, color: themeColors.textSecondary, textAlign: 'center', lineHeight: 18, maxWidth: 260 }}>
                   {syncError 
-                    ? 'Could not connect to tour server. Tap Retry above to reconnect.' 
-                    : "You don't have any active tours assigned right now. Your tour manager will dispatch tours here."}
+                    ? syncError 
+                    : t('noToursDescription')}
                 </Text>
               </View>
             }
@@ -739,7 +741,7 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
               ]}
             >
               <Text style={themeStyles.btnPrimaryText}>
-                LET&apos;S GO / START SHIFT 🚀
+                {t('letsGo')}
               </Text>
             </TouchableOpacity>
           </View>

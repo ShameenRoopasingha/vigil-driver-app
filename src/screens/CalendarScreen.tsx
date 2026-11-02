@@ -8,6 +8,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors, themeStyles } from '../theme';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { CalendarSkeleton } from '../components/Skeleton';
 
 type CalendarNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Calendar'>;
@@ -15,6 +16,7 @@ type CalendarNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Cal
 export default function CalendarScreen() {
   const navigation = useNavigation<CalendarNavigationProp>();
   const { isDark, colors: themeColors } = useTheme();
+  const { t } = useLanguage();
   const [markedDates, setMarkedDates] = useState<any>({});
   const [loading, setLoading] = useState(true);
 
@@ -75,9 +77,9 @@ export default function CalendarScreen() {
             onPress={() => navigation.goBack()} 
             style={[themeStyles.btnSecondary, isDark && { backgroundColor: '#161E2E', borderColor: '#28354D' }, { paddingHorizontal: 12, paddingVertical: 6, marginRight: 10 }]}
           >
-            <Text style={[themeStyles.btnSecondaryText, { color: themeColors.textPrimary }]}>← Back</Text>
+            <Text style={[themeStyles.btnSecondaryText, { color: themeColors.textPrimary }]}>{t('back')}</Text>
           </TouchableOpacity>
-          <Text style={{ fontSize: 17, fontWeight: '900', color: themeColors.textPrimary }}>Tour Calendar</Text>
+          <Text style={{ fontSize: 17, fontWeight: '900', color: themeColors.textPrimary }}>{t('tourCalendar')}</Text>
         </View>
 
         {/* Space reserved for Top-Right Arc Nav Button */}
@@ -115,15 +117,15 @@ export default function CalendarScreen() {
             <View style={{ padding: 14, borderTopWidth: 1, borderTopColor: themeColors.cardBorder, backgroundColor: isDark ? '#141C2B' : colors.day.input, flexDirection: 'row', justifyContent: 'space-around' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary[500], marginRight: 6 }} />
-                <Text style={{ fontSize: 11.5, color: themeColors.textPrimary, fontWeight: '800' }}>Confirmed</Text>
+                <Text style={{ fontSize: 11.5, color: themeColors.textPrimary, fontWeight: '800' }}>{t('confirmed')}</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.telemetry.moving, marginRight: 6 }} />
-                <Text style={{ fontSize: 11.5, color: themeColors.textPrimary, fontWeight: '800' }}>Ongoing</Text>
+                <Text style={{ fontSize: 11.5, color: themeColors.textPrimary, fontWeight: '800' }}>{t('ongoing')}</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.telemetry.idle, marginRight: 6 }} />
-                <Text style={{ fontSize: 11.5, color: themeColors.textPrimary, fontWeight: '800' }}>Pending</Text>
+                <Text style={{ fontSize: 11.5, color: themeColors.textPrimary, fontWeight: '800' }}>{t('pending')}</Text>
               </View>
             </View>
           </View>

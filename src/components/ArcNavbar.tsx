@@ -20,6 +20,7 @@ import { navigationRef } from '../navigation/navigationRef';
 import { locationService } from '../services/locationService';
 import { toast } from '../utils/toast';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export interface ArcNavItem {
   id: string;
@@ -94,6 +95,7 @@ const AUDIO_HTML = `
 export default function ArcNavbar() {
   const insets = useSafeAreaInsets();
   const { isDark, colors, toggleTheme } = useTheme();
+  const { t } = useLanguage();
 
   const [isOpen, setIsOpen] = useState(false);
   const [currentRoute, setCurrentRoute] = useState<string>('Dashboard');
@@ -115,104 +117,104 @@ export default function ArcNavbar() {
   const items: ArcNavItem[] = [
     {
       id: 'dashboard',
-      name: 'Dashboard',
+      name: t('navDashboard'),
       screen: 'Dashboard',
       icon: '🏠',
       color: isDark ? '#38bdf8' : '#0284c7',
       bgColor: isDark ? 'rgba(56, 189, 248, 0.2)' : 'rgba(2, 132, 199, 0.15)',
-      subtitle: 'Overview & Assigned Tours',
+      subtitle: t('navDashboardSub'),
     },
     {
       id: 'activeTour',
-      name: 'Active Tour',
+      name: t('navLiveRadar'),
       screen: 'ActiveTour',
       icon: '⚡',
       color: '#10b981',
       bgColor: 'rgba(16, 185, 129, 0.2)',
       badge: locationService.isTripTrackingActive() ? 'LIVE' : undefined,
-      subtitle: 'Live Radar & GPS Route',
+      subtitle: t('navLiveRadarSub'),
     },
     {
       id: 'calendar',
-      name: 'Calendar',
+      name: t('navCalendar'),
       screen: 'Calendar',
       icon: '📅',
       color: isDark ? '#818cf8' : '#4f46e5',
       bgColor: isDark ? 'rgba(129, 140, 248, 0.2)' : 'rgba(79, 70, 229, 0.15)',
-      subtitle: 'Scheduled Booking Dates',
+      subtitle: t('navCalendarSub'),
     },
     {
       id: 'expense',
-      name: 'Add Expense',
+      name: t('navExpense'),
       screen: 'AddExpense',
       icon: '💸',
       color: isDark ? '#fbbf24' : '#d97706',
       bgColor: isDark ? 'rgba(251, 191, 36, 0.2)' : 'rgba(217, 119, 6, 0.15)',
-      subtitle: 'Fuel, Tolls & Receipts',
+      subtitle: t('navExpenseSub'),
     },
     {
       id: 'profile',
-      name: 'Driver Profile',
+      name: t('navProfile'),
       screen: 'Profile',
       icon: '👤',
       color: isDark ? '#2dd4bf' : '#0d9488',
       bgColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(13, 148, 136, 0.15)',
-      subtitle: 'Name, Avatar & Fleet Info',
+      subtitle: t('navProfileSub'),
     },
     {
       id: 'duty',
-      name: onDuty ? 'Status: ON DUTY' : 'Status: RESTING',
+      name: onDuty ? t('navOnDuty') : t('navResting'),
       icon: onDuty ? '🟢' : '☕',
       color: onDuty ? '#34d399' : '#f87171',
       bgColor: onDuty ? 'rgba(52, 211, 153, 0.2)' : 'rgba(248, 113, 113, 0.2)',
       badge: onDuty ? 'ON' : 'REST',
-      subtitle: onDuty ? 'Available for Transfers' : 'Shift Resting / Break',
+      subtitle: onDuty ? t('navOnDutySub') : t('navRestingSub'),
       isAction: true,
     },
     {
       id: 'sos',
-      name: 'Emergency SOS',
+      name: t('navSos'),
       icon: '🚨',
       color: '#fb7185',
       bgColor: 'rgba(251, 113, 133, 0.2)',
       badge: 'SOS',
-      subtitle: 'Roadside & Hotline Dispatch',
+      subtitle: t('navSosSub'),
       isAction: true,
     },
     {
       id: 'callOffice',
-      name: 'Call Fleet Office',
+      name: t('navCallOffice'),
       icon: '📞',
       color: isDark ? '#38bdf8' : '#0284c7',
       bgColor: isDark ? 'rgba(56, 189, 248, 0.2)' : 'rgba(2, 132, 199, 0.15)',
-      subtitle: 'Direct Dispatch Contact',
+      subtitle: t('navCallOfficeSub'),
       isAction: true,
     },
     {
       id: 'breakdown',
-      name: 'Report Breakdown',
+      name: t('navBreakdown'),
       icon: '🛠️',
       color: '#E8732A',
       bgColor: 'rgba(232, 115, 42, 0.2)',
-      subtitle: 'Dispatch Emergency Swap',
+      subtitle: t('navBreakdownSub'),
       isAction: true,
     },
     {
       id: 'police',
-      name: 'Tourist Police (1912)',
+      name: t('navPolice'),
       icon: '🛡️',
       color: '#10b981',
       bgColor: 'rgba(16, 185, 129, 0.2)',
-      subtitle: '24/7 Sri Lanka Helpline',
+      subtitle: t('navPoliceSub'),
       isAction: true,
     },
     {
       id: 'refresh',
-      name: 'Sync GPS Radar',
+      name: t('navSyncGps'),
       icon: '🔄',
       color: isDark ? '#a78bfa' : '#7c3aed',
       bgColor: isDark ? 'rgba(167, 139, 250, 0.2)' : 'rgba(124, 58, 237, 0.15)',
-      subtitle: 'Sync Live Location Now',
+      subtitle: t('navSyncGpsSub'),
       isAction: true,
     },
   ];
@@ -893,7 +895,7 @@ export default function ArcNavbar() {
                       {items[activeIndex].subtitle}
                     </Text>
                     <Text style={[styles.detailActionText, { color: isDark ? '#34d399' : '#059669' }]}>
-                      TAP TO OPEN
+                      {t('tapToOpen')}
                     </Text>
                   </View>
                 </TouchableOpacity>

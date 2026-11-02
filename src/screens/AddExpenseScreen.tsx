@@ -9,6 +9,7 @@ import { DriverExpenseInputSchema } from '../validations';
 import { toast } from '../utils/toast';
 import { colors, themeStyles } from '../theme';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 type AddExpenseRouteProp = RouteProp<RootStackParamList, 'AddExpense'>;
 type AddExpenseNavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddExpense'>;
@@ -17,6 +18,7 @@ export default function AddExpenseScreen() {
   const route = useRoute<AddExpenseRouteProp>();
   const navigation = useNavigation<AddExpenseNavigationProp>();
   const { isDark, colors: themeColors } = useTheme();
+  const { t } = useLanguage();
   
   const { bookingId, vehicleNo: initialVehicleNo } = route.params || {};
 
@@ -30,35 +32,35 @@ export default function AddExpenseScreen() {
   const categories = [
     {
       id: 'FUEL',
-      label: '⛽ Fuel Fill',
+      label: t('fuelFill'),
       color: isDark ? '#FB923C' : colors.primary[500],
       bg: isDark ? 'rgba(232, 115, 42, 0.2)' : colors.primary[50],
       border: isDark ? '#EA580C' : colors.primary[300],
     },
     {
       id: 'SERVICE',
-      label: '⚙️ Service',
+      label: t('service'),
       color: isDark ? '#38BDF8' : colors.primary[600],
       bg: isDark ? 'rgba(56, 189, 248, 0.2)' : colors.primary[100],
       border: isDark ? '#0284C7' : colors.primary[300],
     },
     {
       id: 'REPAIR',
-      label: '🔧 Repair',
+      label: t('repair'),
       color: isDark ? '#FBBF24' : '#EA580C',
       bg: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FFF7ED',
       border: isDark ? '#D97706' : '#FED7AA',
     },
     {
       id: 'BREAKDOWN',
-      label: '⚡ Breakdown',
+      label: t('breakdown'),
       color: isDark ? '#F87171' : colors.telemetry.alert,
       bg: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FFF1F2',
       border: isDark ? '#DC2626' : '#FECDD3',
     },
     {
       id: 'OTHER',
-      label: '📝 Note / Other',
+      label: t('noteOther'),
       color: isDark ? '#E2E8F0' : '#475569',
       bg: isDark ? '#1E293B' : colors.day.secondary,
       border: isDark ? '#334155' : colors.day.secondaryBorder,
@@ -128,9 +130,9 @@ export default function AddExpenseScreen() {
             onPress={() => navigation.goBack()} 
             style={[themeStyles.btnSecondary, isDark && { backgroundColor: '#161E2E', borderColor: '#28354D' }, { paddingHorizontal: 12, paddingVertical: 6, marginRight: 10 }]}
           >
-            <Text style={[themeStyles.btnSecondaryText, { color: themeColors.textPrimary }]}>← Back</Text>
+            <Text style={[themeStyles.btnSecondaryText, { color: themeColors.textPrimary }]}>{t('back')}</Text>
           </TouchableOpacity>
-          <Text style={{ fontSize: 17, fontWeight: '900', color: themeColors.textPrimary }}>Add Trip Expense</Text>
+          <Text style={{ fontSize: 17, fontWeight: '900', color: themeColors.textPrimary }}>{t('addTripExpense')}</Text>
         </View>
 
         {/* Space reserved for Top-Right Arc Nav Button */}
@@ -143,7 +145,7 @@ export default function AddExpenseScreen() {
           
           <View style={{ marginBottom: 14 }}>
             <Text style={{ color: themeColors.textPrimary, fontSize: 12.5, fontWeight: '800', marginBottom: 6, letterSpacing: 0.3 }}>
-              VEHICLE LICENSE PLATE
+              {t('vehiclePlateLabel')}
             </Text>
             <TextInput
               style={[
@@ -160,7 +162,7 @@ export default function AddExpenseScreen() {
 
           <View style={{ marginBottom: 14 }}>
             <Text style={{ color: themeColors.textPrimary, fontSize: 12.5, fontWeight: '800', marginBottom: 6, letterSpacing: 0.3 }}>
-              AMOUNT (LKR / RS.)
+              {t('amountLabel')}
             </Text>
             <TextInput
               style={[
@@ -178,7 +180,7 @@ export default function AddExpenseScreen() {
 
           <View style={{ marginBottom: 16 }}>
             <Text style={{ color: themeColors.textPrimary, fontSize: 12.5, fontWeight: '800', marginBottom: 8, letterSpacing: 0.3 }}>
-              EXPENSE CATEGORY
+              {t('categoryLabel')}
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {categories.map((cat) => {
@@ -207,7 +209,7 @@ export default function AddExpenseScreen() {
 
           <View style={{ marginBottom: 16 }}>
             <Text style={{ color: themeColors.textPrimary, fontSize: 12.5, fontWeight: '800', marginBottom: 8, letterSpacing: 0.3 }}>
-              PAID BY
+              {t('paidByLabel')}
             </Text>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <TouchableOpacity
@@ -229,10 +231,10 @@ export default function AddExpenseScreen() {
                 <Text style={{ fontSize: 18, marginRight: 8 }}>🏢</Text>
                 <View style={{ flexShrink: 1 }}>
                   <Text numberOfLines={1} style={{ fontWeight: '800', color: expenseType === 'COMPANY' ? (isDark ? '#FDBA74' : colors.primary[700]) : themeColors.textPrimary, fontSize: 13 }}>
-                    Company
+                    {t('companyPayer')}
                   </Text>
                   <Text numberOfLines={1} style={{ fontSize: 10.5, fontWeight: '600', color: expenseType === 'COMPANY' ? (isDark ? '#FDBA74' : colors.primary[600]) : themeColors.textMuted }}>
-                    Fleet / Office
+                    {t('fleetOfficeSub')}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -255,10 +257,10 @@ export default function AddExpenseScreen() {
                 <Text style={{ fontSize: 18, marginRight: 8 }}>👤</Text>
                 <View style={{ flexShrink: 1 }}>
                   <Text numberOfLines={1} style={{ fontWeight: '800', color: expenseType === 'CUSTOMER' ? (isDark ? '#FDBA74' : colors.primary[700]) : themeColors.textPrimary, fontSize: 13 }}>
-                    Customer
+                    {t('customerPayer')}
                   </Text>
                   <Text numberOfLines={1} style={{ fontSize: 10.5, fontWeight: '600', color: expenseType === 'CUSTOMER' ? (isDark ? '#FDBA74' : colors.primary[600]) : themeColors.textMuted }}>
-                    Tourist / Guest
+                    {t('touristGuestSub')}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -267,7 +269,7 @@ export default function AddExpenseScreen() {
 
           <View style={{ marginBottom: 20 }}>
             <Text style={{ color: themeColors.textPrimary, fontSize: 12.5, fontWeight: '800', marginBottom: 6, letterSpacing: 0.3 }}>
-              DESCRIPTION / RECEIPT NOTE
+              {t('descriptionLabel')}
             </Text>
             <TextInput
               style={[
@@ -295,7 +297,7 @@ export default function AddExpenseScreen() {
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={themeStyles.btnPrimaryText}>
-                ✓ SAVE TRIP EXPENSE
+                {t('saveExpenseBtn')}
               </Text>
             )}
           </TouchableOpacity>

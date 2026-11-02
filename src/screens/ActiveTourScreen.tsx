@@ -20,6 +20,7 @@ import {
 } from '../services/osmService';
 import { colors, themeStyles } from '../theme';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { ActiveTourSkeleton } from '../components/Skeleton';
 
 type ActiveTourRouteProp = RouteProp<RootStackParamList, 'ActiveTour'>;
@@ -29,6 +30,7 @@ export default function ActiveTourScreen() {
   const route = useRoute<ActiveTourRouteProp>();
   const navigation = useNavigation<ActiveTourNavigationProp>();
   const { isDark, colors: themeColors } = useTheme();
+  const { t } = useLanguage();
   
   const { bookingId } = route.params;
 
@@ -495,9 +497,9 @@ export default function ActiveTourScreen() {
       <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.background }}>
         <View style={{ backgroundColor: themeColors.card, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: themeColors.cardBorder, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={[themeStyles.btnSecondary, isDark && { backgroundColor: '#161E2E', borderColor: '#28354D' }, { paddingHorizontal: 12, paddingVertical: 6, marginRight: 10 }]}>
-            <Text style={[themeStyles.btnSecondaryText, { color: themeColors.textPrimary }]}>← Back</Text>
+            <Text style={[themeStyles.btnSecondaryText, { color: themeColors.textPrimary }]}>{t('back')}</Text>
           </TouchableOpacity>
-          <Text style={{ fontSize: 16, fontWeight: '900', color: themeColors.textPrimary }}>Tour Radar</Text>
+          <Text style={{ fontSize: 16, fontWeight: '900', color: themeColors.textPrimary }}>{t('tourRadar')}</Text>
           <View style={{ width: 44, height: 40 }} />
         </View>
         <ScrollView showsVerticalScrollIndicator={false}>
@@ -512,7 +514,7 @@ export default function ActiveTourScreen() {
       <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.background, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
         <Text style={{ color: themeColors.textSecondary, fontSize: 14, fontWeight: '600' }}>Tour not found.</Text>
         <TouchableOpacity onPress={() => navigation.goBack()} style={[themeStyles.btnPrimary, { marginTop: 16, paddingHorizontal: 24 }]}>
-          <Text style={themeStyles.btnPrimaryText}>Go Back</Text>
+          <Text style={themeStyles.btnPrimaryText}>{t('back')}</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -557,7 +559,7 @@ export default function ActiveTourScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.background }}>
       <View style={{ backgroundColor: themeColors.card, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: themeColors.cardBorder, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={[themeStyles.btnSecondary, isDark && { backgroundColor: '#161E2E', borderColor: '#28354D' }, { paddingHorizontal: 12, paddingVertical: 6, marginRight: 10 }]}>
-          <Text style={[themeStyles.btnSecondaryText, { color: themeColors.textPrimary }]}>← Back</Text>
+          <Text style={[themeStyles.btnSecondaryText, { color: themeColors.textPrimary }]}>{t('back')}</Text>
         </TouchableOpacity>
 
         {/* Center / Right: Tour Company Badge (56px right padding leaves clean clearance for ArcNavbar button) */}
@@ -1115,7 +1117,7 @@ export default function ActiveTourScreen() {
                   elevation: 4,
                 }}
               >
-                {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 15, letterSpacing: 0.5 }}>END TRIP & STOP GPS</Text>}
+                {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 15, letterSpacing: 0.5 }}>{t('endTrip')}</Text>}
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1171,7 +1173,7 @@ export default function ActiveTourScreen() {
                 disabled={actionLoading}
                 style={themeStyles.btnPrimary}
               >
-                {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={themeStyles.btnPrimaryText}>START TRIP & BROADCAST GPS</Text>}
+                {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={themeStyles.btnPrimaryText}>{t('startTrip')}</Text>}
               </TouchableOpacity>
 
               <TouchableOpacity
