@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, Image, Linking, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, RefreshControl, Image, Linking, Modal, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -9,6 +9,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors, themeStyles } from '../theme';
 import { useTheme } from '../context/ThemeContext';
+import { DashboardSkeleton } from '../components/Skeleton';
 
 type DashboardNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Dashboard'>;
 
@@ -631,17 +632,9 @@ export default function DashboardScreen({ navigation: propNavigation }: { naviga
         )}
         
         {loading ? (
-          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 60 }}>
-            <View style={{ backgroundColor: themeColors.card, padding: 14, borderRadius: 20, borderWidth: 1, borderColor: themeColors.cardBorder, marginBottom: 12, alignItems: 'center', justifyContent: 'center' }}>
-              <Image 
-                source={require('../../assets/logo-icon.png')} 
-                style={{ width: 44, height: 44 }} 
-                resizeMode="contain" 
-              />
-            </View>
-            <ActivityIndicator size="small" color={colors.primary[500]} style={{ marginBottom: 8 }} />
-            <Text style={{ color: themeColors.textSecondary, fontSize: 12, fontWeight: '600' }}>Syncing tours with office radar...</Text>
-          </View>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
+            <DashboardSkeleton />
+          </ScrollView>
         ) : (
           <FlatList
             data={tours}

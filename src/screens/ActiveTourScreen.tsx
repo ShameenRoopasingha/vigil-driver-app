@@ -20,6 +20,7 @@ import {
 } from '../services/osmService';
 import { colors, themeStyles } from '../theme';
 import { useTheme } from '../context/ThemeContext';
+import { ActiveTourSkeleton } from '../components/Skeleton';
 
 type ActiveTourRouteProp = RouteProp<RootStackParamList, 'ActiveTour'>;
 type ActiveTourNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ActiveTour'>;
@@ -491,19 +492,17 @@ export default function ActiveTourScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.background, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
-        <View style={{ backgroundColor: themeColors.card, padding: 16, borderRadius: 24, borderWidth: 1.5, borderColor: themeColors.cardBorder, marginBottom: 14, alignItems: 'center', justifyContent: 'center' }}>
-          <Image 
-            source={require('../../assets/logo-icon.png')} 
-            style={{ width: 56, height: 56 }} 
-            resizeMode="contain" 
-          />
+      <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.background }}>
+        <View style={{ backgroundColor: themeColors.card, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: themeColors.cardBorder, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={[themeStyles.btnSecondary, isDark && { backgroundColor: '#161E2E', borderColor: '#28354D' }, { paddingHorizontal: 12, paddingVertical: 6, marginRight: 10 }]}>
+            <Text style={[themeStyles.btnSecondaryText, { color: themeColors.textPrimary }]}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={{ fontSize: 16, fontWeight: '900', color: themeColors.textPrimary }}>Tour Radar</Text>
+          <View style={{ width: 44, height: 40 }} />
         </View>
-        <Text style={{ fontSize: 24, fontWeight: '900', color: themeColors.textPrimary, letterSpacing: 2 }}>VIGIL</Text>
-        <Text style={{ color: colors.primary[500], fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.2, marginTop: 4 }}>
-          Loading Tour & GPS Radar...
-        </Text>
-        <ActivityIndicator size="small" color={colors.primary[500]} style={{ marginTop: 16 }} />
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <ActiveTourSkeleton />
+        </ScrollView>
       </SafeAreaView>
     );
   }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import { useNavigation } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors, themeStyles } from '../theme';
 import { useTheme } from '../context/ThemeContext';
+import { CalendarSkeleton } from '../components/Skeleton';
 
 type CalendarNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Calendar'>;
 
@@ -85,7 +86,7 @@ export default function CalendarScreen() {
 
       <View style={{ flex: 1, padding: 16 }}>
         {loading ? (
-          <ActivityIndicator size="large" color={colors.primary[500]} style={{ marginTop: 40 }} />
+          <CalendarSkeleton />
         ) : (
           <View style={{ backgroundColor: themeColors.card, borderRadius: 22, borderWidth: 1, borderColor: themeColors.cardBorder, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3 }}>
             <Calendar

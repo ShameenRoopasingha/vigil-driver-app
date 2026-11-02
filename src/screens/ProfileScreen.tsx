@@ -28,6 +28,7 @@ import {
 import { toast } from '../utils/toast';
 import { colors, themeStyles } from '../theme';
 import { useTheme } from '../context/ThemeContext';
+import { ProfileSkeleton } from '../components/Skeleton';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 
@@ -400,12 +401,13 @@ export default function ProfileScreen() {
         </View>
 
         {loading ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator size="large" color={colors.primary[500]} />
-            <Text style={{ color: themeColors.textMuted, fontSize: 12, marginTop: 12, fontWeight: '600' }}>
-              Loading profile settings...
-            </Text>
-          </View>
+          <ScrollView
+            style={{ flex: 1, paddingHorizontal: 16, paddingTop: 14 }}
+            contentContainerStyle={{ paddingBottom: 50 }}
+            showsVerticalScrollIndicator={false}
+          >
+            <ProfileSkeleton />
+          </ScrollView>
         ) : (
           <ScrollView
             style={{ flex: 1, paddingHorizontal: 16, paddingTop: 14 }}
