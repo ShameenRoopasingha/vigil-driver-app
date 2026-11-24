@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -28,6 +28,9 @@ export default function AddExpenseScreen() {
   const [description, setDescription] = useState('');
   const [expenseType, setExpenseType] = useState('COMPANY'); // COMPANY, CUSTOMER
   const [loading, setLoading] = useState(false);
+  const skipGuardRef = useRef(false);
+
+  const isDirty = amount.trim().length > 0 || description.trim().length > 0;
 
   const categories = [
     {
@@ -67,7 +70,7 @@ export default function AddExpenseScreen() {
     },
   ];
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     const validation = DriverExpenseInputSchema.safeParse({
       vehicleNo,
       amount,
@@ -104,6 +107,7 @@ export default function AddExpenseScreen() {
               });
 
               if (response.data?.success) {
+                skipGuardRef.current = true;
                 toast.success('Expense Saved', 'Expense logged successfully to office billing!');
                 navigation.goBack();
               } else {
@@ -119,7 +123,44 @@ export default function AddExpenseScreen() {
         }
       ]
     );
-  };
+  }, [vehicleNo, amount, category, description, expenseType, bookingId, navigation]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (skipGuardRef.current || !isDirty || loading) {
+        return;
+      }
+
+      e.preventDefault();
+
+      Alert.alert(
+        'Discard Current Expense?',
+        'You have unsaved expense details. Do you want to discard this entry before leaving?',
+        [
+          {
+            text: 'Discard & Leave',
+            style: 'destructive',
+            onPress: () => {
+              skipGuardRef.current = true;
+              navigation.dispatch(e.data.action);
+            },
+          },
+          {
+            text: 'Save & Continue',
+            onPress: () => {
+              handleSubmit();
+            },
+          },
+          {
+            text: 'Keep Editing',
+            style: 'cancel',
+          },
+        ]
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, isDirty, loading, handleSubmit]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.background }}>
