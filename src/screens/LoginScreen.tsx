@@ -8,6 +8,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { DriverLoginInputSchema } from '../validations';
 import { toast } from '../utils/toast';
+import { setDriverToken } from '../utils/secureTokenStorage';
 import { colors, themeStyles } from '../theme';
 import { useTheme } from '../context/ThemeContext';
 
@@ -39,7 +40,7 @@ export default function LoginScreen() {
       });
       
       if (response.data?.success && response.data?.data?.token) {
-        await AsyncStorage.setItem('driverToken', response.data.data.token);
+        await setDriverToken(response.data.data.token);
         await AsyncStorage.setItem('driverData', JSON.stringify(response.data.data.driver));
         toast.success('Welcome back!', 'Authenticated to VIGIL Fleet Radar');
         navigation.replace('Dashboard');

@@ -1,11 +1,11 @@
 import React, { useEffect } from 'react';
 import { View, Text, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { navigationRef } from '../navigation/navigationRef';
 import { colors } from '../theme';
+import { getDriverToken } from '../utils/secureTokenStorage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
@@ -19,7 +19,7 @@ export default function SplashScreen({ navigation }: Props) {
         await new Promise((resolve) => setTimeout(resolve, 800));
         if (!isMounted) return;
 
-        const token = await AsyncStorage.getItem('driverToken');
+        const token = await getDriverToken();
         const targetRoute = token ? 'Dashboard' : 'Login';
 
         if (navigation?.reset) {

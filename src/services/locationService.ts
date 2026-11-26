@@ -224,6 +224,16 @@ class DriverLocationService {
     }
   }
 
+  public async clearOfflineQueue(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(OFFLINE_STORAGE_KEY);
+      this.offlineCount = 0;
+      this.notifyStatus();
+    } catch (err) {
+      console.error('Failed to clear offline location queue:', err);
+    }
+  }
+
   // Cleanly stop location tracking when trip ends
   public async stopTripTracking(): Promise<void> {
     this.isTracking = false;

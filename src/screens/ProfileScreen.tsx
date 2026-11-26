@@ -26,6 +26,7 @@ import {
   DriverPasswordChangeSchema,
 } from '../validations';
 import { toast } from '../utils/toast';
+import { clearDriverToken, setDriverToken } from '../utils/secureTokenStorage';
 import { colors, themeStyles } from '../theme';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -281,7 +282,7 @@ export default function ProfileScreen() {
       if (res.data?.success) {
         setCurrentEmail(trimmed);
         if (res.data.data?.token) {
-          await AsyncStorage.setItem('driverToken', res.data.data.token);
+          await setDriverToken(res.data.data.token);
         }
         if (res.data.data?.driver) {
           await AsyncStorage.setItem('driverData', JSON.stringify(res.data.data.driver));
@@ -344,7 +345,9 @@ export default function ProfileScreen() {
         onPress: async () => {
           try {
             await locationService.stopTripTracking();
+            await locationService.clearOfflineQueue();
           } catch {}
+          await clearDriverToken();
           await AsyncStorage.clear();
           navigation.reset({
             index: 0,

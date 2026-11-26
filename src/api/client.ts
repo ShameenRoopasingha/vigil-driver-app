@@ -1,6 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { navigationRef } from '../navigation/navigationRef';
+import { clearDriverToken, getDriverToken } from '../utils/secureTokenStorage';
 
 // Replace with your local machine's IP address if testing on a physical device or emulator.
 // Connecting directly to the live Vercel backend
@@ -16,7 +17,7 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem('driverToken');
+    const token = await getDriverToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -35,8 +36,10 @@ apiClient.interceptors.response.use(
         try {
           const { locationService } = await import('../services/locationService');
           await locationService.stopTripTracking();
+          await locationService.clearOfflineQueue();
         } catch {}
-        await AsyncStorage.multiRemove(['driverToken', 'driverUser', 'driverData']);
+        await clearDriverToken();
+        await AsyncStorage.multiRemove(['driverUser', 'driverData']);
         if (navigationRef.isReady()) {
           navigationRef.reset({
             index: 0,

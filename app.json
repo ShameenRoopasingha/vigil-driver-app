@@ -40,7 +40,8 @@
           "photosPermission": "Allow Vigil Driver App to access your device photos and files.",
           "cameraPermission": "Allow Vigil Driver App to use your camera for profile pictures."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
